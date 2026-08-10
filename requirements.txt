@@ -1,0 +1,16 @@
+﻿fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+telethon>=1.28.5
+playwright>=1.35.0
+torch>=2.0.0
+transformers>=4.30.0
+pytesseract>=0.3.10
+opencv-python>=4.7.0
+neo4j>=5.10.0
+psycopg2-binary>=2.9.6
+plyer>=2.1.0
+pystray>=0.19.4
+reportlab>=4.0.4
+python-dotenv>=1.0.0
+requests>=2.31.0
+playwright>=1.40.0

@@ -1,0 +1,18 @@
+﻿{
+  "instagram_mocks": [
+    {
+      "platform": "Instagram",
+      "scrape_type": "profile",
+      "target": "bliss_vibes_blr",
+      "timestamp": "2026-08-10T12:00:00",
+      "status": "success",
+      "bio": "DM for party supplies in Indiranagar 🍃💊 | UPI accepted | Telegram t.me/blr_supplies_bot",
+      "external_link": "https://t.me/blr_supplies_bot",
+      "extracted_entities": {
+        "upis": ["dealer@ybl"],
+        "phones": ["9876543210"],
+        "telegram_links": ["https://t.me/blr_supplies_bot"]
+      }
+    }
+  ]
+}

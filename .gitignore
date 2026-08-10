@@ -1,0 +1,26 @@
+﻿# Python Virtual Environment
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Local Environment & Secrets
+.env
+
+# Data & Evidence Files
+data/raw/*
+data/processed/*
+data/outputs/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/outputs/.gitkeep
+!data/mock_demo_data.json
+
+# Node / UI
+web_dashboard/node_modules/
+web_dashboard/.next/
+web_dashboard/out/
+
+# IDE
+.vscode/
+.idea/

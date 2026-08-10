@@ -1,0 +1,18 @@
+[
+    {
+        "entry_id": "WA_LIVE_143748803449",
+        "timestamp": "2026-08-10T14:37:48.803473",
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/J12345ExampleCode1",
+        "chat_title": "",
+        "group_description": "WhatsApp Group Invite",
+        "group_icon_url": "https://static.whatsapp.net/rsrc.php/v4/yO/r/rukeqTVNJDY.png",
+        "sender_id": "Unknown_Sender",
+        "sender_username": "",
+        "message_text": "WhatsApp Group Invite",
+        "extracted_vpa": null,
+        "extracted_phones": [],
+        "processed_by_ai": false
+    }
+]
