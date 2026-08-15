@@ -19,7 +19,7 @@ def generate_whatsapp_mock_data(count=5, output_file="whatsapp_simulated.json"):
     ]
 
     chat_titles = [
-        "NCR Private Party Supplies 🍃",
+        "NCR Private Party Supplies",
         "Delhi Score & Chill",
         "Gurgaon Underground Network",
         "Fast Delivery NCR/Noida",
@@ -27,11 +27,11 @@ def generate_whatsapp_mock_data(count=5, output_file="whatsapp_simulated.json"):
     ]
 
     solicitation_templates = [
-        "Fresh Mal 🍃 and Molly 💊 ready in South Delhi. Rate list in menu card. Pay via UPI: {vpa}",
-        "Top quality LSD Stamps 🪪 and Chitta available. DM for drop location. UPI ID: {vpa}",
-        "Mephedrone (❄️) score clear. Pure material guaranteed. Send token amount on {vpa} to get GPS pin.",
-        "Ganja 🍃 100g packs ready. Fast deal near Metro Station. UPI payment only: {vpa}",
-        "MDMA 💊 and Stamp 🪪 stock refreshed. Check menu image attached. UPI handle: {vpa}"
+        "Fresh Mal and Molly ready in South Delhi. Rate list in menu card. Pay via UPI: {vpa}",
+        "Top quality LSD Stamps and Chitta available. DM for drop location. UPI ID: {vpa}",
+        "Mephedrone score clear. Pure material guaranteed. Send token amount on {vpa} to get GPS pin.",
+        "Ganja 100g packs ready. Fast deal near Metro Station. UPI payment only: {vpa}",
+        "MDMA and Stamp stock refreshed. Check menu image attached. UPI handle: {vpa}"
     ]
 
     upi_vpas = [

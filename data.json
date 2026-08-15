@@ -14,5 +14,489 @@
         "extracted_vpa": null,
         "extracted_phones": [],
         "processed_by_ai": false
+    },
+    {
+        "entry_id": "WA_LIVE_201248834414",
+        "timestamp": "2026-08-15T20:12:48.834470",
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/J12345ExampleCode1",
+        "chat_title": "",
+        "group_description": "WhatsApp Group Invite",
+        "group_icon_url": "https://static.whatsapp.net/rsrc.php/v4/yO/r/rukeqTVNJDY.png",
+        "sender_id": "Unknown_Sender",
+        "sender_username": "",
+        "message_text": "WhatsApp Group Invite",
+        "extracted_vpa": null,
+        "extracted_phones": [],
+        "processed_by_ai": false
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/J12345ExampleCode1",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T20:13:33.644791",
+        "entry_id": "WA_LIVE_FALLBACK_201333644821"
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/J12345ExampleCode1",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T20:14:04.484092",
+        "entry_id": "WA_LIVE_FALLBACK_201404484126"
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/J12345ExampleCode1",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T20:16:13.352414",
+        "entry_id": "WA_LIVE_FALLBACK_201613352445"
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/J12345ExampleCode1",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T20:18:17.402182",
+        "entry_id": "WA_LIVE_FALLBACK_201817402213"
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/J12345ExampleCode1",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T20:19:20.443218",
+        "entry_id": "WA_LIVE_FALLBACK_201920443247"
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/J12345ExampleCode1",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T20:28:29.862705",
+        "entry_id": "WA_LIVE_FALLBACK_202829862726",
+        "title": "NCR Rave & Party Supplies 🍃💊",
+        "image": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "status": "Valid Invite Link (Fallback)"
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/J12345ExampleCode1",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T20:30:19.934638",
+        "entry_id": "WA_LIVE_FALLBACK_203019934668",
+        "title": "NCR Rave & Party Supplies 🍃💊",
+        "image": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "status": "Valid Invite Link (Fallback)"
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/J12345ExampleCode1",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T20:30:37.790046",
+        "entry_id": "WA_LIVE_FALLBACK_203037790076",
+        "title": "NCR Rave & Party Supplies 🍃💊",
+        "image": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "status": "Valid Invite Link (Fallback)"
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/J12345ExampleCode1",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T20:31:51.038487",
+        "entry_id": "WA_LIVE_FALLBACK_203151038517"
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/J12345ExampleCode1",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T20:45:05.617755",
+        "entry_id": "WA_LIVE_FALLBACK_204505617793"
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/J12345ExampleCode1",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T20:45:29.810384",
+        "entry_id": "WA_LIVE_FALLBACK_204529810419"
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "file:///D:/MAJOR_PROJECT/drugshield-ai/src/ingestion/whatsapp_preview_mock.html",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T20:47:59.621469",
+        "entry_id": "WA_LIVE_FALLBACK_204759621496"
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "file:///D:/MAJOR_PROJECT/drugshield-ai/src/ingestion/whatsapp_preview_mock.html",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T20:48:20.367439",
+        "entry_id": "WA_LIVE_FALLBACK_204820367466"
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "file:///D:/MAJOR_PROJECT/drugshield-ai/src/ingestion/whatsapp_preview_mock.html",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T20:55:36.863524",
+        "entry_id": "WA_LIVE_FALLBACK_205536863624"
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "file:///D:/MAJOR_PROJECT/drugshield-ai/src/ingestion/whatsapp_preview_mock.html",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T21:02:47.048232",
+        "entry_id": "WA_LIVE_FALLBACK_210247048259"
+    },
+    {
+        "entry_id": "WA_LIVE_FALLBACK_210647684407",
+        "timestamp": "2026-08-15T21:06:47.684444",
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "file:///D:/MAJOR_PROJECT/drugshield-ai/src/ingestion/whatsapp_preview_mock.html",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive NCR underground rave & party supplies 🍃💊. Premium stamps, MDMA, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive NCR underground rave & party supplies 🍃💊. Premium stamps, MDMA, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "is_fallback_mock": true
+    },
+    {
+        "entry_id": "WA_LIVE_211354695192",
+        "timestamp": "2026-08-15T21:13:54.695221",
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/FxLDfyz5HLJ936ghvwt0qJ",
+        "chat_title": "I Business consultant",
+        "group_description": "Public WhatsApp Group: I Business consultant",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/130968298_838095830355012_6724628188911804134_n.jpg?ccb=11-4&oh=01_Q5Aa5QEPIuIFdvsLb3SuTusIP8GY17HLKEk-xfTXf5t4nEu10A&oe=6A8D8CD7&_nc_sid=5e03e0&_nc_cat=111",
+        "sender_id": "Unknown_Sender",
+        "sender_username": "I Business consultant",
+        "message_text": "Public WhatsApp Group: I Business consultant",
+        "extracted_vpa": null,
+        "extracted_phones": [],
+        "processed_by_ai": false
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "file:///D:/MAJOR_PROJECT/drugshield-ai/src/ingestion/whatsapp_preview_mock.html",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T21:35:40.866410",
+        "entry_id": "WA_LIVE_FALLBACK_213540866429"
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "file:///D:/MAJOR_PROJECT/drugshield-ai/src/ingestion/whatsapp_preview_mock.html",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T21:36:02.132258",
+        "entry_id": "WA_LIVE_FALLBACK_213602132276"
+    },
+    {
+        "entry_id": "WA_LIVE_214018293432",
+        "timestamp": "2026-08-15T21:40:18.293454",
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/FxLDfyz5HLJ936ghvwt0qJ",
+        "chat_title": "I Business consultant",
+        "group_description": "Public WhatsApp Group: I Business consultant",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/130968298_838095830355012_6724628188911804134_n.jpg?ccb=11-4&oh=01_Q5Aa5QEPIuIFdvsLb3SuTusIP8GY17HLKEk-xfTXf5t4nEu10A&oe=6A8D8CD7&_nc_sid=5e03e0&_nc_cat=111",
+        "sender_id": "Unknown_Sender",
+        "sender_username": "I Business consultant",
+        "message_text": "Public WhatsApp Group: I Business consultant",
+        "extracted_vpa": null,
+        "extracted_phones": [],
+        "processed_by_ai": false
+    },
+    {
+        "entry_id": "WA_LIVE_214100621814",
+        "timestamp": "2026-08-15T21:41:00.621851",
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/FxLDfyz5HLJ936ghvwt0qJ",
+        "chat_title": "I Business consultant",
+        "group_description": "Public WhatsApp Group: I Business consultant",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/130968298_838095830355012_6724628188911804134_n.jpg?ccb=11-4&oh=01_Q5Aa5QEPIuIFdvsLb3SuTusIP8GY17HLKEk-xfTXf5t4nEu10A&oe=6A8D8CD7&_nc_sid=5e03e0&_nc_cat=111",
+        "sender_id": "Unknown_Sender",
+        "sender_username": "I Business consultant",
+        "message_text": "Public WhatsApp Group: I Business consultant",
+        "extracted_vpa": null,
+        "extracted_phones": [],
+        "processed_by_ai": false
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "file:///D:/MAJOR_PROJECT/drugshield-ai/src/ingestion/whatsapp_preview_mock.html",
+        "chat_title": "NCR Rave & Party Supplies 🍃💊",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies 🍃",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T21:41:32.383216",
+        "entry_id": "WA_LIVE_FALLBACK_214132383235"
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "file:///D:/MAJOR_PROJECT/drugshield-ai/src/ingestion/whatsapp_preview_mock.html",
+        "chat_title": "NCR Rave & Party Supplies",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T21:43:17.638481",
+        "entry_id": "WA_LIVE_FALLBACK_214317638501"
+    },
+    {
+        "entry_id": "WA_LIVE_214353484173",
+        "timestamp": "2026-08-15T21:43:53.484213",
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/FxLDfyz5HLJ936ghvwt0qJ",
+        "chat_title": "I Business consultant",
+        "group_description": "Public WhatsApp Group: I Business consultant",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/130968298_838095830355012_6724628188911804134_n.jpg?ccb=11-4&oh=01_Q5Aa5QEPIuIFdvsLb3SuTusIP8GY17HLKEk-xfTXf5t4nEu10A&oe=6A8D8CD7&_nc_sid=5e03e0&_nc_cat=111",
+        "sender_id": "Unknown_Sender",
+        "sender_username": "I Business consultant",
+        "message_text": "Public WhatsApp Group: I Business consultant",
+        "extracted_vpa": null,
+        "extracted_phones": [],
+        "processed_by_ai": false
+    },
+    {
+        "entry_id": "WA_LIVE_214513663196",
+        "timestamp": "2026-08-15T21:45:13.663218",
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "https://chat.whatsapp.com/FxLDfyz5HLJ936ghvwt0qJ",
+        "chat_title": "I Business consultant",
+        "group_description": "Public WhatsApp Group: I Business consultant",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/130968298_838095830355012_6724628188911804134_n.jpg?ccb=11-4&oh=01_Q5Aa5QEPIuIFdvsLb3SuTusIP8GY17HLKEk-xfTXf5t4nEu10A&oe=6A8D8CD7&_nc_sid=5e03e0&_nc_cat=111",
+        "sender_id": "Unknown_Sender",
+        "sender_username": "I Business consultant",
+        "message_text": "Public WhatsApp Group: I Business consultant",
+        "extracted_vpa": null,
+        "extracted_phones": [],
+        "processed_by_ai": false
+    },
+    {
+        "platform": "WhatsApp",
+        "source_type": "Public Invite Link",
+        "invite_url": "file:///D:/MAJOR_PROJECT/drugshield-ai/src/ingestion/whatsapp_preview_mock.html",
+        "chat_title": "NCR Rave & Party Supplies",
+        "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+        "sender_id": "+91 99887 76655",
+        "sender_username": "NCR Rave & Party Supplies",
+        "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+        "extracted_vpa": "ncr_plug@upi",
+        "extracted_phones": [
+            "+91 99887 76655"
+        ],
+        "processed_by_ai": false,
+        "timestamp": "2026-08-15T21:45:19.006483",
+        "entry_id": "WA_LIVE_FALLBACK_214519006515"
     }
 ]

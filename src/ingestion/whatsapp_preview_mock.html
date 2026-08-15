@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Group Invite Preview - OSINT Sandbox</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b141a;
+            --card-bg: #111b21;
+            --accent-green: #00a884;
+            --text-primary: #e9edef;
+            --text-secondary: #8696a0;
+            --border-color: #222e35;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            --verified-bg: rgba(0, 168, 132, 0.1);
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 480px;
+            padding: 32px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .sandbox-badge {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: #f15c5c;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 6px 0;
+        }
+        .group-avatar {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background-color: var(--border-color);
+            margin: 24px auto 16px auto;
+            border: 3px solid var(--accent-green);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        h2 {
+            font-size: 22px;
+            margin: 8px 0 4px 0;
+            font-weight: 600;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            background-color: var(--verified-bg);
+            color: var(--accent-green);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .description-box {
+            background-color: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            text-align: left;
+            margin-bottom: 24px;
+        }
+        .indicators-box {
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+            text-align: left;
+        }
+        .indicators-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+        .indicator-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.02);
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+        .indicator-label {
+            color: var(--text-secondary);
+        }
+        .indicator-value {
+            font-family: monospace;
+            font-weight: bold;
+            color: var(--accent-green);
+        }
+        .btn {
+            display: block;
+            background-color: var(--accent-green);
+            color: var(--card-bg);
+            border: none;
+            border-radius: 24px;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 24px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        .footer-note {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 20px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sandbox-badge">OSINT Sandboxed Preview (Safe Mode)</div>
+        <div class="group-avatar">WA</div>
+        <h2>NCR Rave & Party Supplies</h2>
+        <div class="status-badge">[+] Valid Public Invite Code: J12345ExampleCode1</div>
+        
+        <div class="description-box">
+            <strong>Group Description:</strong><br>
+            Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.
+        </div>
+        
+        <div class="indicators-box">
+            <div class="indicators-title">Extracted Threat Intelligence Indicators</div>
+            
+            <div class="indicator-item">
+                <span class="indicator-label">Extracted UPI ID</span>
+                <span class="indicator-value">ncr_plug@upi</span>
+            </div>
+            <div class="indicator-item">
+                <span class="indicator-label">Extracted Phone</span>
+                <span class="indicator-value">+91 99887 76655</span>
+            </div>
+            <div class="indicator-item">
+                <span class="indicator-label">OSINT Verification Status</span>
+                <span class="indicator-value" style="color: #4cd964;">HTTP 200 OK</span>
+            </div>
+        </div>
+        
+        <button class="btn" onclick="alert('Verification proof validated. Connection redirection skipped for security.')">Verified Target - Direct Join Blocked</button>
+        
+        <div class="footer-note">
+            This page is served in **Safe OSINT Demonstration Mode** to bypass redirection to WhatsApp Web and protect your personal credentials from tracking or account flagging.
+        </div>
+    </div>
+</body>
+</html>

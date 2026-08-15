@@ -1,4 +1,4 @@
-﻿{
+{
   "instagram_mocks": [
     {
       "platform": "Instagram",
@@ -6,13 +6,29 @@
       "target": "bliss_vibes_blr",
       "timestamp": "2026-08-10T12:00:00",
       "status": "success",
-      "bio": "DM for party supplies in Indiranagar 🍃💊 | UPI accepted | Telegram t.me/blr_supplies_bot",
+      "bio": "DM for party supplies in Indiranagar | UPI accepted | Telegram t.me/blr_supplies_bot",
       "external_link": "https://t.me/blr_supplies_bot",
       "extracted_entities": {
         "upis": ["dealer@ybl"],
         "phones": ["9876543210"],
         "telegram_links": ["https://t.me/blr_supplies_bot"]
       }
+    }
+  ],
+  "whatsapp_mocks": [
+    {
+      "platform": "WhatsApp",
+      "source_type": "Public Invite Link",
+      "invite_url": "https://chat.whatsapp.com/J12345ExampleCode1",
+      "chat_title": "NCR Rave & Party Supplies",
+      "group_description": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+      "group_icon_url": "https://pps.whatsapp.net/v/t61.24694-24/dummy.jpg",
+      "sender_id": "+91 99887 76655",
+      "sender_username": "NCR Rave & Party Supplies",
+      "message_text": "Exclusive underground supplies in Delhi NCR. MDMA, LSD, Ganja. Direct delivery. Pay via UPI: ncr_plug@upi. Contact +91 99887 76655.",
+      "extracted_vpa": "ncr_plug@upi",
+      "extracted_phones": ["+91 99887 76655"],
+      "processed_by_ai": false
     }
   ]
 }
