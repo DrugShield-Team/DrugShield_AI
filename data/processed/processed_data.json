@@ -1,0 +1,29 @@
+[
+    {
+        "id": 101,
+        "source": "Crawler_1",
+        "substance": "Compound-A",
+        "status": "flagged",
+        "risk_score": 0.89,
+        "processed": true,
+        "high_risk": true
+    },
+    {
+        "id": 102,
+        "source": "Crawler_2",
+        "substance": "Compound-B",
+        "status": "cleared",
+        "risk_score": 0.12,
+        "processed": true,
+        "high_risk": false
+    },
+    {
+        "id": 103,
+        "source": "Crawler_3",
+        "substance": "Compound-C",
+        "status": "pending",
+        "risk_score": 0.45,
+        "processed": true,
+        "high_risk": false
+    }
+]
