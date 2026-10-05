@@ -1,3 +1,7 @@
 *.session
 .env
 __pycache__/
+
+src/ai_pipeline/New-Drugs-2/
+data/forensic_cache/
+*.zip
