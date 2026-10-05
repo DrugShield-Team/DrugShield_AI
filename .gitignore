@@ -5,3 +5,6 @@ __pycache__/
 src/ai_pipeline/New-Drugs-2/
 data/forensic_cache/
 *.zip
+
+src/ai_pipeline/yolov8n.pt
+data/qr_deep_intel.json
