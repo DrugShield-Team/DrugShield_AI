@@ -960,6 +960,15 @@ class QRDeepForensicInspector:
             confidence_threshold=narcotics_conf_threshold
         )
         self.exif_extractor = EXIFGeoForensicsExtractor()
+        try:
+            from src.ai_pipeline.qr_detector import QRThreatDetector
+            self.qr_threat_detector = QRThreatDetector(
+                crops_dir=self.cache_dir / "qr_crops",
+                intel_output_path=self.output_file,
+            )
+        except Exception as qe:
+            logger.warning(f"Could not initialize QRThreatDetector inside inspector: {qe}")
+            self.qr_threat_detector = None
 
     def inspect(
         self,
@@ -1070,6 +1079,21 @@ class QRDeepForensicInspector:
                         downloaded_media_path = media_res.get("cached_path")
                     elif media_res.get("is_corrupted"):
                         dossier["forensic_flags"].append("CORRUPTED_MEDIA_DOWNLOAD")
+
+            # Evaluate payload threats (DRUG_DETECTED / SUSPICIOUS / CLEAN)
+            if self.qr_threat_detector is not None:
+                threat_eval = self.qr_threat_detector.evaluate_threat(raw_payload)
+                qr_record["threat_analysis"] = threat_eval
+                if idx == 0 or threat_eval.get("status") == "DRUG_DETECTED":
+                    dossier["threat_analysis"] = threat_eval
+                    dossier["status"] = threat_eval.get("status")
+                    dossier["threat_indicators"] = threat_eval.get("threat_indicators", [])
+                    dossier["extracted_keywords"] = threat_eval.get("extracted_keywords", [])
+
+                if threat_eval.get("status") == "DRUG_DETECTED":
+                    dossier["forensic_flags"].append("NARCOTICS_PAYLOAD_FLAGGED_DRUG_DETECTED")
+                elif threat_eval.get("status") == "SUSPICIOUS":
+                    dossier["forensic_flags"].append("SUSPICIOUS_PAYLOAD_ACTIVITY_FLAGGED")
 
             dossier["qr_records"].append(qr_record)
 
@@ -1240,3 +1264,9 @@ def run_self_test(inspector: QRDeepForensicInspector):
 
 if __name__ == "__main__":
     run_cli()
+
+# Module level exports for pipeline compatibility
+try:
+    from src.ai_pipeline.qr_detector import scan_qr_payload, QRThreatDetector
+except Exception:
+    pass

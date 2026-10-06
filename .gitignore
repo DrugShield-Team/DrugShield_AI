@@ -7,3 +7,15 @@ ENV/
 .vscode/
 .idea/
 *.log
+*.session
+.env
+*.zip
+
+# Heavy training datasets & base downloaded weights
+src/ai_pipeline/New-Drugs-2/
+src/ai_pipeline/yolov8n.pt
+
+# Ignore generated forensic cache crops & dynamic test flyers
+data/forensic_cache/qr_crops/*.png
+data/forensic_cache/test_fixtures/dynamic_qr_*.png
+data/forensic_cache/test_fixtures/test_synthetic_drug_qr.png

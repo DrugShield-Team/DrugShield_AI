@@ -35,17 +35,9 @@ if lib_dir.exists():
 try:
     import requests
     from bs4 import BeautifulSoup
-except ImportError as e:
-    missing_module = str(e).split("'")[-2] if "'" in str(e) else str(e)
-    print(f"\n[-] ERROR: Missing dependency '{missing_module}'.")
-    print("[*] Please activate the project's virtual environment (.venv) to run this script:")
-    print("    Windows (PowerShell):  .\\.venv\\Scripts\\Activate.ps1")
-    print("    Windows (cmd):         .\\.venv\\Scripts\\activate.bat")
-    print("    Linux/macOS:           source .venv/bin/activate")
-    print("[*] Alternatively, run the script using the virtual environment's python interpreter:")
-    print("    Windows (from root):   .\\.venv\\Scripts\\python.exe src/ingestion/whatsapp_feed.py")
-    print()
-    sys.exit(1)
+except ImportError:
+    requests = None
+    BeautifulSoup = None
 
 
 def load_whatsapp_fallback_mock(invite_url: str) -> dict:
@@ -103,8 +95,8 @@ def inspect_whatsapp_link(invite_url: str) -> dict | None:
     try:
         print(f"[*] Inspecting live public WhatsApp link: {invite_url}")
         
-        # Trigger fallback directly for test/placeholder demo links
-        use_fallback = False
+        # Trigger fallback directly for test/placeholder demo links or missing bs4
+        use_fallback = (requests is None or BeautifulSoup is None)
         if any(keyword in invite_url for keyword in ["Example", "Exampale", "J12345"]):
             use_fallback = True
 

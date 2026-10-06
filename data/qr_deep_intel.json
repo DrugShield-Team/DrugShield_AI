@@ -1,0 +1,776 @@
+[
+    {
+        "evidence_id": "DS-QR-20261005173849-4D76D6",
+        "timestamp_utc": "2026-10-05T17:38:49.676348+00:00",
+        "source_image": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\test_fixtures\\test_suspect_flyer_upi.jpg",
+        "source_sha256": "e2efeb4768be84d0fa3c3463bc39fffdc37ff8336986c1b347b3cc8e636e79dc",
+        "qr_detected": true,
+        "qr_count": 1,
+        "qr_records": [
+            {
+                "qr_index": 0,
+                "raw_payload": "upi://pay?pa=syndicate_score@ybl&pn=Delhi_Drop_Network&mc=5499&tr=REF889911&tn=LSD_Stamps_Deposit&am=4500.00&cu=INR",
+                "schema_type": "UPI_PAYMENT",
+                "engine": "pyzbar",
+                "bbox": [
+                    101,
+                    101,
+                    298,
+                    298
+                ],
+                "polygon": [
+                    [
+                        101,
+                        101
+                    ],
+                    [
+                        103,
+                        398
+                    ],
+                    [
+                        399,
+                        399
+                    ],
+                    [
+                        398,
+                        103
+                    ]
+                ],
+                "upi_intelligence": {
+                    "is_upi": true,
+                    "vpa": "syndicate_score@ybl",
+                    "payee_name": "Delhi_Drop_Network",
+                    "vpa_handle": "ybl",
+                    "psp_institution": "YES Bank (PhonePe)",
+                    "amount": "4500.00",
+                    "currency": "INR",
+                    "mcc_category": "5499",
+                    "transaction_note": "LSD_Stamps_Deposit",
+                    "transaction_ref": "REF889911",
+                    "reference_url": "",
+                    "digital_signature_present": false,
+                    "banking_parameters": {
+                        "pa": "syndicate_score@ybl",
+                        "pn": "Delhi_Drop_Network",
+                        "mc": "5499",
+                        "tr": "REF889911",
+                        "tn": "LSD_Stamps_Deposit",
+                        "am": "4500.00",
+                        "cu": "INR"
+                    },
+                    "syndicate_tracking_risk": "HIGH",
+                    "flagged_keywords": [
+                        "score",
+                        "drop",
+                        "stamp"
+                    ]
+                }
+            }
+        ],
+        "primary_schema": "UPI_PAYMENT",
+        "financial_intelligence": {
+            "is_upi": true,
+            "vpa": "syndicate_score@ybl",
+            "payee_name": "Delhi_Drop_Network",
+            "vpa_handle": "ybl",
+            "psp_institution": "YES Bank (PhonePe)",
+            "amount": "4500.00",
+            "currency": "INR",
+            "mcc_category": "5499",
+            "transaction_note": "LSD_Stamps_Deposit",
+            "transaction_ref": "REF889911",
+            "reference_url": "",
+            "digital_signature_present": false,
+            "banking_parameters": {
+                "pa": "syndicate_score@ybl",
+                "pn": "Delhi_Drop_Network",
+                "mc": "5499",
+                "tr": "REF889911",
+                "tn": "LSD_Stamps_Deposit",
+                "am": "4500.00",
+                "cu": "INR"
+            },
+            "syndicate_tracking_risk": "HIGH",
+            "flagged_keywords": [
+                "score",
+                "drop",
+                "stamp"
+            ]
+        },
+        "media_intelligence": null,
+        "vision_classification": {
+            "model_path": "D:\\DrugShield_Workspace\\DrugShield_AI\\src\\ai_pipeline\\models\\best.pt",
+            "is_narcotics_detected": true,
+            "max_narcotics_confidence": 0.89,
+            "detected_substances": [
+                {
+                    "class_name": "weed",
+                    "confidence": 0.89,
+                    "bbox": [
+                        100.0,
+                        120.0,
+                        340.0,
+                        380.0
+                    ],
+                    "is_narcotic": true
+                }
+            ],
+            "all_detections": [
+                {
+                    "class_name": "weed",
+                    "confidence": 0.89,
+                    "bbox": [
+                        100.0,
+                        120.0,
+                        340.0,
+                        380.0
+                    ],
+                    "is_narcotic": true
+                }
+            ],
+            "analysis_status": "COMPLETED",
+            "error": null
+        },
+        "geolocation_intelligence": {
+            "has_gps": true,
+            "latitude": 28.6139,
+            "longitude": 77.209,
+            "altitude_m": 216.5,
+            "device_maker": "Apple",
+            "device_model": "iPhone 14 Pro",
+            "software": "iOS 16.5",
+            "capture_timestamp": "2026:10:05 19:42:00",
+            "google_maps_url": "https://www.google.com/maps?q=28.613900,77.209000",
+            "gps_status": "GPS_COORDINATES_ACQUIRED",
+            "error": null
+        },
+        "forensic_flags": [
+            "PHYSICAL_GPS_ATTRIBUTED_SOURCE",
+            "UPI_SYNDICATE_VPA_EXTRACTED",
+            "HIGH_RISK_FINANCIAL_NOTE",
+            "NARCOTICS_CONFIRMED_VISION"
+        ],
+        "forensic_status": "PROCESSED"
+    },
+    {
+        "evidence_id": "DS-QR-20261005173958-8C97DE",
+        "timestamp_utc": "2026-10-05T17:39:58.919293+00:00",
+        "source_image": "path\\to\\your\\suspect_image.jpg",
+        "source_sha256": "N/A",
+        "qr_detected": false,
+        "qr_count": 0,
+        "qr_records": [],
+        "primary_schema": "DIRECT_IMAGE",
+        "financial_intelligence": null,
+        "media_intelligence": null,
+        "vision_classification": null,
+        "geolocation_intelligence": null,
+        "forensic_flags": [],
+        "forensic_status": "PROCESSED"
+    },
+    {
+        "evidence_id": "DS-QR-20261005174122-24E9EF",
+        "timestamp_utc": "2026-10-05T17:41:22.797776+00:00",
+        "source_image": "data\\forensic_cache\\test_fixtures\\test_suspect_flyer_upi.jpg",
+        "source_sha256": "e2efeb4768be84d0fa3c3463bc39fffdc37ff8336986c1b347b3cc8e636e79dc",
+        "qr_detected": true,
+        "qr_count": 1,
+        "qr_records": [
+            {
+                "qr_index": 0,
+                "raw_payload": "upi://pay?pa=syndicate_score@ybl&pn=Delhi_Drop_Network&mc=5499&tr=REF889911&tn=LSD_Stamps_Deposit&am=4500.00&cu=INR",
+                "schema_type": "UPI_PAYMENT",
+                "engine": "pyzbar",
+                "bbox": [
+                    101,
+                    101,
+                    298,
+                    298
+                ],
+                "polygon": [
+                    [
+                        101,
+                        101
+                    ],
+                    [
+                        103,
+                        398
+                    ],
+                    [
+                        399,
+                        399
+                    ],
+                    [
+                        398,
+                        103
+                    ]
+                ],
+                "upi_intelligence": {
+                    "is_upi": true,
+                    "vpa": "syndicate_score@ybl",
+                    "payee_name": "Delhi_Drop_Network",
+                    "vpa_handle": "ybl",
+                    "psp_institution": "YES Bank (PhonePe)",
+                    "amount": "4500.00",
+                    "currency": "INR",
+                    "mcc_category": "5499",
+                    "transaction_note": "LSD_Stamps_Deposit",
+                    "transaction_ref": "REF889911",
+                    "reference_url": "",
+                    "digital_signature_present": false,
+                    "banking_parameters": {
+                        "pa": "syndicate_score@ybl",
+                        "pn": "Delhi_Drop_Network",
+                        "mc": "5499",
+                        "tr": "REF889911",
+                        "tn": "LSD_Stamps_Deposit",
+                        "am": "4500.00",
+                        "cu": "INR"
+                    },
+                    "syndicate_tracking_risk": "HIGH",
+                    "flagged_keywords": [
+                        "score",
+                        "drop",
+                        "stamp"
+                    ]
+                }
+            }
+        ],
+        "primary_schema": "UPI_PAYMENT",
+        "financial_intelligence": {
+            "is_upi": true,
+            "vpa": "syndicate_score@ybl",
+            "payee_name": "Delhi_Drop_Network",
+            "vpa_handle": "ybl",
+            "psp_institution": "YES Bank (PhonePe)",
+            "amount": "4500.00",
+            "currency": "INR",
+            "mcc_category": "5499",
+            "transaction_note": "LSD_Stamps_Deposit",
+            "transaction_ref": "REF889911",
+            "reference_url": "",
+            "digital_signature_present": false,
+            "banking_parameters": {
+                "pa": "syndicate_score@ybl",
+                "pn": "Delhi_Drop_Network",
+                "mc": "5499",
+                "tr": "REF889911",
+                "tn": "LSD_Stamps_Deposit",
+                "am": "4500.00",
+                "cu": "INR"
+            },
+            "syndicate_tracking_risk": "HIGH",
+            "flagged_keywords": [
+                "score",
+                "drop",
+                "stamp"
+            ]
+        },
+        "media_intelligence": null,
+        "vision_classification": {
+            "model_path": "D:\\DrugShield_Workspace\\DrugShield_AI\\src\\ai_pipeline\\models\\best.pt",
+            "is_narcotics_detected": false,
+            "max_narcotics_confidence": 0.0,
+            "detected_substances": [],
+            "all_detections": [],
+            "analysis_status": "COMPLETED",
+            "error": null
+        },
+        "geolocation_intelligence": {
+            "has_gps": true,
+            "latitude": 28.6139,
+            "longitude": 77.209,
+            "altitude_m": 216.5,
+            "device_maker": "Apple",
+            "device_model": "iPhone 14 Pro",
+            "software": "iOS 16.5",
+            "capture_timestamp": "2026:10:05 19:42:00",
+            "google_maps_url": "https://www.google.com/maps?q=28.613900,77.209000",
+            "gps_status": "GPS_COORDINATES_ACQUIRED",
+            "error": null
+        },
+        "forensic_flags": [
+            "PHYSICAL_GPS_ATTRIBUTED_SOURCE",
+            "UPI_SYNDICATE_VPA_EXTRACTED",
+            "HIGH_RISK_FINANCIAL_NOTE"
+        ],
+        "forensic_status": "PROCESSED"
+    },
+    {
+        "evidence_id": "DS-QR-20261005174219-7F57BD",
+        "timestamp_utc": "2026-10-05T17:42:19.521809+00:00",
+        "source_image": "src\\ai_pipeline\\New-Drugs-2\\test\\images",
+        "source_sha256": "N/A",
+        "qr_detected": false,
+        "qr_count": 0,
+        "qr_records": [],
+        "primary_schema": "DIRECT_IMAGE",
+        "financial_intelligence": null,
+        "media_intelligence": null,
+        "vision_classification": null,
+        "geolocation_intelligence": null,
+        "forensic_flags": [],
+        "forensic_status": "PROCESSED"
+    },
+    {
+        "evidence_id": "DS-QR-20261006065225-543C2B",
+        "timestamp_utc": "2026-10-06T06:52:25.305534+00:00",
+        "source_image": "data\\forensic_cache\\test_fixtures\\test_suspect_flyer_upi.jpg",
+        "source_sha256": "e2efeb4768be84d0fa3c3463bc39fffdc37ff8336986c1b347b3cc8e636e79dc",
+        "qr_detected": true,
+        "payload_raw": "upi://pay?pa=syndicate_score@ybl&pn=Delhi_Drop_Network&mc=5499&tr=REF889911&tn=LSD_Stamps_Deposit&am=4500.00&cu=INR",
+        "extracted_keywords": [],
+        "status": "CLEAN",
+        "confidence_score": 0.0,
+        "threat_indicators": [],
+        "crop_path": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_e2efeb4768_20261006_065227_0.png",
+        "engine_used": "fallback_pyzbar",
+        "bbox": [
+            101,
+            101,
+            298,
+            298
+        ]
+    },
+    {
+        "evidence_id": "DS-QR-20261006065551-DE26F8",
+        "timestamp_utc": "2026-10-06T06:55:51.307972+00:00",
+        "source_image": "data\\forensic_cache\\test_fixtures\\test_suspect_flyer_upi.jpg",
+        "source_sha256": "e2efeb4768be84d0fa3c3463bc39fffdc37ff8336986c1b347b3cc8e636e79dc",
+        "qr_detected": true,
+        "payload_raw": "upi://pay?pa=syndicate_score@ybl&pn=Delhi_Drop_Network&mc=5499&tr=REF889911&tn=LSD_Stamps_Deposit&am=4500.00&cu=INR",
+        "extracted_keywords": [
+            "drop",
+            "lsd",
+            "score",
+            "stamps"
+        ],
+        "status": "DRUG_DETECTED",
+        "confidence_score": 0.97,
+        "threat_indicators": [
+            "EXPLICIT_SUBSTANCE: LSD",
+            "EXPLICIT_SUBSTANCE: STAMPS",
+            "NLP_SOLICITATION_TOKEN: 'drop'",
+            "OBFUSCATED_SLANG: score",
+            "PILL_INDICATOR: 'stamps'"
+        ],
+        "crop_path": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_e2efeb4768_20261006_065553_0.png",
+        "engine_used": "fallback_pyzbar",
+        "bbox": [
+            101,
+            101,
+            298,
+            298
+        ]
+    },
+    {
+        "evidence_id": "DS-QR-20261006070806-60F605",
+        "timestamp_utc": "2026-10-06T07:08:06.570166+00:00",
+        "source_image": "data\\forensic_cache\\test_fixtures\\test_synthetic_drug_qr.png",
+        "source_sha256": "3260363442e4ae61e55309097cd8ffcd97c218a139472b8dd00509694d45ca3e",
+        "qr_detected": true,
+        "payload_raw": "MDMA 2g 5k rate list DM @delhi_rave_bot UPI dealer@ybl",
+        "extracted_keywords": [
+            "2g",
+            "dealer",
+            "mdma",
+            "rate list",
+            "telegram_bot"
+        ],
+        "status": "DRUG_DETECTED",
+        "confidence_score": 0.99,
+        "threat_indicators": [
+            "CONTRABAND_MENU_PHRASE: 'rate list'",
+            "ENCRYPTED_REDIRECT: Telegram Bot (@delhi_rave_bot)",
+            "EXPLICIT_SUBSTANCE: MDMA",
+            "NLP_SOLICITATION_TOKEN: '2g'",
+            "NLP_SOLICITATION_TOKEN: 'dealer'"
+        ],
+        "crop_path": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_3260363442_20261006_070809_0.png",
+        "engine_used": "fallback_pyzbar",
+        "bbox": [
+            40,
+            40,
+            330,
+            330
+        ]
+    },
+    {
+        "evidence_id": "DS-QR-20261006070809-A486E4",
+        "timestamp_utc": "2026-10-06T07:08:09.243598+00:00",
+        "source_image": "data\\raw\\sample_image.jpg",
+        "source_sha256": "f8cff9d41c2ee7bdb0f00596c4e7b787ff988d6f4f3494ffecb43ec03bd2706f",
+        "qr_detected": false,
+        "payload_raw": null,
+        "extracted_keywords": [],
+        "status": "CLEAN",
+        "confidence_score": 0.0,
+        "threat_indicators": [],
+        "crop_path": null,
+        "engine_used": null,
+        "bbox": null
+    },
+    {
+        "evidence_id": "DS-QR-20261006071406-F24A87",
+        "timestamp_utc": "2026-10-06T07:14:06.485340+00:00",
+        "source_image": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\raw\\sample_hidden.jpg",
+        "source_sha256": "4c21d80a803a168ca2b0424dae448eba20d40c5a51b28a7781be92c11ffdde53",
+        "qr_detected": false,
+        "payload_raw": null,
+        "extracted_keywords": [],
+        "status": "CLEAN",
+        "confidence_score": 0.0,
+        "threat_indicators": [],
+        "crop_path": null,
+        "engine_used": null,
+        "bbox": null
+    },
+    {
+        "evidence_id": "DS-QR-20261006071409-63709E",
+        "timestamp_utc": "2026-10-06T07:14:09.027972+00:00",
+        "source_image": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\raw\\sample_image.jpg",
+        "source_sha256": "f8cff9d41c2ee7bdb0f00596c4e7b787ff988d6f4f3494ffecb43ec03bd2706f",
+        "qr_detected": false,
+        "payload_raw": null,
+        "extracted_keywords": [],
+        "status": "CLEAN",
+        "confidence_score": 0.0,
+        "threat_indicators": [],
+        "crop_path": null,
+        "engine_used": null,
+        "bbox": null
+    },
+    {
+        "evidence_id": "DS-QR-20261006071409-BD668A",
+        "timestamp_utc": "2026-10-06T07:14:09.411294+00:00",
+        "source_image": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\raw\\sample_menu.jpg",
+        "source_sha256": "a12c193455e47498993c42827e690e7401e4183612c9c9105fc4c94323556afd",
+        "qr_detected": false,
+        "payload_raw": null,
+        "extracted_keywords": [],
+        "status": "CLEAN",
+        "confidence_score": 0.0,
+        "threat_indicators": [],
+        "crop_path": null,
+        "engine_used": null,
+        "bbox": null
+    },
+    {
+        "evidence_id": "DS-QR-20261006071546-F13E94",
+        "timestamp_utc": "2026-10-06T07:15:46.380620+00:00",
+        "source_image": "data\\forensic_cache\\test_fixtures\\test_synthetic_drug_qr.png",
+        "source_sha256": "3260363442e4ae61e55309097cd8ffcd97c218a139472b8dd00509694d45ca3e",
+        "qr_detected": true,
+        "payload_raw": "MDMA 2g 5k rate list DM @delhi_rave_bot UPI dealer@ybl",
+        "extracted_keywords": [
+            "2g",
+            "dealer",
+            "mdma",
+            "rate list",
+            "telegram_bot"
+        ],
+        "status": "DRUG_DETECTED",
+        "confidence_score": 0.99,
+        "threat_indicators": [
+            "CONTRABAND_MENU_PHRASE: 'rate list'",
+            "ENCRYPTED_REDIRECT: Telegram Bot (@delhi_rave_bot)",
+            "EXPLICIT_SUBSTANCE: MDMA",
+            "NLP_SOLICITATION_TOKEN: '2g'",
+            "NLP_SOLICITATION_TOKEN: 'dealer'"
+        ],
+        "crop_path": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_3260363442_20261006_071548_0.png",
+        "engine_used": "fallback_pyzbar",
+        "bbox": [
+            40,
+            40,
+            330,
+            330
+        ]
+    },
+    {
+        "evidence_id": "DS-QR-20261006071548-A04333",
+        "timestamp_utc": "2026-10-06T07:15:48.447934+00:00",
+        "source_image": "data\\raw\\sample_image.jpg",
+        "source_sha256": "f8cff9d41c2ee7bdb0f00596c4e7b787ff988d6f4f3494ffecb43ec03bd2706f",
+        "qr_detected": false,
+        "payload_raw": null,
+        "extracted_keywords": [],
+        "status": "CLEAN",
+        "confidence_score": 0.0,
+        "threat_indicators": [],
+        "crop_path": null,
+        "engine_used": null,
+        "bbox": null
+    },
+    {
+        "evidence_id": "DS-QR-20261006071849-FC413E",
+        "timestamp_utc": "2026-10-06T07:18:49.340759+00:00",
+        "source_image": "data\\forensic_cache\\test_fixtures\\test_synthetic_drug_qr.png",
+        "source_sha256": "3260363442e4ae61e55309097cd8ffcd97c218a139472b8dd00509694d45ca3e",
+        "qr_detected": true,
+        "payload_raw": "MDMA 2g 5k rate list DM @delhi_rave_bot UPI dealer@ybl",
+        "extracted_keywords": [
+            "2g",
+            "dealer",
+            "mdma",
+            "rate list",
+            "telegram_bot"
+        ],
+        "status": "DRUG_DETECTED",
+        "confidence_score": 0.99,
+        "threat_indicators": [
+            "CONTRABAND_MENU_PHRASE: 'rate list'",
+            "ENCRYPTED_REDIRECT: Telegram Bot (@delhi_rave_bot)",
+            "EXPLICIT_SUBSTANCE: MDMA",
+            "NLP_SOLICITATION_TOKEN: '2g'",
+            "NLP_SOLICITATION_TOKEN: 'dealer'"
+        ],
+        "crop_path": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_3260363442_20261006_071851_0.png",
+        "engine_used": "fallback_pyzbar",
+        "bbox": [
+            40,
+            40,
+            330,
+            330
+        ]
+    },
+    {
+        "evidence_id": "DS-QR-20261006071851-1B68F6",
+        "timestamp_utc": "2026-10-06T07:18:51.760940+00:00",
+        "source_image": "data\\raw\\sample_image.jpg",
+        "source_sha256": "f8cff9d41c2ee7bdb0f00596c4e7b787ff988d6f4f3494ffecb43ec03bd2706f",
+        "qr_detected": false,
+        "payload_raw": null,
+        "extracted_keywords": [],
+        "status": "CLEAN",
+        "confidence_score": 0.0,
+        "threat_indicators": [],
+        "crop_path": null,
+        "engine_used": null,
+        "bbox": null
+    },
+    {
+        "evidence_id": "DS-QR-20261006072906-6520B3",
+        "timestamp_utc": "2026-10-06T07:29:06.599988+00:00",
+        "source_image": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\test_fixtures\\dynamic_qr_20261006_125906_797.png",
+        "source_sha256": "effc3a7ae14e4f5bdc35af99d7641aa86be4e32bc2b7b97aab3c5fa6d6e31b89",
+        "qr_detected": true,
+        "payload_raw": "MDMA 2g 5k menu DM @blr_rave_bot UPI dealer99@ybl",
+        "extracted_keywords": [
+            "2g",
+            "mdma",
+            "menu",
+            "telegram_bot"
+        ],
+        "status": "DRUG_DETECTED",
+        "confidence_score": 0.97,
+        "threat_indicators": [
+            "CONTRABAND_MENU_PHRASE: 'menu'",
+            "ENCRYPTED_REDIRECT: Telegram Bot (@blr_rave_bot)",
+            "EXPLICIT_SUBSTANCE: MDMA",
+            "NLP_SOLICITATION_TOKEN: '2g'"
+        ],
+        "crop_path": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_effc3a7ae1_20261006_072908_0.png",
+        "engine_used": "fallback_pyzbar",
+        "bbox": [
+            147,
+            167,
+            305,
+            305
+        ]
+    },
+    {
+        "evidence_id": "DS-QR-20261006072932-06BB88",
+        "timestamp_utc": "2026-10-06T07:29:32.336873+00:00",
+        "source_image": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\test_fixtures\\dynamic_qr_20261006_125932_802.png",
+        "source_sha256": "876a7fea2d263b4eabccebf7adc26bea617f8d8967dec54c23d2549e42236cea",
+        "qr_detected": true,
+        "payload_raw": "https://wikipedia.org/wiki/Computer_vision",
+        "extracted_keywords": [],
+        "status": "CLEAN",
+        "confidence_score": 0.0,
+        "threat_indicators": [],
+        "crop_path": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_876a7fea2d_20261006_072933_0.png",
+        "engine_used": "fallback_pyzbar",
+        "bbox": [
+            150,
+            170,
+            299,
+            300
+        ]
+    },
+    {
+        "evidence_id": "DS-QR-20261006072944-9C323F",
+        "timestamp_utc": "2026-10-06T07:29:44.112717+00:00",
+        "source_image": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\test_fixtures\\dynamic_qr_20261006_125944_360.png",
+        "source_sha256": "c17b0274801560f95734d87828135eafed11d5d66363248c890eaded7dd6e6be",
+        "qr_detected": true,
+        "payload_raw": "upi://pay?pa=grocery_store_43@okhdfcbank&pn=Daily_Supermarket&mc=5411&am=306.00&cu=INR",
+        "extracted_keywords": [],
+        "status": "CLEAN",
+        "confidence_score": 0.0,
+        "threat_indicators": [],
+        "crop_path": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_c17b027480_20261006_072945_0.png",
+        "engine_used": "fallback_pyzbar",
+        "bbox": [
+            142,
+            162,
+            316,
+            316
+        ]
+    },
+    {
+        "evidence_id": "DS-QR-20261006073005-AC50D0",
+        "timestamp_utc": "2026-10-06T07:30:05.334125+00:00",
+        "source_image": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\test_fixtures\\dynamic_qr_20261006_130005_545.png",
+        "source_sha256": "6af37b8b86a02cf08e12ae5b54999a4a68cddeddffe2bf0e741cda5328385899",
+        "qr_detected": true,
+        "payload_raw": "Original Oxycodone pills & bars in stock. Vacuum sealed courier. Order here cash on drop.",
+        "extracted_keywords": [
+            "bars",
+            "cash on drop",
+            "drop",
+            "order here",
+            "oxycodone",
+            "pills",
+            "stock",
+            "vacuum sealed"
+        ],
+        "status": "DRUG_DETECTED",
+        "confidence_score": 0.99,
+        "threat_indicators": [
+            "CONTRABAND_MENU_PHRASE: 'cash on drop'",
+            "CONTRABAND_MENU_PHRASE: 'order here'",
+            "CONTRABAND_MENU_PHRASE: 'vacuum sealed'",
+            "CONTROLLED_PHARMACEUTICAL: OXYCODONE",
+            "DEAD_DROP_PATTERN: 'cash on drop'",
+            "EXPLICIT_SUBSTANCE: OXYCODONE",
+            "NLP_SOLICITATION_TOKEN: 'drop'",
+            "NLP_SOLICITATION_TOKEN: 'stock'",
+            "PILL_INDICATOR: 'bars'",
+            "PILL_INDICATOR: 'pills'"
+        ],
+        "crop_path": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_6af37b8b86_20261006_073006_0.png",
+        "engine_used": "fallback_pyzbar",
+        "bbox": [
+            142,
+            162,
+            316,
+            316
+        ]
+    },
+    {
+        "evidence_id": "DS-QR-20261006073006-69C23A",
+        "timestamp_utc": "2026-10-06T07:30:06.742331+00:00",
+        "source_image": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\test_fixtures\\dynamic_qr_20261006_130006_934.png",
+        "source_sha256": "fb2d5b5a6c281bafab2dc7cfcd08fc03e1783ac59785bcf8467bf2e6805b23c4",
+        "qr_detected": true,
+        "payload_raw": "Secret drop communications. Connect on Signal: +919876542839",
+        "extracted_keywords": [
+            "signal"
+        ],
+        "status": "SUSPICIOUS",
+        "confidence_score": 0.55,
+        "threat_indicators": [
+            "ENCRYPTED_REDIRECT: Signal Messenger Channel"
+        ],
+        "crop_path": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_fb2d5b5a6c_20261006_073006_0.png",
+        "engine_used": "fallback_pyzbar",
+        "bbox": [
+            147,
+            167,
+            305,
+            305
+        ]
+    },
+    {
+        "evidence_id": "DS-QR-20261006073205-5FEDD3",
+        "timestamp_utc": "2026-10-06T07:32:05.888548+00:00",
+        "source_image": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\test_fixtures\\dynamic_qr_20261006_130205_249.png",
+        "source_sha256": "6cf4db6fce4b8bb2b1148f32729ff63f7422fb7140e3ff6a743974a297256619",
+        "qr_detected": true,
+        "payload_raw": "https://www.medicalresearch.org/study?id=8911&topic=chemistry",
+        "extracted_keywords": [],
+        "status": "CLEAN",
+        "confidence_score": 0.0,
+        "threat_indicators": [],
+        "crop_path": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_6cf4db6fce_20261006_073208_0.png",
+        "engine_used": "fallback_pyzbar",
+        "bbox": [
+            147,
+            167,
+            305,
+            305
+        ]
+    },
+    {
+        "evidence_id": "DS-QR-20261006073208-E79C06",
+        "timestamp_utc": "2026-10-06T07:32:08.230297+00:00",
+        "source_image": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\test_fixtures\\dynamic_qr_20261006_130208_335.png",
+        "source_sha256": "243d90935fe9be4dedd5f7ffebd0c8657d1aac27dca31d2989f81c7c5de266fd",
+        "qr_detected": true,
+        "payload_raw": "https://www.medicalresearch.org/study?id=7194&topic=chemistry",
+        "extracted_keywords": [],
+        "status": "CLEAN",
+        "confidence_score": 0.0,
+        "threat_indicators": [],
+        "crop_path": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_243d90935f_20261006_073208_0.png",
+        "engine_used": "fallback_pyzbar",
+        "bbox": [
+            147,
+            167,
+            305,
+            305
+        ]
+    },
+    {
+        "evidence_id": "DS-QR-20261006073208-B48685",
+        "timestamp_utc": "2026-10-06T07:32:08.522453+00:00",
+        "source_image": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\test_fixtures\\dynamic_qr_20261006_130208_622.png",
+        "source_sha256": "3968087c8f145ee50ad899f31bf19037d8902d9a785033665c1bbaa9beb26585",
+        "qr_detected": true,
+        "payload_raw": "https://www.medicalresearch.org/study?id=4437&topic=chemistry",
+        "extracted_keywords": [],
+        "status": "CLEAN",
+        "confidence_score": 0.0,
+        "threat_indicators": [],
+        "crop_path": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_3968087c8f_20261006_073208_0.png",
+        "engine_used": "fallback_pyzbar",
+        "bbox": [
+            147,
+            167,
+            305,
+            305
+        ]
+    },
+    {
+        "evidence_id": "DS-QR-20261006073220-743423",
+        "timestamp_utc": "2026-10-06T07:32:20.355843+00:00",
+        "source_image": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\test_fixtures\\dynamic_qr_20261006_130220_210.png",
+        "source_sha256": "effc3a7ae14e4f5bdc35af99d7641aa86be4e32bc2b7b97aab3c5fa6d6e31b89",
+        "qr_detected": true,
+        "payload_raw": "MDMA 2g 5k menu DM @blr_rave_bot UPI dealer99@ybl",
+        "extracted_keywords": [
+            "2g",
+            "mdma",
+            "menu",
+            "telegram_bot"
+        ],
+        "status": "DRUG_DETECTED",
+        "confidence_score": 0.97,
+        "threat_indicators": [
+            "CONTRABAND_MENU_PHRASE: 'menu'",
+            "ENCRYPTED_REDIRECT: Telegram Bot (@blr_rave_bot)",
+            "EXPLICIT_SUBSTANCE: MDMA",
+            "NLP_SOLICITATION_TOKEN: '2g'"
+        ],
+        "crop_path": "D:\\DrugShield_Workspace\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_effc3a7ae1_20261006_073221_0.png",
+        "engine_used": "fallback_pyzbar",
+        "bbox": [
+            147,
+            167,
+            305,
+            305
+        ]
+    }
+]

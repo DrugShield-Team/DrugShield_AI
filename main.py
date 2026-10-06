@@ -3,9 +3,22 @@ import inspect
 import asyncio
 from pathlib import Path
 
-from src.ingestion import telegram_listener
-from src.ingestion import instagram_crawler
-from src.ingestion import whatsapp_feed
+try:
+    from src.ingestion import telegram_listener
+except (ImportError, Exception):
+    telegram_listener = None
+
+try:
+    from src.ingestion import instagram_crawler
+except (ImportError, Exception):
+    instagram_crawler = None
+
+try:
+    from src.ingestion import whatsapp_feed
+except (ImportError, Exception):
+    whatsapp_feed = None
+
+from src.ai_pipeline.qr_detector import scan_qr_payload
 
 BASE_DIR = Path(__file__).resolve().parent
 RAW_DIR = BASE_DIR / "data" / "raw"
@@ -16,6 +29,8 @@ def init_raw_landing_zone():
     IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
 async def call_module_entry(mod):
+    if not mod:
+        return None
     possible_names = [
         "run_instagram_crawler",
         "run_telegram_crawler",
@@ -130,8 +145,68 @@ async def collect_all_crawlers():
 
     return all_records[:9]
 
+def process_qr_intelligence(records):
+    """
+    Scans media attachments in ingested crawler records and local landing zone images
+    for QR codes, analyzing decoded payloads for narcotics & contraband threats.
+    """
+    print("\n--------------------------------------------------")
+    print("      DRUGSHIELD AI - QR FORENSICS PIPELINE       ")
+    print("--------------------------------------------------")
+
+    scanned_count = 0
+    flagged_threats = 0
+    scanned_paths = set()
+
+    # 1. Inspect records that have media_path
+    for rec in records:
+        m_path = rec.get("media_path")
+        if m_path:
+            candidates = [
+                Path(m_path),
+                RAW_DIR / Path(m_path).name,
+                IMAGES_DIR / Path(m_path).name,
+            ]
+            valid_path = next((p for p in candidates if p.is_file()), None)
+            if valid_path:
+                abs_key = str(valid_path.resolve())
+                scanned_paths.add(abs_key)
+                scanned_count += 1
+                try:
+                    res = scan_qr_payload(str(valid_path))
+                    rec["qr_scan"] = res
+                    if res.get("qr_detected"):
+                        print(f" [!] QR Detected in {valid_path.name}: Status={res['status']} | Threat={res['confidence_score']}")
+                        if res.get("status") in ("DRUG_DETECTED", "SUSPICIOUS"):
+                            flagged_threats += 1
+                except Exception as e:
+                    print(f" [-] Error scanning QR in {valid_path.name}: {e}")
+
+    # 2. Inspect any additional images placed in RAW_DIR and IMAGES_DIR
+    for folder in [IMAGES_DIR, RAW_DIR]:
+        if folder.exists():
+            for ext in ("*.jpg", "*.jpeg", "*.png", "*.webp"):
+                for img_file in folder.glob(ext):
+                    abs_key = str(img_file.resolve())
+                    if abs_key not in scanned_paths:
+                        scanned_paths.add(abs_key)
+                        scanned_count += 1
+                        try:
+                            res = scan_qr_payload(str(img_file))
+                            if res.get("qr_detected"):
+                                print(f" [!] QR Detected in {img_file.name}: Status={res['status']} | Threat={res['confidence_score']}")
+                                if res.get("status") in ("DRUG_DETECTED", "SUSPICIOUS"):
+                                    flagged_threats += 1
+                        except Exception as e:
+                            print(f" [-] Error scanning QR in {img_file.name}: {e}")
+
+    print(f"Total Images Scanned for QR: {scanned_count}")
+    print(f"Threats Flagged (DRUG/SUSP): {flagged_threats}")
+    print("--------------------------------------------------\n")
+
 def write_to_landing_zone(records):
     init_raw_landing_zone()
+    process_qr_intelligence(records)
     output_path = RAW_DIR / "ingested_raw_data.json"
 
     with open(output_path, "w", encoding="utf-8") as f:
