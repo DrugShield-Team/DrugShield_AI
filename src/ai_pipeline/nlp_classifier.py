@@ -1,10 +1,11 @@
 # src/ai_pipeline/nlp_classifier.py
 """
-DrugShield AI - Narcotics NLP & Illicit Solicitation Classifier
-================================================================
+DrugShield AI - Narcotics NLP & Hinglish Slang Classifier
+=========================================================
 Analyzes textual payloads (such as decoded QR code contents, UPI notes,
 chat snippets, and web URLs) to identify and flag narcotics, controlled
-substances, street slang, and drug trafficking solicitation intent.
+substances, street slang (including Hindi/Hinglish lexicons), and drug
+trafficking solicitation intent.
 """
 
 import re
@@ -65,6 +66,152 @@ LEET_MAP = {
     '8': 'b',
 }
 
+# Hinglish Slang Lexicon Mapping
+HINGLISH_DRUG_LEXICON = {
+    # --- CANNABIS / WEED / HASH ---
+    "maal": "cannabis",
+    "maall": "cannabis",
+    "maaaal": "cannabis",
+    "samaan": "contraband",
+    "samān": "contraband",
+    "stuff": "cannabis",
+    "ganja": "cannabis",
+    "gaanja": "cannabis",
+    "bhang": "cannabis",
+    "charas": "hashish",
+    "hash": "hashish",
+    "potti": "cannabis",
+    "fukna": "smoke_weed",
+    "joint": "cannabis_joint",
+    "greens": "cannabis",
+    "grass": "cannabis",
+    "score": "buy_drugs",
+    "skore": "buy_drugs",
+
+    # --- SYNTHETICS / POWDERS / OPIATES ---
+    "chitta": "heroin",
+    "chittaah": "heroin",
+    "powder": "cocaine",
+    "meth": "methamphetamine",
+    "ice": "methamphetamine",
+    "meow meow": "mephedrone",
+    "mcat": "mephedrone",
+    "md": "mdma",
+    "molly": "mdma",
+    "ecstasy": "mdma",
+    "acid": "lsd",
+    "blotter": "lsd",
+    "stamp": "lsd",
+    "pudgi": "drug_packet",
+    "puddi": "drug_packet",
+    "pudiya": "drug_packet",
+    "pudya": "drug_packet",
+    "packet": "drug_packet",
+    "tokri": "bulk_package",
+
+    # --- PRESCRIPTION DRUGS & COUGH SYRUPS ---
+    "codene": "codeine",
+    "cough syrup": "codeine_syrup",
+    "nasha": "intoxication",
+    "goli": "narcotic_pill",
+    "pills": "narcotic_pill",
+    "tramadol": "opioid_pill",
+
+    # --- TRANSACTIONAL & LOGISTICAL SLANG ---
+    "setting": "deal_arrangement",
+    "scene": "meetup_location",
+    "scenic": "meetup_location",
+    "spot": "drop_off_point",
+    "bhai": "dealer_contact",
+    "peddler": "drug_dealer",
+    "bhagwan": "primary_supplier",
+    "kab": "when",
+    "kab milega": "delivery_time_inquiry",
+    "chahiye": "requirement_inquiry",
+    "kitna": "quantity_inquiry",
+    "rate": "price_inquiry",
+    "bhao": "price_inquiry",
+    "dam": "price_inquiry",
+
+    # --- FINANCIAL & DIGITAL PAYMENT INDICATORS ---
+    "gpay": "digital_payment",
+    "phonepe": "digital_payment",
+    "paytm": "digital_payment",
+    "upi": "digital_payment",
+    "qr": "qr_code_payment",
+    "advance": "upfront_payment",
+    "cash": "cash_payment",
+    "cod": "cash_on_delivery",
+}
+
+
+class HinglishSlangDetector:
+    """
+    Detects regional Hindi/Hinglish slang terms commonly used in localized
+    narcotics trafficking networks across urban centers.
+    """
+
+    def __init__(self, custom_lexicon: Dict[str, str] = None):
+        self.lexicon = custom_lexicon or HINGLISH_DRUG_LEXICON
+        
+        self.high_risk_terms = {
+            "heroin", "cocaine", "methamphetamine", "mephedrone", 
+            "lsd", "mdma", "drug_packet", "buy_drugs"
+        }
+        self.medium_risk_terms = {
+            "cannabis", "hashish", "smoke_weed", "codeine", "narcotic_pill"
+        }
+
+    def normalize_text(self, text: str) -> str:
+        if not text:
+            return ""
+
+        cleaned = text.lower().strip()
+        cleaned = re.sub(r'[^a-z0-9\s]', ' ', cleaned)
+        cleaned = re.sub(r'(.)\1{2,}', r'\1\1', cleaned)
+
+        for phrase, replacement in self.lexicon.items():
+            if " " in phrase and phrase in cleaned:
+                cleaned = cleaned.replace(phrase, replacement)
+
+        tokens = cleaned.split()
+        normalized_tokens = [self.lexicon.get(token, token) for token in tokens]
+
+        return " ".join(normalized_tokens)
+
+    def analyze(self, text: str) -> Dict[str, Any]:
+        normalized_text = self.normalize_text(text)
+        original_words = re.findall(r'\b\w+\b', text.lower()) if text else []
+        
+        detected_slangs = []
+        matched_categories = []
+
+        for word in original_words:
+            if word in self.lexicon:
+                detected_slangs.append(word)
+                matched_categories.append(self.lexicon[word])
+
+        score = 0.0
+        for category in matched_categories:
+            if category in self.high_risk_terms:
+                score += 0.40
+            elif category in self.medium_risk_terms:
+                score += 0.25
+            else:
+                score += 0.10
+
+        risk_score = round(min(1.0, score), 2)
+
+        return {
+            "original_text": text,
+            "normalized_text": normalized_text,
+            "detected_slangs": list(set(detected_slangs)),
+            "slang_count": len(detected_slangs),
+            "mapped_categories": list(set(matched_categories)),
+            "risk_score": risk_score,
+            "is_suspicious": risk_score >= 0.35,
+        }
+
 
 class NLPNarcoticsClassifier:
     """
@@ -84,7 +231,6 @@ class NLPNarcoticsClassifier:
         for category, terms in self.taxonomy.items():
             patterns = []
             for term in terms:
-                # Use word boundary to avoid substring collisions
                 escaped = re.escape(term.lower())
                 pat = re.compile(rf"\b{escaped}\b", re.IGNORECASE)
                 patterns.append((term, pat))
@@ -99,22 +245,12 @@ class NLPNarcoticsClassifier:
     def deobfuscate(text: str) -> str:
         """
         De-cloaks leetspeak, spaced letters (e.g. 'm d m a' or 'l-s-d'),
-        and URL encoded strings.
+        URL encoded strings, and punctuation separated tokens.
         """
-        # 1. URL decode
         unquoted = unquote(text)
-
-        # 2. Lowercase
         lowered = unquoted.lower()
-
-        # 3. Replace common symbols that split characters: e.g. "m.d.m.a" or "l-s-d" -> "mdma", "lsd"
-        # Match single characters separated by dots/dashes/spaces
         decloaked = re.sub(r'(?<=\b[a-z0-9])[.\-_ ](?=[a-z0-9]\b)', '', lowered)
-
-        # 4. Leetspeak translation
         leet_translated = "".join(LEET_MAP.get(ch, ch) for ch in decloaked)
-
-        # 5. Punctuation to space conversion for separated tokens (e.g. 'LSD_Stamps' -> 'lsd stamps')
         spaced = re.sub(r'[\_\-\.\/\+\&\=\?\:\@\%\,\;]', ' ', lowered)
 
         return f"{lowered} {decloaked} {leet_translated} {spaced}"
@@ -141,7 +277,6 @@ class NLPNarcoticsClassifier:
         original_text = str(text).strip()
         search_corpus = self.deobfuscate(original_text)
 
-        # Filter out common benign medical/food phrases (e.g., "citric acid", "ice cream")
         cleaned_corpus = search_corpus
         for benign in BENIGN_PHRASES:
             if benign in cleaned_corpus:
@@ -151,7 +286,6 @@ class NLPNarcoticsClassifier:
         detected_categories: Set[str] = set()
         high_priority_matches: Set[str] = set()
 
-        # 1. Scan for drug substances across all taxonomic categories
         for category, patterns in self.category_patterns.items():
             for term, pat in patterns:
                 if pat.search(cleaned_corpus):
@@ -160,31 +294,26 @@ class NLPNarcoticsClassifier:
                     if term in HIGH_PRIORITY_DRUG_TOKENS:
                         high_priority_matches.add(term)
 
-        # 2. Scan for solicitation and trafficking intent keywords
         detected_solicitation: Set[str] = set()
         for term, pat in self.solicitation_patterns:
             if pat.search(cleaned_corpus):
                 detected_solicitation.add(term)
 
-        # 3. Score calculation
         base_score = 0.0
-
         if detected_drugs:
-            base_score += 0.40  # Primary drug substance identified
-            base_score += min(0.30, (len(detected_drugs) - 1) * 0.10)  # Multi-substance menu boost
+            base_score += 0.40
+            base_score += min(0.30, (len(detected_drugs) - 1) * 0.10)
 
         if high_priority_matches:
-            base_score += 0.20  # Hard/scheduled narcotics detected (MDMA, Heroin, Cocaine, Meth, LSD)
+            base_score += 0.20
 
         if detected_solicitation:
-            base_score += 0.25  # Commercial dealing / delivery / drop context present
+            base_score += 0.25
             base_score += min(0.15, (len(detected_solicitation) - 1) * 0.05)
 
-        # Cap confidence at 0.99
         risk_score = round(min(0.99, base_score), 2)
         is_drug_detected = len(detected_drugs) > 0 or (len(detected_solicitation) >= 2 and risk_score >= 0.40)
 
-        # Determine risk level
         if risk_score >= RISK_THRESHOLDS["CRITICAL"]:
             risk_level = "CRITICAL"
         elif risk_score >= RISK_THRESHOLDS["HIGH"]:
@@ -196,7 +325,6 @@ class NLPNarcoticsClassifier:
         else:
             risk_level = "SAFE"
 
-        # Construct actionable forensic explanation
         if is_drug_detected:
             drugs_str = ", ".join(sorted(detected_drugs)) if detected_drugs else "None"
             cats_str = ", ".join(sorted(detected_categories)) if detected_categories else "Uncategorized"
@@ -223,27 +351,24 @@ class NLPNarcoticsClassifier:
         }
 
 
-# Quick diagnostic helper
 if __name__ == "__main__":
     classifier = NLPNarcoticsClassifier()
+    hinglish = HinglishSlangDetector()
 
     test_samples = [
         "Fresh stock MDMA 1g 3k. Fast delivery in Bengaluru. DM @blr_supplies_bot UPI dealer@ybl",
+        "Bhai maal chahiye setting kara de, gpay kar dunga",
         "upi://pay?pa=syndicate_score@ybl&pn=Delhi_Drop_Network&mc=5499&tn=LSD_Stamps_Deposit&am=4500",
-        "We have top quality weed, ganja, and chitta ready for pin drop.",
-        "https://chat.whatsapp.com/inv?tag=rave_supplies_mdma_pills",
         "https://www.wikipedia.org/wiki/Computer_science",
-        "Organic green tea with citric acid and fresh apples"
     ]
 
     print("=" * 70)
-    print(" DRUGSHIELD AI - NLP NARCOTICS CLASSIFIER TEST RUN")
+    print(" DRUGSHIELD AI - NLP & HINGLISH CLASSIFIER TEST RUN")
     print("=" * 70)
 
     for sample in test_samples:
         result = classifier.classify_text(sample)
+        h_res = hinglish.analyze(sample)
         print(f"\nText: {sample}")
-        print(f" -> Flagged: {result['is_drug_detected']} | Level: {result['risk_level']} | Score: {result['risk_score']}")
-        print(f" -> Drugs  : {result['detected_drug_names']}")
-        print(f" -> Classes: {result['detected_categories']}")
-        print(f" -> Summary: {result['explanation']}")
+        print(f" -> NLP Flagged    : {result['is_drug_detected']} | Level: {result['risk_level']} | Score: {result['risk_score']}")
+        print(f" -> Hinglish Slangs: {h_res['detected_slangs']} | Suspicious: {h_res['is_suspicious']}")

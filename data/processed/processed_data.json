@@ -10,6 +10,15 @@
         "timestamp": "2026-10-06T12:44:06.044855",
         "is_fallback_mock": true,
         "processed": true,
+        "nlp_analysis": {
+            "normalized_text": "fresh stock mdma 1g 3k fast delivery in bengaluru dm blr supplies bot digital_payment dealer ybl",
+            "detected_slangs": [
+                "upi"
+            ],
+            "risk_score": 0.1,
+            "is_suspicious": false
+        },
+        "risk_score": 0.1,
         "high_risk": false
     },
     {
@@ -18,6 +27,13 @@
         "status": "unavailable",
         "is_fallback_mock": true,
         "processed": true,
+        "nlp_analysis": {
+            "normalized_text": "",
+            "detected_slangs": [],
+            "risk_score": 0.0,
+            "is_suspicious": false
+        },
+        "risk_score": 0.0,
         "high_risk": false
     },
     {
@@ -26,6 +42,13 @@
         "status": "unavailable",
         "is_fallback_mock": true,
         "processed": true,
+        "nlp_analysis": {
+            "normalized_text": "",
+            "detected_slangs": [],
+            "risk_score": 0.0,
+            "is_suspicious": false
+        },
+        "risk_score": 0.0,
         "high_risk": false
     },
     {
@@ -42,7 +65,17 @@
         "extracted_vpa": "score_vendor@ybl",
         "processed_by_ai": false,
         "processed": true,
-        "high_risk": false
+        "nlp_analysis": {
+            "normalized_text": "top quality lsd stamps and heroin available dm for drop location digital_payment id buy_drugs vendor ybl",
+            "detected_slangs": [
+                "chitta",
+                "upi"
+            ],
+            "risk_score": 0.5,
+            "is_suspicious": true
+        },
+        "risk_score": 0.5,
+        "high_risk": true
     },
     {
         "entry_id": "WA_MOCK_002",
@@ -58,7 +91,16 @@
         "extracted_vpa": "score_vendor@ybl",
         "processed_by_ai": false,
         "processed": true,
-        "high_risk": false
+        "nlp_analysis": {
+            "normalized_text": "mephedrone buy_drugs clear pure material guaranteed send token amount on buy_drugs vendor ybl to get gps pin",
+            "detected_slangs": [
+                "score"
+            ],
+            "risk_score": 0.4,
+            "is_suspicious": true
+        },
+        "risk_score": 0.4,
+        "high_risk": true
     },
     {
         "entry_id": "WA_MOCK_003",
@@ -74,7 +116,17 @@
         "extracted_vpa": "token_receiver@icici",
         "processed_by_ai": false,
         "processed": true,
-        "high_risk": false
+        "nlp_analysis": {
+            "normalized_text": "mdma and lsd stock refreshed check menu image attached digital_payment handle token receiver icici",
+            "detected_slangs": [
+                "upi",
+                "stamp"
+            ],
+            "risk_score": 0.5,
+            "is_suspicious": true
+        },
+        "risk_score": 0.5,
+        "high_risk": true
     },
     {
         "entry_id": "WA_MOCK_004",
@@ -90,7 +142,18 @@
         "extracted_vpa": "dark_supply@paytm",
         "processed_by_ai": false,
         "processed": true,
-        "high_risk": false
+        "nlp_analysis": {
+            "normalized_text": "cannabis 100g packs ready fast deal near metro station digital_payment payment only dark supply digital_payment",
+            "detected_slangs": [
+                "upi",
+                "ganja",
+                "paytm"
+            ],
+            "risk_score": 0.45,
+            "is_suspicious": true
+        },
+        "risk_score": 0.45,
+        "high_risk": true
     },
     {
         "entry_id": "WA_MOCK_005",
@@ -106,13 +169,31 @@
         "extracted_vpa": "dark_supply@paytm",
         "processed_by_ai": false,
         "processed": true,
-        "high_risk": false
+        "nlp_analysis": {
+            "normalized_text": "cannabis 100g packs ready fast deal near metro station digital_payment payment only dark supply digital_payment",
+            "detected_slangs": [
+                "upi",
+                "ganja",
+                "paytm"
+            ],
+            "risk_score": 0.45,
+            "is_suspicious": true
+        },
+        "risk_score": 0.45,
+        "high_risk": true
     },
     {
         "platform": "WhatsApp",
         "status": "unavailable",
         "is_fallback_mock": true,
         "processed": true,
+        "nlp_analysis": {
+            "normalized_text": "",
+            "detected_slangs": [],
+            "risk_score": 0.0,
+            "is_suspicious": false
+        },
+        "risk_score": 0.0,
         "high_risk": false
     }
 ]
