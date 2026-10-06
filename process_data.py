@@ -1,31 +1,44 @@
 import json
-from pathlib import Path
+from src.ai_pipeline.nlp_classifier import HinglishSlangDetector
 
+def process_ingested_messages():
+    # Initialize the slang detector
+    detector = HinglishSlangDetector()
+    
+    # Example: Loading ingested raw data
+    raw_data_path = "data/raw/ingested_raw_data.json"
+    processed_output_path = "data/processed/processed_data.json"
 
-def process_raw_data():
-    raw_file = Path("data/raw/ingested_raw_data.json")
-    processed_dir = Path("data/processed")
-    processed_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        with open(raw_data_path, "r", encoding="utf-8") as f:
+            messages = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        messages = []
 
-    if not raw_file.exists():
-        print(f"Error: {raw_file} not found. Run main.py first!")
-        return
+    processed_results = []
 
-    print(f"Loading raw data from {raw_file}...")
-    with open(raw_file, "r") as f:
-        data = json.load(f)
+    for item in messages:
+        # Extract text payload from message
+        text = item.get("text") or item.get("message") or ""
+        
+        # 🔍 Run Hinglish Slang Analysis
+        analysis = detector.analyze(text)
+        
+        # Attach analysis results to the payload
+        item["nlp_analysis"] = {
+            "normalized_text": analysis["normalized_text"],
+            "detected_slangs": analysis["detected_slangs"],
+            "risk_score": analysis["risk_score"],
+            "is_suspicious": analysis["is_suspicious"]
+        }
+        
+        processed_results.append(item)
 
-    # Transform / normalize data
-    for item in data:
-        item["processed"] = True
-        item["high_risk"] = item.get("risk_score", 0) > 0.50
+    # Save enriched data
+    with open(processed_output_path, "w", encoding="utf-8") as f:
+        json.dump(processed_results, f, indent=4)
 
-    output_file = processed_dir / "processed_data.json"
-    with open(output_file, "w") as f:
-        json.dump(data, f, indent=4)
-
-    print(f"Data successfully processed and saved to: {output_file}")
-
+    print(f"✅ Processed {len(processed_results)} messages through Hinglish NLP Classifier.")
 
 if __name__ == "__main__":
-    process_raw_data()
+    process_ingested_messages()
