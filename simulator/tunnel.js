@@ -11,8 +11,29 @@ const http = require('http');
 const https = require('https');
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
-const PORT = process.env.PORT || 3000;
+// Load environment variables from .env if present
+const projectRoot = path.resolve(__dirname, '..');
+const dotenvPath = path.join(projectRoot, '.env');
+if (fs.existsSync(dotenvPath)) {
+  const envContent = fs.readFileSync(dotenvPath, 'utf-8');
+  for (const line of envContent.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#')) {
+      const idx = trimmed.indexOf('=');
+      if (idx !== -1) {
+        const key = trimmed.slice(0, idx).trim();
+        const value = trimmed.slice(idx + 1).trim().replace(/^['"](.*)['"]$/, '$1');
+        if (!process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+    }
+  }
+}
+
+const PORT = parseInt(process.env.PORT, 10) || 8090;
 
 // Helper: Query Public IP (Tunnel Password for loca.lt)
 function fetchPublicIP() {
