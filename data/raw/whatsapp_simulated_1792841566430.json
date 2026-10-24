@@ -1,0 +1,14 @@
+{
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-24T11:32:46.427Z",
+    "sender_id": "+91 99999 00000",
+    "chat_id": "919123456789@c.us",
+    "message_body": "Understood. Ready to take 2 packets. Can you verify quality and send your receiver handle before I transfer the token?",
+    "has_media": false,
+    "media_path": null,
+    "extracted_upi_or_bank": "Slang: token",
+    "text_content": "Understood. Ready to take 2 packets. Can you verify quality and send your receiver handle before I transfer the token?",
+    "message_text": "Understood. Ready to take 2 packets. Can you verify quality and send your receiver handle before I transfer the token?",
+    "is_fallback_mock": false,
+    "is_analyst": true
+}

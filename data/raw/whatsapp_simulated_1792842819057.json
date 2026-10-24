@@ -1,0 +1,17 @@
+{
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-24T11:53:39.016Z",
+    "sender_id": "+91 98765 43210",
+    "chat_id": "group_ncr_weekend@g.us",
+    "message_body": "what about coke and chitta",
+    "has_media": false,
+    "media_path": null,
+    "extracted_upi_or_bank": "Substance: chitta, coke",
+    "text_content": "what about coke and chitta",
+    "message_text": "what about coke and chitta",
+    "is_fallback_mock": false,
+    "is_analyst": false,
+    "flag_reasons": [
+        "Narcotics: [chitta, coke]"
+    ]
+}

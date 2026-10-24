@@ -1,0 +1,18 @@
+{
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-24T12:06:34.212Z",
+    "sender_id": "+91 99887 76655",
+    "chat_id": "919988776655@c.us",
+    "message_body": "coke packet at grounds",
+    "has_media": false,
+    "media_path": null,
+    "extracted_upi_or_bank": "Substance: coke",
+    "text_content": "coke packet at grounds",
+    "message_text": "coke packet at grounds",
+    "is_fallback_mock": false,
+    "is_analyst": false,
+    "flag_reasons": [
+        "Narcotics: [coke]",
+        "Solicitation: [packet]"
+    ]
+}

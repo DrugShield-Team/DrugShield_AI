@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
+  <defs>
+    <linearGradient id="g-s5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+  </defs>
+  <circle cx="40" cy="40" r="40" fill="url(#g-s5)" />
+  <!-- Bank / Vault icon -->
+  <rect x="22" y="28" width="36" height="28" rx="4" fill="#ffffff" />
+  <circle cx="40" cy="42" r="7" fill="none" stroke="#1e3a8a" stroke-width="3" />
+  <line x1="40" y1="35" x2="40" y2="39" stroke="#1e3a8a" stroke-width="2.5" />
+  <line x1="40" y1="45" x2="40" y2="49" stroke="#1e3a8a" stroke-width="2.5" />
+  <line x1="33" y1="42" x2="37" y2="42" stroke="#1e3a8a" stroke-width="2.5" />
+  <line x1="43" y1="42" x2="47" y2="42" stroke="#1e3a8a" stroke-width="2.5" />
+</svg>

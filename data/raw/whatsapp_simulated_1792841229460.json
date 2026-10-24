@@ -1,0 +1,14 @@
+{
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-24T11:27:09.459Z",
+    "sender_id": "+91 91234 56789",
+    "chat_id": "simulated_group_001",
+    "message_body": "Demo Live Test: LSD Stamps ready. Scan attached QR code or pay to dark_supply@paytm",
+    "has_media": true,
+    "media_path": "data/raw/images/wa_img_1792841229453_upi_qr_dealer.png",
+    "extracted_upi_or_bank": "UPI: dark_supply@paytm",
+    "text_content": "Demo Live Test: LSD Stamps ready. Scan attached QR code or pay to dark_supply@paytm",
+    "message_text": "Demo Live Test: LSD Stamps ready. Scan attached QR code or pay to dark_supply@paytm",
+    "is_fallback_mock": false,
+    "is_analyst": false
+}

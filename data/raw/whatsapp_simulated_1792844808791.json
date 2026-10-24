@@ -1,0 +1,17 @@
+{
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-24T12:26:48.786Z",
+    "sender_id": "+91 95554 33211",
+    "chat_id": "919555433211@c.us",
+    "message_body": "venue is ice park at gandhi rode",
+    "has_media": false,
+    "media_path": null,
+    "extracted_upi_or_bank": "Substance: ice",
+    "text_content": "venue is ice park at gandhi rode",
+    "message_text": "venue is ice park at gandhi rode",
+    "is_fallback_mock": false,
+    "is_analyst": false,
+    "flag_reasons": [
+        "Narcotics: [ice]"
+    ]
+}

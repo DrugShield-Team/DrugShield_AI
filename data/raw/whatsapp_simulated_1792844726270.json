@@ -1,0 +1,17 @@
+{
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-24T12:25:26.258Z",
+    "sender_id": "+91 98765 43210",
+    "chat_id": "919876543210@c.us",
+    "message_body": "ok kush at ice  park hotel",
+    "has_media": false,
+    "media_path": null,
+    "extracted_upi_or_bank": "Substance: ice",
+    "text_content": "ok kush at ice  park hotel",
+    "message_text": "ok kush at ice  park hotel",
+    "is_fallback_mock": false,
+    "is_analyst": false,
+    "flag_reasons": [
+        "Narcotics: [ice]"
+    ]
+}

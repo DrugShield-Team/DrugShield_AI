@@ -1,0 +1,14 @@
+{
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-24T11:39:39.858Z",
+    "sender_id": "+91 91234 56789",
+    "chat_id": "919123456789@c.us",
+    "message_body": "any pics of item available",
+    "has_media": false,
+    "media_path": null,
+    "extracted_upi_or_bank": "None detected",
+    "text_content": "any pics of item available",
+    "message_text": "any pics of item available",
+    "is_fallback_mock": false,
+    "is_analyst": false
+}

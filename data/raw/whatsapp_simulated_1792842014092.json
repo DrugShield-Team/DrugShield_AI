@@ -1,0 +1,14 @@
+{
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-24T11:40:14.089Z",
+    "sender_id": "+91 99999 00000",
+    "chat_id": "919123456789@c.us",
+    "message_body": "pics of queen",
+    "has_media": false,
+    "media_path": null,
+    "extracted_upi_or_bank": "None detected",
+    "text_content": "pics of queen",
+    "message_text": "pics of queen",
+    "is_fallback_mock": false,
+    "is_analyst": true
+}

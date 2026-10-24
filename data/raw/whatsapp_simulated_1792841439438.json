@@ -1,0 +1,14 @@
+{
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-24T11:30:39.411Z",
+    "sender_id": "+91 90000 11223",
+    "chat_id": "919000011223@c.us",
+    "message_body": "5gm coke available",
+    "has_media": false,
+    "media_path": null,
+    "extracted_upi_or_bank": "Slang: coke",
+    "text_content": "5gm coke available",
+    "message_text": "5gm coke available",
+    "is_fallback_mock": false,
+    "is_analyst": false
+}

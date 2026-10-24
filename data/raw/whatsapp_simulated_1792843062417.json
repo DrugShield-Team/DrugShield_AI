@@ -1,0 +1,20 @@
+{
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-24T11:57:42.413Z",
+    "sender_id": "+91 98765 43210",
+    "chat_id": "919876543210@c.us",
+    "message_body": "Fresh Molly and LSD stamps available in South Delhi. Send advance token on dark_supply@paytm to get dead drop GPS pin: 28.4595, 77.0266",
+    "has_media": true,
+    "media_path": "data/raw/images/upi_qr_dealer.png",
+    "extracted_upi_or_bank": "UPI: dark_supply@paytm | GPS: 28.4595, 77.0266",
+    "text_content": "Fresh Molly and LSD stamps available in South Delhi. Send advance token on dark_supply@paytm to get dead drop GPS pin: 28.4595, 77.0266",
+    "message_text": "Fresh Molly and LSD stamps available in South Delhi. Send advance token on dark_supply@paytm to get dead drop GPS pin: 28.4595, 77.0266",
+    "is_fallback_mock": false,
+    "is_analyst": false,
+    "flag_reasons": [
+        "Narcotics: [molly, lsd, stamps]",
+        "Solicitation: [drop, dead drop, gps pin, token, advance]",
+        "Financial/Location: [UPI: dark_supply@paytm, GPS: 28.4595, 77.0266]",
+        "Suspicious Media: [upi_qr_dealer.png]"
+    ]
+}
