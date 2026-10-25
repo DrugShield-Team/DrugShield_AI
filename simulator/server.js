@@ -19,36 +19,14 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
 // Resolve Paths Robustly
 const projectRoot = fs.existsSync(path.join(process.cwd(), 'data', 'raw'))
   ? process.cwd()
   : path.resolve(__dirname, '..');
-
-// Load environment configuration from .env if present
-const dotenvPath = path.join(projectRoot, '.env');
-if (fs.existsSync(dotenvPath)) {
-  const envContent = fs.readFileSync(dotenvPath, 'utf-8');
-  for (const line of envContent.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (trimmed && !trimmed.startsWith('#')) {
-      const idx = trimmed.indexOf('=');
-      if (idx !== -1) {
-        const key = trimmed.slice(0, idx).trim();
-        const value = trimmed.slice(idx + 1).trim().replace(/^['"](.*)['"]$/, '$1');
-        if (!process.env[key]) {
-          process.env[key] = value;
-        }
-      }
-    }
-  }
-}
-
-const PORT = parseInt(process.env.PORT, 10) || 8090;
-const HOST = process.env.HOST || '0.0.0.0';
 
 const RAW_DIR = path.join(projectRoot, 'data', 'raw');
 const IMAGES_DIR = path.join(RAW_DIR, 'images');
@@ -442,32 +420,12 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start Server bound to all network interfaces (0.0.0.0)
-app.listen(PORT, HOST, () => {
-  // Find LAN IP addresses for display
-  const lanIps = [];
-  const interfaces = os.networkInterfaces();
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]) {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        lanIps.push(iface.address);
-      }
-    }
-  }
-
+// Start Server
+app.listen(PORT, () => {
   console.log(`\n=============================================================`);
   console.log(` 💬 WhatsApp Web Simulator & Passive Ingestion Crawler Active`);
-  console.log(` 🌐 Bound Interface : ${HOST} (Listening on all network cards)`);
-  console.log(` 🔌 Port            : ${PORT}`);
-  console.log(` 💻 On this PC      : http://localhost:${PORT}`);
-  if (lanIps.length > 0) {
-    lanIps.forEach(ip => {
-      console.log(` 📱 On your Network : http://${ip}:${PORT}`);
-    });
-  }
-  console.log(` ⚠️  Note: Do not enter "0.0.0.0" into browser URL bar.`);
-  console.log(`     Use "localhost" or the Network IP above.`);
-  console.log(` 🛡️ Data Isolation  : Selective Raw Logging ON`);
-  console.log(` 📁 Raw Target      : data/raw/ (Only flagged threats saved)`);
+  console.log(` 🌐 URL: http://localhost:${PORT}`);
+  console.log(` 🛡️ Data Isolation Policy: Selective Raw Logging ON`);
+  console.log(` 📁 Raw Target: data/raw/ (Only flagged threats saved)`);
   console.log(`=============================================================\n`);
 });
