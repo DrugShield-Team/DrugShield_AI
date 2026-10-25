@@ -8,6 +8,7 @@ substances, street slang (including Hindi/Hinglish lexicons), and drug
 trafficking solicitation intent.
 """
 
+import csv
 import re
 import sys
 from pathlib import Path
@@ -22,30 +23,13 @@ PROJECT_ROOT = SRC_DIR.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-try:
-    from config.constants import (
-        NARCOTICS_TAXONOMY,
-        ALL_DRUG_NAMES,
-        SOLICITATION_KEYWORDS,
-        HIGH_PRIORITY_DRUG_TOKENS,
-        RISK_THRESHOLDS,
-    )
-except ImportError:
-    # Standalone Fallback
-    NARCOTICS_TAXONOMY = {
-        "cannabis": ["weed", "ganja", "charas", "hashish", "cannabis", "og kush", "bhang"],
-        "opioids": ["heroin", "chitta", "smack", "fentanyl", "tramadol", "opium", "morphine"],
-        "stimulants": ["cocaine", "coke", "mdma", "molly", "ecstasy", "meth", "mephedrone", "m-cat", "ice"],
-        "psychedelics": ["lsd", "acid", "blotter", "stamp", "shrooms", "psilocybin", "ketamine"],
-        "pharmaceutical_sedatives": ["alprazolam", "xanax", "valium", "diazepam", "lean"],
-    }
-    ALL_DRUG_NAMES = {term for terms in NARCOTICS_TAXONOMY.values() for term in terms}
-    SOLICITATION_KEYWORDS = [
-        "score", "stash", "plug", "dealer", "drop", "dead drop", "pin", "token",
-        "delivery", "stock", "pure", "1g", "5g", "menu", "rates"
-    ]
-    HIGH_PRIORITY_DRUG_TOKENS = {"mdma", "lsd", "chitta", "heroin", "cocaine", "coke", "meth", "weed", "ganja"}
-    RISK_THRESHOLDS = {"CRITICAL": 0.75, "HIGH": 0.50, "MEDIUM": 0.30, "LOW": 0.15}
+from config.constants import (
+    NARCOTICS_TAXONOMY,
+    ALL_DRUG_NAMES,
+    SOLICITATION_KEYWORDS,
+    HIGH_PRIORITY_DRUG_TOKENS,
+    RISK_THRESHOLDS,
+)
 
 
 # Common false positive exclusions (e.g. "spot" has "pot", "device" has "ice", "folic acid")
@@ -66,83 +50,57 @@ LEET_MAP = {
     '8': 'b',
 }
 
-# Hinglish Slang Lexicon Mapping
-HINGLISH_DRUG_LEXICON = {
-    # --- CANNABIS / WEED / HASH ---
-    "maal": "cannabis",
-    "maall": "cannabis",
-    "maaaal": "cannabis",
-    "samaan": "contraband",
-    "samān": "contraband",
-    "stuff": "cannabis",
-    "ganja": "cannabis",
-    "gaanja": "cannabis",
-    "bhang": "cannabis",
-    "charas": "hashish",
-    "hash": "hashish",
-    "potti": "cannabis",
-    "fukna": "smoke_weed",
-    "joint": "cannabis_joint",
-    "greens": "cannabis",
-    "grass": "cannabis",
-    "score": "buy_drugs",
-    "skore": "buy_drugs",
-
-    # --- SYNTHETICS / POWDERS / OPIATES ---
-    "chitta": "heroin",
-    "chittaah": "heroin",
-    "powder": "cocaine",
-    "meth": "methamphetamine",
-    "ice": "methamphetamine",
-    "meow meow": "mephedrone",
-    "mcat": "mephedrone",
-    "md": "mdma",
-    "molly": "mdma",
-    "ecstasy": "mdma",
-    "acid": "lsd",
-    "blotter": "lsd",
-    "stamp": "lsd",
-    "pudgi": "drug_packet",
-    "puddi": "drug_packet",
-    "pudiya": "drug_packet",
-    "pudya": "drug_packet",
-    "packet": "drug_packet",
-    "tokri": "bulk_package",
-
-    # --- PRESCRIPTION DRUGS & COUGH SYRUPS ---
-    "codene": "codeine",
-    "cough syrup": "codeine_syrup",
-    "nasha": "intoxication",
-    "goli": "narcotic_pill",
-    "pills": "narcotic_pill",
-    "tramadol": "opioid_pill",
-
-    # --- TRANSACTIONAL & LOGISTICAL SLANG ---
-    "setting": "deal_arrangement",
-    "scene": "meetup_location",
-    "scenic": "meetup_location",
-    "spot": "drop_off_point",
-    "bhai": "dealer_contact",
-    "peddler": "drug_dealer",
-    "bhagwan": "primary_supplier",
-    "kab": "when",
-    "kab milega": "delivery_time_inquiry",
-    "chahiye": "requirement_inquiry",
-    "kitna": "quantity_inquiry",
-    "rate": "price_inquiry",
-    "bhao": "price_inquiry",
-    "dam": "price_inquiry",
-
-    # --- FINANCIAL & DIGITAL PAYMENT INDICATORS ---
-    "gpay": "digital_payment",
-    "phonepe": "digital_payment",
-    "paytm": "digital_payment",
-    "upi": "digital_payment",
-    "qr": "qr_code_payment",
-    "advance": "upfront_payment",
-    "cash": "cash_payment",
-    "cod": "cash_on_delivery",
+_SLANG_DATASET = PROJECT_ROOT / "data" / "training" / "drug_slang_terms_reviewed.csv"
+DRUG_TOPIC_MODEL_PATH = PROJECT_ROOT / "models" / "registry" / "nlp_drug_topic.joblib"
+_SUPPORTED_LANGUAGES = {"en", "hi"}
+_HIGH_RISK_SLANG_CATEGORIES = {
+    "cannabis", "stimulant", "opioid", "sedative", "dissociative",
+    "hallucinogen", "depressant", "inhalant", "synthetic_cannabinoid",
+    "pharmaceutical", "synthetic", "research_chemical",
 }
+_MEDIUM_RISK_SLANG_CATEGORIES = {"paraphernalia", "market", "method", "dose"}
+
+
+def _normalize_slang_term(term: str) -> str:
+    """Normalize a dataset term so matching respects token boundaries."""
+    term = term.casefold().strip()
+    term = re.sub(r"[^\w\s]", " ", term, flags=re.UNICODE)
+    return re.sub(r"\s+", " ", term).strip()
+
+
+def _load_reviewed_slang_lexicon(dataset_path: Path = _SLANG_DATASET) -> Dict[str, str]:
+    """Load confirmed English/Hindi entries, excluding terms with conflicting labels."""
+    if not dataset_path.is_file():
+        raise FileNotFoundError(f"Reviewed slang dataset not found: {dataset_path}")
+
+    required = {"term", "language", "category", "review_status"}
+    labels: Dict[str, Set[str]] = {}
+    with dataset_path.open("r", encoding="utf-8-sig", newline="") as dataset_file:
+        reader = csv.DictReader(dataset_file)
+        if not reader.fieldnames or not required.issubset(reader.fieldnames):
+            raise ValueError(
+                "Reviewed slang dataset must contain columns: "
+                + ", ".join(sorted(required))
+            )
+
+        for row in reader:
+            if (row.get("review_status") or "").strip().casefold() != "confirmed":
+                continue
+            language = (row.get("language") or "").strip().casefold().split("-")[0]
+            if language not in _SUPPORTED_LANGUAGES:
+                continue
+            term = _normalize_slang_term(row.get("term") or "")
+            category = (row.get("category") or "").strip().casefold()
+            if len(term) < 2 or not category:
+                continue
+            labels.setdefault(term, set()).add(category)
+
+    # Do not silently select a category when the reviewed CSV conflicts.
+    return {
+        term: next(iter(categories))
+        for term, categories in labels.items()
+        if len(categories) == 1
+    }
 
 
 class HinglishSlangDetector:
@@ -151,48 +109,55 @@ class HinglishSlangDetector:
     narcotics trafficking networks across urban centers.
     """
 
-    def __init__(self, custom_lexicon: Dict[str, str] = None):
-        self.lexicon = custom_lexicon or HINGLISH_DRUG_LEXICON
-        
-        self.high_risk_terms = {
-            "heroin", "cocaine", "methamphetamine", "mephedrone", 
-            "lsd", "mdma", "drug_packet", "buy_drugs"
+    def __init__(self, custom_lexicon: Optional[Dict[str, str]] = None):
+        raw_lexicon = (
+            custom_lexicon
+            if custom_lexicon is not None
+            else _load_reviewed_slang_lexicon()
+        )
+        self.lexicon = {
+            _normalize_slang_term(term): category.casefold()
+            for term, category in raw_lexicon.items()
+            if _normalize_slang_term(term)
         }
-        self.medium_risk_terms = {
-            "cannabis", "hashish", "smoke_weed", "codeine", "narcotic_pill"
-        }
+        self.high_risk_terms = _HIGH_RISK_SLANG_CATEGORIES
+        self.medium_risk_terms = _MEDIUM_RISK_SLANG_CATEGORIES
+        self._term_patterns = [
+            (
+                term,
+                category,
+                re.compile(rf"(?<!\w){re.escape(term)}(?!\w)", re.UNICODE),
+            )
+            for term, category in sorted(
+                self.lexicon.items(), key=lambda item: len(item[0]), reverse=True
+            )
+        ]
 
     def normalize_text(self, text: str) -> str:
         if not text:
             return ""
 
-        cleaned = text.lower().strip()
-        cleaned = re.sub(r'[^a-z0-9\s]', ' ', cleaned)
-        cleaned = re.sub(r'(.)\1{2,}', r'\1\1', cleaned)
-
-        for phrase, replacement in self.lexicon.items():
-            if " " in phrase and phrase in cleaned:
-                cleaned = cleaned.replace(phrase, replacement)
-
-        tokens = cleaned.split()
-        normalized_tokens = [self.lexicon.get(token, token) for token in tokens]
-
-        return " ".join(normalized_tokens)
+        cleaned = _normalize_slang_term(text)
+        cleaned = re.sub(r"(.)\1{2,}", r"\1\1", cleaned)
+        for term, category, pattern in self._term_patterns:
+            cleaned = pattern.sub(category, cleaned)
+        return cleaned
 
     def analyze(self, text: str) -> Dict[str, Any]:
-        normalized_text = self.normalize_text(text)
-        original_words = re.findall(r'\b\w+\b', text.lower()) if text else []
-        
+        original_text = text if isinstance(text, str) else ""
+        normalized_text = self.normalize_text(original_text)
+        searchable = _normalize_slang_term(original_text)
+        searchable = re.sub(r"(.)\1{2,}", r"\1\1", searchable)
         detected_slangs = []
         matched_categories = []
 
-        for word in original_words:
-            if word in self.lexicon:
-                detected_slangs.append(word)
-                matched_categories.append(self.lexicon[word])
+        for term, category, pattern in self._term_patterns:
+            if pattern.search(searchable):
+                detected_slangs.append(term)
+                matched_categories.append(category)
 
         score = 0.0
-        for category in matched_categories:
+        for category in set(matched_categories):
             if category in self.high_risk_terms:
                 score += 0.40
             elif category in self.medium_risk_terms:
@@ -205,12 +170,73 @@ class HinglishSlangDetector:
         return {
             "original_text": text,
             "normalized_text": normalized_text,
-            "detected_slangs": list(set(detected_slangs)),
+            "detected_slangs": sorted(set(detected_slangs)),
             "slang_count": len(detected_slangs),
-            "mapped_categories": list(set(matched_categories)),
+            "mapped_categories": sorted(set(matched_categories)),
             "risk_score": risk_score,
             "is_suspicious": risk_score >= 0.35,
         }
+
+
+class FullMessageDrugTopicClassifier:
+    """Classify a whole message as drug-related or not using a trained artifact.
+
+    This predicts the source dataset's topic label only. It does not predict
+    dealing, trafficking, suspiciousness, or whether a person committed an act.
+    """
+
+    def __init__(self, model_path: Path = DRUG_TOPIC_MODEL_PATH):
+        if not model_path.is_file():
+            raise FileNotFoundError(
+                f"Trained NLP artifact not found: {model_path}. "
+                "Download X-Sensitive to data/training/x_sensitive and run "
+                "python ml/train_nlp_classifier.py first."
+            )
+        try:
+            import joblib
+        except ImportError as exc:
+            raise RuntimeError(
+                "scikit-learn/joblib are required to load the trained NLP model. "
+                "Install requirements-training.txt."
+            ) from exc
+        self.model = joblib.load(model_path)
+
+    def analyze(self, text: str) -> Dict[str, Any]:
+        if not isinstance(text, str) or not text.strip():
+            return {
+                "status": "empty_input",
+                "task": "drug_topic_classification",
+                "label": None,
+                "probability": None,
+                "class_probabilities": {},
+            }
+
+        probabilities = self.model.predict_proba([text])[0]
+        classifier = self.model.named_steps["classifier"]
+        class_probabilities = {
+            ("drug_related" if int(label) == 1 else "not_drug_related"): float(probability)
+            for label, probability in zip(classifier.classes_, probabilities)
+        }
+        prediction = int(self.model.predict([text])[0])
+        label = "drug_related" if prediction == 1 else "not_drug_related"
+        return {
+            "status": "predicted",
+            "task": "drug_topic_classification",
+            "label": label,
+            "probability": class_probabilities[label],
+            "class_probabilities": class_probabilities,
+        }
+
+
+_GLOBAL_DRUG_TOPIC_CLASSIFIER: Optional[FullMessageDrugTopicClassifier] = None
+
+
+def get_drug_topic_classifier() -> FullMessageDrugTopicClassifier:
+    """Load the trained full-message classifier once per process."""
+    global _GLOBAL_DRUG_TOPIC_CLASSIFIER
+    if _GLOBAL_DRUG_TOPIC_CLASSIFIER is None:
+        _GLOBAL_DRUG_TOPIC_CLASSIFIER = FullMessageDrugTopicClassifier()
+    return _GLOBAL_DRUG_TOPIC_CLASSIFIER
 
 
 class NLPNarcoticsClassifier:

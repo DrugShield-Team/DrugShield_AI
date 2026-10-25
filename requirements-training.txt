@@ -1,0 +1,2 @@
+# The current text and image training scripts use the project runtime dependencies.
+-r requirements.txt

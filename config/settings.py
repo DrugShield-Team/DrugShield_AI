@@ -1,21 +1,25 @@
-# config/settings.py
+"""Environment settings for the local simulation-only application."""
+
+from __future__ import annotations
+
 import os
+from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 try:
-    from dotenv import load_dotenv  # type: ignore[import-not-found]
+    from dotenv import load_dotenv
+    load_dotenv(PROJECT_ROOT / ".env")
 except ImportError:
-    def load_dotenv():
-        return False
+    pass
 
-load_dotenv()
-
-TELEGRAM_API_ID = os.getenv("TELEGRAM_API_ID")
-TELEGRAM_API_HASH = os.getenv("TELEGRAM_API_HASH")
-TELEGRAM_SESSION_NAME = os.getenv("TELEGRAM_SESSION_NAME", "drugshield_session")
-
-# Local directories
-RAW_DATA_DIR = os.path.join("data", "raw")
-RAW_IMAGES_DIR = os.path.join(RAW_DATA_DIR, "images")
-
-# Ensure required storage folders exist
-os.makedirs(RAW_IMAGES_DIR, exist_ok=True)
+RUNTIME_DIR = Path(os.getenv("DRUGSHIELD_RUNTIME_DIR", "data/runtime"))
+DATABASE_PATH = Path(os.getenv("DRUGSHIELD_DATABASE_PATH", RUNTIME_DIR / "drugshield.sqlite3"))
+CORS_ORIGINS = tuple(
+    origin.strip()
+    for origin in os.getenv(
+        "DRUGSHIELD_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",")
+    if origin.strip()
+)
+MAX_ATTACHMENT_BYTES = int(os.getenv("MAX_ATTACHMENT_BYTES", str(12 * 1024 * 1024)))
+MAX_ATTACHMENTS_PER_MESSAGE = int(os.getenv("MAX_ATTACHMENTS_PER_MESSAGE", "5"))

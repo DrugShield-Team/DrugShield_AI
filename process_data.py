@@ -2,8 +2,8 @@
 import json
 import logging
 from pathlib import Path
+from src.ai_pipeline.message_analyzer import analyze_message
 from src.ai_pipeline.nlp_classifier import HinglishSlangDetector
-from src.ai_pipeline.qr_detector import scan_qr_payload
 
 logger = logging.getLogger("DrugShield.ProcessData")
 
@@ -11,8 +11,7 @@ logger = logging.getLogger("DrugShield.ProcessData")
 def process_raw_data():
     """
     Unified Data Processing Pipeline:
-    Enriches ingested feed records with both Hinglish NLP slang classification
-    and QR forensic threat intelligence.
+    Enriches ingested records with text analysis and QR/VPA evidence extraction.
     """
     raw_file = Path("data/raw/ingested_raw_data.json")
     raw_dir = Path("data/raw")
@@ -33,23 +32,16 @@ def process_raw_data():
         data = []
 
     detector = HinglishSlangDetector()
-    print("Executing Hinglish NLP analysis & QR forensic threat detection...")
+    print("Executing per-message NLP, QR decoding, and VPA candidate extraction...")
 
     for item in data:
         item["processed"] = True
 
-        # 1. Hinglish NLP Slang Analysis on text payload
+        # Resolve the message's optional image attachment before per-message
+        # analysis. The analyzer handles text, QR payloads, and VPA candidates.
         text_content = item.get("text_content") or item.get("text") or item.get("message_text") or item.get("message") or ""
-        analysis = detector.analyze(text_content)
-        item["nlp_analysis"] = {
-            "normalized_text": analysis["normalized_text"],
-            "detected_slangs": analysis["detected_slangs"],
-            "risk_score": analysis["risk_score"],
-            "is_suspicious": analysis["is_suspicious"],
-        }
-
-        # 2. QR Forensics on media attachments
         media_path = item.get("media_path")
+        resolved_img = None
         if media_path:
             candidate_paths = [
                 Path(media_path),
@@ -58,24 +50,26 @@ def process_raw_data():
             ]
             resolved_img = next((p for p in candidate_paths if p.is_file()), None)
 
-            if resolved_img:
-                try:
-                    qr_result = scan_qr_payload(str(resolved_img))
-                    item["qr_scan"] = qr_result
-                    if qr_result.get("qr_detected"):
-                        if qr_result.get("status") in ("DRUG_DETECTED", "SUSPICIOUS"):
-                            item["high_risk"] = True
-                            item["risk_score"] = max(
-                                item.get("risk_score", 0.0),
-                                qr_result.get("confidence_score", 0.85)
-                            )
-                            item["threat_status"] = qr_result.get("status")
-                        else:
-                            item["threat_status"] = "CLEAN"
-                except Exception as e:
-                    print(f"Warning: QR scanning failed for {resolved_img}: {e}")
+        result = analyze_message(
+            text_content,
+            [resolved_img] if resolved_img else [],
+            text_detector=detector,
+        )
+        analysis = result["text_analysis"]
+        item["nlp_analysis"] = {
+            "normalized_text": analysis["normalized_text"],
+            "detected_slangs": analysis["detected_slangs"],
+            "risk_score": analysis["risk_score"],
+            "is_suspicious": analysis["is_suspicious"],
+        }
+        item["qr_scans"] = result["qr_scans"]
+        if result["qr_scans"]:
+            # Retain the old singular field for existing report consumers.
+            item["qr_scan"] = result["qr_scans"][0]
+        item["vpa_candidates"] = result["vpa_candidates"]
 
-        # Combined risk threshold calculation
+        # QR payloads and VPA candidates are evidence only. They do not set
+        # message risk by themselves; the current threshold uses text analysis.
         nlp_risk = analysis["risk_score"]
         current_risk = item.get("risk_score", 0.0)
         item["risk_score"] = round(max(current_risk, nlp_risk), 2)

@@ -11,6 +11,10 @@ ENV/
 .env
 *.zip
 
+# Keep downloaded/training corpora local; retain only the intake instructions.
+/data/training/*
+!/data/training/README.md
+
 # Heavy training datasets & base downloaded weights
 src/ai_pipeline/New-Drugs-2/
 src/ai_pipeline/yolov8n.pt
@@ -19,3 +23,5 @@ src/ai_pipeline/yolov8n.pt
 data/forensic_cache/qr_crops/*.png
 data/forensic_cache/test_fixtures/dynamic_qr_*.png
 data/forensic_cache/test_fixtures/test_synthetic_drug_qr.png
+
+data/runtime/
