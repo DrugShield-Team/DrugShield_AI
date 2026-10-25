@@ -15,6 +15,7 @@ ENV/
 credentials.json
 **/node_modules/
 data/runtime/
+/data/backups/
 
 # Keep downloaded/training corpora local; retain only the intake instructions.
 /data/training/*

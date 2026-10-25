@@ -12,17 +12,23 @@ from functools import lru_cache
 import json
 import logging
 import mimetypes
+import os
+import shutil
+import sqlite3
+import tempfile
+import time
 import uuid
 from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from src.ai_pipeline.message_analyzer import analyze_message
 from src.ai_pipeline.risk_policy import evaluate_for_human_review
@@ -34,9 +40,17 @@ from config.settings import (
     MAX_TOTAL_ATTACHMENT_BYTES,
     PROJECT_ROOT,
     RUNTIME_DIR,
+    APP_ENV,
+    ALLOWED_HOSTS,
+    DATA_ENCRYPTION_KEY,
+    SESSION_COOKIE_NAME,
+    SESSION_TTL_SECONDS,
+    MAX_REQUEST_BYTES,
 )
 from src.database.case_store import CaseStore
 from src.reporting.hasher import sha256_json
+from src.security.auth import Principal, check_login, get_current_user, issue_token, require_roles, validate_configuration
+from src.security.crypto import DataCipher
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +61,14 @@ if not DATABASE_PATH.is_absolute():
     DATABASE_PATH = (PROJECT_ROOT / DATABASE_PATH).resolve()
 MAX_ATTACHMENTS = MAX_ATTACHMENTS_PER_MESSAGE
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
-store = CaseStore(DATABASE_PATH)
+validate_configuration()
+data_cipher = DataCipher.from_environment(DATA_ENCRYPTION_KEY)
+store = CaseStore(DATABASE_PATH, cipher=data_cipher)
+METRICS = {"requests": 0, "errors": 0, "client_errors": 0,
+           "analysis_failures": 0, "analysis_seconds_total": 0.0}
+for directory in (RAW_ROOT, REPORTS_ROOT, RUNTIME_ROOT / "tmp"):
+    directory.mkdir(parents=True, exist_ok=True)
+store.migrate_attachments(RAW_ROOT)
 
 
 class SimulationEvent(BaseModel):
@@ -64,14 +85,20 @@ class SimulationEvent(BaseModel):
 
 
 class ReviewRequest(BaseModel):
-    reviewer_id: str = Field(min_length=1, max_length=160)
     action: Literal["accept", "further_review", "dismiss"]
     note: str = Field(default="", max_length=4000)
+
+
+class LoginRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=120)
+    password: str = Field(min_length=1, max_length=256)
 
 
 app = FastAPI(
     title="DrugShield Simulation Analysis API",
     version="0.1.0",
+    docs_url="/docs" if APP_ENV != "production" else None,
+    redoc_url=None,
     description=(
         "Local analysis service for user-authored fictional chat simulations. "
         "Model output is evidence for human review, not a determination of wrongdoing."
@@ -81,10 +108,48 @@ allowed_origins = list(CONFIG_CORS_ORIGINS)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "Authorization"],
 )
+if APP_ENV == "production":
+    from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+    app.add_middleware(HTTPSRedirectMiddleware)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(ALLOWED_HOSTS))
+
+
+@app.middleware("http")
+async def security_and_request_middleware(request: Request, call_next):
+    origin = request.headers.get("origin")
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"} and origin and origin not in allowed_origins:
+        return JSONResponse(status_code=403, content={"detail": "Origin is not allowed"})
+    try:
+        content_length = int(request.headers.get("content-length", "0"))
+    except ValueError:
+        return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length"})
+    if content_length > MAX_REQUEST_BYTES:
+        return JSONResponse(status_code=413, content={"detail": "Request exceeds configured size limit"})
+    started = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = round((time.perf_counter() - started) * 1000, 2)
+    METRICS["requests"] += 1
+    if response.status_code >= 500:
+        METRICS["errors"] += 1
+    elif response.status_code >= 400:
+        METRICS["client_errors"] += 1
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+    if APP_ENV == "production":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    request_id = str(uuid.uuid4())
+    response.headers["X-Request-ID"] = request_id
+    response.headers["X-Request-Duration-Ms"] = str(duration_ms)
+    logger.info("request_id=%s method=%s path=%s status=%s duration_ms=%s",
+                request_id, request.method, request.url.path, response.status_code, duration_ms)
+    return response
 
 
 @app.get("/api/v1/health")
@@ -92,8 +157,44 @@ def health() -> Dict[str, str]:
     return {"status": "ok", "mode": "local_simulation_only"}
 
 
+@app.get("/api/v1/ready")
+def readiness() -> Dict[str, str]:
+    store.ping()
+    return {"status": "ready", "database": "ok", "encryption": "configured"}
+
+
+@app.post("/api/v1/auth/token")
+def login(payload: LoginRequest, request: Request, response: Response) -> Dict[str, Any]:
+    remote = request.client.host if request.client else "unknown"
+    principal = check_login(payload.username, payload.password, remote)
+    token = issue_token(principal)
+    response.set_cookie(
+        SESSION_COOKIE_NAME, token, max_age=SESSION_TTL_SECONDS, httponly=True,
+        secure=APP_ENV == "production", samesite="strict", path="/",
+    )
+    return {"authenticated": True, "expires_in": SESSION_TTL_SECONDS,
+            "user": {"username": principal.username, "roles": sorted(principal.roles)}}
+
+
+@app.post("/api/v1/auth/logout")
+def logout(response: Response) -> Dict[str, str]:
+    response.delete_cookie(SESSION_COOKIE_NAME, path="/", httponly=True,
+                           secure=APP_ENV == "production", samesite="strict")
+    return {"status": "logged_out"}
+
+
+@app.get("/api/v1/auth/me")
+def who_am_i(principal: Principal = Depends(get_current_user)) -> Dict[str, Any]:
+    return {"username": principal.username, "roles": sorted(principal.roles)}
+
+
+@app.get("/api/v1/metrics")
+def metrics(_: Principal = Depends(require_roles("admin"))) -> Dict[str, Any]:
+    return {**METRICS, "database": "ok" if store.ping() else "unavailable"}
+
+
 @app.get("/api/v1/models")
-def model_status() -> Dict[str, Any]:
+def model_status(_: Principal = Depends(require_roles("admin"))) -> Dict[str, Any]:
     model_files = {
         "nlp_drug_topic": PROJECT_ROOT / "models" / "registry" / "nlp_drug_topic.joblib",
         "image_analysis": PROJECT_ROOT / "models" / "registry" / "image_analysis.joblib",
@@ -123,6 +224,7 @@ def model_status() -> Dict[str, Any]:
 async def receive_simulation_event(
     event_json: str = Form(...),
     files: Optional[List[UploadFile]] = File(default=None),
+    _: Principal = Depends(require_roles("simulator", "reviewer", "admin")),
 ) -> Dict[str, Any]:
     """Persist and analyze one newly-authored simulation message and images."""
     try:
@@ -183,30 +285,40 @@ async def receive_simulation_event(
     event_dir.mkdir(parents=True, exist_ok=False)
     attachment_records: List[Dict[str, Any]] = []
     image_paths: List[Path] = []
-    for upload, content, content_type in validated_uploads:
-        digest = hashlib.sha256(content).hexdigest()
-        extension = mimetypes.guess_extension(content_type) or ".img"
-        attachment_id = digest[:24]
-        storage_path = event_dir / f"{digest}{extension}"
-        storage_path.write_bytes(content)
-        image_paths.append(storage_path)
-        attachment_records.append({
-            "attachment_id": attachment_id,
-            "filename": Path(upload.filename or "attachment").name[:180],
-            "content_type": content_type,
-            "bytes": len(content),
-            "sha256": digest,
-            "storage_path": str(storage_path.resolve()),
-        })
-
-    event_dict = _model_to_dict(event)
-    event_dict["attachments"] = attachment_records
+    temp_dir = Path(tempfile.mkdtemp(prefix="drugshield-analysis-"))
     try:
-        analysis = await run_in_threadpool(analyze_message, event.text, image_paths)
-    except Exception:
-        # Preserve the raw event for diagnosis, but never invent a fallback result.
-        logger.exception("Analysis failed for simulation event %s", event_id)
-        analysis = {"status": "analysis_failed", "error_code": "analysis_failed"}
+        for index, (upload, content, content_type) in enumerate(validated_uploads):
+            digest = hashlib.sha256(content).hexdigest()
+            extension = mimetypes.guess_extension(content_type) or ".img"
+            attachment_id = digest[:24]
+            storage_path = event_dir / f"{digest}{extension}.enc"
+            storage_path.write_bytes(data_cipher.encrypt_bytes(content, "attachment"))
+            temporary_image = temp_dir / f"{index}{extension}"
+            temporary_image.write_bytes(content)
+            image_paths.append(temporary_image)
+            attachment_records.append({
+                "attachment_id": attachment_id,
+                "filename": Path(upload.filename or "attachment").name[:180],
+                "content_type": content_type,
+                "bytes": len(content),
+                "sha256": digest,
+                "storage_path": str(storage_path.resolve()),
+                "analysis_path": str(temporary_image.resolve()),
+            })
+
+        event_dict = _model_to_dict(event)
+        event_dict["attachments"] = attachment_records
+        try:
+            analysis_started = time.perf_counter()
+            analysis = await run_in_threadpool(analyze_message, event.text, image_paths)
+            METRICS["analysis_seconds_total"] += time.perf_counter() - analysis_started
+        except Exception:
+            logger.exception("Analysis failed for simulation event %s", event_id)
+            METRICS["analysis_failures"] += 1
+            analysis = {"status": "analysis_failed", "error_code": "analysis_failed"}
+    finally:
+        import shutil
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
     policy = evaluate_for_human_review(analysis) if analysis.get("status") != "analysis_failed" else {
         "review_required": True,
@@ -216,11 +328,13 @@ async def receive_simulation_event(
         "policy_note": "Analysis failed; the message needs operator attention, not an inferred clean result.",
     }
     attachment_public = [
-        {key: value for key, value in item.items() if key != "storage_path"}
+        {key: value for key, value in item.items() if key not in {"storage_path", "analysis_path"}}
         for item in attachment_records
     ]
     public_analysis = _hide_local_paths(analysis, attachment_records)
     public_policy = _hide_local_paths(policy, attachment_records)
+    for item in attachment_records:
+        item.pop("analysis_path", None)
     graph = _build_evidence_graph(event, attachment_public, public_analysis)
     report: Dict[str, Any] = {
         "schema_version": 1,
@@ -263,7 +377,14 @@ async def receive_simulation_event(
             report=report if case_id else None,
             report_sha256=report_hash,
         )
+    except sqlite3.IntegrityError as exc:
+        shutil.rmtree(event_dir, ignore_errors=True)
+        if store.event_exists(event.channel, event.conversation_id, event.message_id):
+            raise HTTPException(status_code=409, detail={"error": "duplicate_message"}) from exc
+        logger.exception("Persistence integrity failure for simulation event %s", event_id)
+        raise HTTPException(status_code=500, detail="Failed to persist simulation event") from exc
     except Exception as exc:
+        shutil.rmtree(event_dir, ignore_errors=True)
         logger.exception("Persistence failed for simulation event %s", event_id)
         raise HTTPException(status_code=500, detail="Failed to persist simulation event") from exc
 
@@ -279,7 +400,8 @@ async def receive_simulation_event(
 
 
 @app.get("/api/v1/cases")
-def list_cases(status: Optional[str] = None, limit: int = 100) -> Dict[str, Any]:
+def list_cases(status: Optional[str] = None, limit: int = 100,
+               _: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
     allowed = {"pending_review", "further_review", "accepted", "dismissed"}
     if status is not None and status not in allowed:
         raise HTTPException(status_code=422, detail="Unsupported case status")
@@ -290,7 +412,7 @@ def list_cases(status: Optional[str] = None, limit: int = 100) -> Dict[str, Any]
 
 
 @app.get("/api/v1/cases/{case_id}")
-def get_case(case_id: str) -> Dict[str, Any]:
+def get_case(case_id: str, _: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
     case = store.get_case(case_id)
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
@@ -298,7 +420,8 @@ def get_case(case_id: str) -> Dict[str, Any]:
 
 
 @app.get("/api/v1/graph")
-def evidence_graph(status: Optional[str] = None, limit: int = 500) -> Dict[str, Any]:
+def evidence_graph(status: Optional[str] = None, limit: int = 500,
+                   _: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
     """Aggregate the fictional participants and candidate links in evidence cases."""
     allowed = {"pending_review", "further_review", "accepted", "dismissed"}
     if status is not None and status not in allowed:
@@ -322,20 +445,32 @@ def evidence_graph(status: Optional[str] = None, limit: int = 500) -> Dict[str, 
 
 
 @app.get("/api/v1/cases/{case_id}/attachments/{attachment_id}")
-def get_case_attachment(case_id: str, attachment_id: str) -> FileResponse:
+def get_case_attachment(case_id: str, attachment_id: str,
+                        _: Principal = Depends(require_roles("reviewer", "admin"))) -> Response:
     attachment = store.get_attachment(case_id, attachment_id)
     if not attachment:
         raise HTTPException(status_code=404, detail="Attachment not found for this case")
     path = Path(attachment["storage_path"]).resolve()
     if not path.is_relative_to(RAW_ROOT.resolve()) or not path.is_file():
         raise HTTPException(status_code=404, detail="Stored attachment is unavailable")
-    return FileResponse(path, media_type=attachment["content_type"], filename=attachment["filename"])
+    try:
+        content = data_cipher.decrypt_bytes(path.read_bytes(), "attachment")
+    except Exception as exc:
+        logger.exception("Evidence decryption failed for case %s", case_id)
+        raise HTTPException(status_code=500, detail="Evidence is unavailable") from exc
+    from urllib.parse import quote
+    return Response(content, media_type=attachment["content_type"], headers={
+        "Content-Disposition": "attachment; filename*=UTF-8''" + quote(attachment["filename"]),
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+    })
 
 
 @app.post("/api/v1/cases/{case_id}/review")
-def review_case(case_id: str, request: ReviewRequest) -> Dict[str, Any]:
+def review_case(case_id: str, request: ReviewRequest,
+                principal: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
     try:
-        case = store.add_review(case_id, request.reviewer_id, request.action, request.note)
+        case = store.add_review(case_id, principal.username, request.action, request.note)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     if not case:
@@ -350,10 +485,11 @@ def _model_to_dict(model: BaseModel) -> Dict[str, Any]:
 
 
 def _hide_local_paths(value: Any, attachments: List[Dict[str, Any]]) -> Any:
-    path_to_id = {
-        str(Path(item["storage_path"]).resolve()).casefold(): item["attachment_id"]
-        for item in attachments
-    }
+    path_to_id = {}
+    for item in attachments:
+        for path_key in ("storage_path", "analysis_path"):
+            if item.get(path_key):
+                path_to_id[str(Path(item[path_key]).resolve()).casefold()] = item["attachment_id"]
     if isinstance(value, list):
         return [_hide_local_paths(item, attachments) for item in value]
     if not isinstance(value, dict):

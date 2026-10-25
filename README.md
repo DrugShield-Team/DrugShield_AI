@@ -17,6 +17,62 @@ python main.py
 
 The API binds to `127.0.0.1:8000`. Interactive endpoint documentation is at `http://127.0.0.1:8000/docs`. Runtime database, uploaded evidence, and report files are written under `data/runtime/` and are ignored by Git.
 
+### Configure authentication and encryption
+
+The API fails closed if its authentication secret, data-encryption key, or user
+accounts are missing. It does not ship with a default account.
+
+1. Copy .env.example to .env.
+2. Generate secrets in PowerShell:
+
+   python -c "import secrets; print(secrets.token_urlsafe(48))"
+
+   python -c "import base64,secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"
+
+   Use the first value for DRUGSHIELD_AUTH_SECRET and the second for
+   DRUGSHIELD_DATA_ENCRYPTION_KEY. Keep both outside Git and store a protected
+   copy of the encryption key separately from backups.
+3. Create a password hash:
+
+   python -m src.security.manage_users reviewer1 reviewer
+
+   Copy the printed JSON object into DRUGSHIELD_USERS_JSON as a JSON array. In
+   .env, use single quotes around this whole JSON value so Compose does not treat
+   the password-hash dollar signs as variable references.
+   Create separate simulator, reviewer, and admin accounts as needed. Never put
+   a plain-text password in .env.
+4. Run python main.py. Authenticate with username and password at
+   /api/v1/auth/token. The API sets an HttpOnly cookie. Browser clients must send
+   credentialed requests and must not store credentials or tokens in localStorage.
+
+Roles: simulator can submit messages; reviewer can read cases and evidence and
+record decisions; admin can do those actions plus read model status and metrics.
+Set exact browser origins in DRUGSHIELD_CORS_ORIGINS.
+
+### Run the hardened local container
+
+After setting secrets and account JSON in .env, build and run with:
+
+   docker compose up --build
+
+The API is published only at 127.0.0.1:8000. Runtime state is stored in a Docker
+named volume. The container uses an unprivileged account, a read-only root
+filesystem, a temporary filesystem for analysis, and drops Linux capabilities.
+This is still a local container profile, not a complete public deployment.
+
+Retention preview:
+
+   python scripts/retention_cleanup.py
+
+Create a runtime backup:
+
+   python scripts/backup_runtime.py
+
+For the Docker named volume, run the tools inside the container instead:
+
+   docker compose exec api python scripts/retention_cleanup.py
+   docker compose exec api python scripts/backup_runtime.py
+
 ## Simulation event contract
 
 `POST /api/v1/simulation-events` accepts `multipart/form-data`:
@@ -88,4 +144,21 @@ The outputs are `models/registry/image_analysis.joblib` and `image_analysis.metr
 
 ## Safety and deployment boundary
 
-This is an educational local prototype, not a production investigation system. It has no user authentication, deployment hardening, or verified decision thresholds. Keep it bound to loopback; do not expose it to a network or use output to make decisions about real people. Human review is required for every evidence case.
+The API requires configured authentication and encrypts event payloads, analysis
+output, reports, review notes, and uploaded images at rest. Case and evidence
+access is role-restricted, review identity comes from the authenticated account,
+and request logs omit message contents.
+
+It provides readiness checks, basic process-local metrics, request IDs, security
+headers, explicit origin/host checks, retention and backup utilities, and a
+hardened Docker configuration. See docs/SECURITY_OPERATIONS.md for operational
+details and limitations.
+
+This remains a local simulation decision-support prototype, not a production
+investigation system. The frontend/dashboard is not included in this checkout, so
+it still needs a login flow and credentialed API calls before connecting as a
+browser client. Model thresholds still need validation. Docker Compose binds to
+loopback and is not an internet deployment. Public deployment still needs a TLS
+reverse proxy, managed secrets, off-host backups, durable monitoring and
+alerting, tested restoration, and a security/privacy review. Human review is
+required for every evidence case.
