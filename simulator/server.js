@@ -21,7 +21,6 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Resolve Paths Robustly
 const projectRoot = fs.existsSync(path.join(process.cwd(), 'data', 'raw'))
