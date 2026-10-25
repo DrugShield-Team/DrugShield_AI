@@ -23,10 +23,13 @@ class CaseStore:
         connection = sqlite3.connect(self.database_path, timeout=10)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
+        connection.execute("PRAGMA busy_timeout = 10000")
         return connection
 
     def _initialize(self) -> None:
         with self._connect() as connection:
+            connection.execute("PRAGMA journal_mode = WAL")
+            connection.execute("PRAGMA synchronous = FULL")
             connection.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS simulation_events (
@@ -78,6 +81,34 @@ class CaseStore:
                 (event_id, channel, conversation_id, message_id, _now(),
                  _dump(event), _dump(analysis)),
             )
+
+    def save_event_and_case(
+        self,
+        *,
+        event_id: str,
+        channel: str,
+        conversation_id: str,
+        message_id: str,
+        event: Dict[str, Any],
+        analysis: Dict[str, Any],
+        case_id: Optional[str],
+        report: Optional[Dict[str, Any]],
+        report_sha256: Optional[str],
+    ) -> None:
+        """Persist the event and optional review case in one transaction."""
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT INTO simulation_events VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (event_id, channel, conversation_id, message_id, _now(),
+                 _dump(event), _dump(analysis)),
+            )
+            if case_id is not None:
+                if report is None or report_sha256 is None:
+                    raise ValueError("A case requires a report and its digest")
+                connection.execute(
+                    "INSERT INTO evidence_cases VALUES (?, ?, 'pending_review', ?, ?, ?)",
+                    (case_id, event_id, _now(), _dump(report), report_sha256),
+                )
 
     def create_case(self, case_id: str, event_id: str, report: Dict[str, Any], report_sha256: str) -> None:
         with self._connect() as connection:

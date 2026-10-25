@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 from functools import lru_cache
 import json
+import logging
 import mimetypes
 import uuid
 from datetime import datetime, timezone
@@ -30,11 +31,14 @@ from config.settings import (
     DATABASE_PATH,
     MAX_ATTACHMENT_BYTES,
     MAX_ATTACHMENTS_PER_MESSAGE,
+    MAX_TOTAL_ATTACHMENT_BYTES,
     PROJECT_ROOT,
     RUNTIME_DIR,
 )
 from src.database.case_store import CaseStore
 from src.reporting.hasher import sha256_json
+
+logger = logging.getLogger(__name__)
 
 RUNTIME_ROOT = (PROJECT_ROOT / RUNTIME_DIR).resolve()
 RAW_ROOT = RUNTIME_ROOT / "raw"
@@ -144,26 +148,42 @@ async def receive_simulation_event(
         raise HTTPException(status_code=422, detail="A message must include text or at least one image")
 
     event_id = str(uuid.uuid4())
-    event_dir = RAW_ROOT / event_id
-    event_dir.mkdir(parents=True, exist_ok=True)
-    attachment_records: List[Dict[str, Any]] = []
-    image_paths: List[Path] = []
+    validated_uploads = []
+    total_upload_bytes = 0
+    expected_formats = {
+        "image/jpeg": "JPEG",
+        "image/png": "PNG",
+        "image/webp": "WEBP",
+    }
     for upload in uploaded_files:
         content_type = (upload.content_type or "").casefold()
         if content_type not in ALLOWED_IMAGE_TYPES:
-            raise HTTPException(status_code=415, detail=f"Unsupported image type: {content_type or 'unknown'}")
+            raise HTTPException(status_code=415, detail="Unsupported image type")
         content = await upload.read(MAX_ATTACHMENT_BYTES + 1)
         if not content:
             raise HTTPException(status_code=422, detail="Empty image attachment")
         if len(content) > MAX_ATTACHMENT_BYTES:
             raise HTTPException(status_code=413, detail="Image attachment exceeds the configured size limit")
+        total_upload_bytes += len(content)
+        if total_upload_bytes > MAX_TOTAL_ATTACHMENT_BYTES:
+            raise HTTPException(status_code=413, detail="Combined attachments exceed the configured size limit")
         try:
             from PIL import Image
             with Image.open(BytesIO(content)) as image:
+                if image.format != expected_formats[content_type]:
+                    raise ValueError("Image bytes do not match the declared media type")
+                if image.width * image.height > 25_000_000:
+                    raise ValueError("Image dimensions exceed the allowed pixel count")
                 image.verify()
         except Exception as exc:
-            raise HTTPException(status_code=415, detail="Attachment is not a readable image") from exc
+            raise HTTPException(status_code=415, detail="Attachment is not a supported, safe image") from exc
+        validated_uploads.append((upload, content, content_type))
 
+    event_dir = RAW_ROOT / event_id
+    event_dir.mkdir(parents=True, exist_ok=False)
+    attachment_records: List[Dict[str, Any]] = []
+    image_paths: List[Path] = []
+    for upload, content, content_type in validated_uploads:
         digest = hashlib.sha256(content).hexdigest()
         extension = mimetypes.guess_extension(content_type) or ".img"
         attachment_id = digest[:24]
@@ -183,9 +203,10 @@ async def receive_simulation_event(
     event_dict["attachments"] = attachment_records
     try:
         analysis = await run_in_threadpool(analyze_message, event.text, image_paths)
-    except Exception as exc:
+    except Exception:
         # Preserve the raw event for diagnosis, but never invent a fallback result.
-        analysis = {"status": "analysis_failed", "error": str(exc)}
+        logger.exception("Analysis failed for simulation event %s", event_id)
+        analysis = {"status": "analysis_failed", "error_code": "analysis_failed"}
 
     policy = evaluate_for_human_review(analysis) if analysis.get("status") != "analysis_failed" else {
         "review_required": True,
@@ -226,21 +247,25 @@ async def receive_simulation_event(
         "graph": graph,
         "model_versions": _model_versions(),
     }
+    case_id = str(uuid.uuid4()) if policy["review_required"] else None
+    report_hash = sha256_json(report) if case_id else None
+    if report_hash:
+        report["integrity"] = {"algorithm": "sha256", "digest": report_hash}
     try:
-        store.save_event(event_id, event.channel, event.conversation_id, event.message_id, event_dict, analysis)
-        case_id = None
-        report_path = None
-        report_hash = None
-        if policy["review_required"]:
-            case_id = str(uuid.uuid4())
-            report_path = REPORTS_ROOT / f"{case_id}.json"
-            REPORTS_ROOT.mkdir(parents=True, exist_ok=True)
-            report_hash = sha256_json(report)
-            report["integrity"] = {"algorithm": "sha256", "digest": report_hash}
-            report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-            store.create_case(case_id, event_id, report, report_hash)
+        store.save_event_and_case(
+            event_id=event_id,
+            channel=event.channel,
+            conversation_id=event.conversation_id,
+            message_id=event.message_id,
+            event=event_dict,
+            analysis=analysis,
+            case_id=case_id,
+            report=report if case_id else None,
+            report_sha256=report_hash,
+        )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to persist simulation event: {exc}") from exc
+        logger.exception("Persistence failed for simulation event %s", event_id)
+        raise HTTPException(status_code=500, detail="Failed to persist simulation event") from exc
 
     return {
         "event_id": event_id,

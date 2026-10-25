@@ -38,8 +38,17 @@ def analyze_message(
     these outputs independently establishes suspicious or illicit activity.
     """
     message_text = text if isinstance(text, str) else ""
-    detector = text_detector or HinglishSlangDetector()
+    slang_dataset_status = "available"
+    try:
+        detector = text_detector or HinglishSlangDetector()
+    except FileNotFoundError:
+        # A source checkout may intentionally omit downloaded corpora. Keep
+        # the trained model/QR path usable, but report that term matching is
+        # unavailable instead of failing the entire message analysis.
+        detector = HinglishSlangDetector(custom_lexicon={})
+        slang_dataset_status = "missing_reviewed_dataset"
     text_result = detector.analyze(message_text)
+    text_result["lexicon_status"] = slang_dataset_status
     classifier = message_classifier
     try:
         classifier = classifier or get_drug_topic_classifier()
