@@ -1,0 +1,14 @@
+{
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-24T11:38:52.306Z",
+    "sender_id": "+91 95554 33211",
+    "chat_id": "919555433211@c.us",
+    "message_body": "Full weekend menu attached with rates and stealth delivery options across Delhi-NCR. Check image below.",
+    "has_media": true,
+    "media_path": "data/raw/images/sample_menu.jpg",
+    "extracted_upi_or_bank": "Slang: rates, menu",
+    "text_content": "Full weekend menu attached with rates and stealth delivery options across Delhi-NCR. Check image below.",
+    "message_text": "Full weekend menu attached with rates and stealth delivery options across Delhi-NCR. Check image below.",
+    "is_fallback_mock": false,
+    "is_analyst": false
+}

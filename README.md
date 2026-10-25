@@ -155,10 +155,13 @@ hardened Docker configuration. See docs/SECURITY_OPERATIONS.md for operational
 details and limitations.
 
 This remains a local simulation decision-support prototype, not a production
-investigation system. The frontend/dashboard is not included in this checkout, so
-it still needs a login flow and credentialed API calls before connecting as a
-browser client. Model thresholds still need validation. Docker Compose binds to
-loopback and is not an internet deployment. Public deployment still needs a TLS
-reverse proxy, managed secrets, off-host backups, durable monitoring and
-alerting, tested restoration, and a security/privacy review. Human review is
-required for every evidence case.
+investigation system. The Instagram-, Telegram-, and WhatsApp-style frontends are
+present in the repository, but their current Node service endpoints have not yet
+been integrated with this FastAPI authentication and evidence-storage boundary.
+Do not expose those Node services beyond the local machine until they are secured
+and connected to this API. Browser login integration still needs to be completed.
+Model thresholds also need validation. Docker Compose binds to loopback and is
+not an internet deployment. Public deployment still needs a TLS reverse proxy,
+managed secrets, off-host backups, durable monitoring and alerting, tested
+restoration, and a security/privacy review. Human review is required for every
+evidence case.

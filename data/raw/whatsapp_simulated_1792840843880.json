@@ -1,0 +1,14 @@
+{
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-24T11:20:43.880Z",
+    "sender_id": "+91 98765 43210",
+    "chat_id": "simulated_group_001",
+    "message_body": "Mephedrone (Meow Meow) score clear. Pure material guaranteed. Send token amount on dark_supply@paytm to get GPS pin: 28.4595, 77.0266",
+    "has_media": false,
+    "media_path": null,
+    "extracted_upi_or_bank": "UPI: dark_supply@paytm",
+    "text_content": "Mephedrone (Meow Meow) score clear. Pure material guaranteed. Send token amount on dark_supply@paytm to get GPS pin: 28.4595, 77.0266",
+    "message_text": "Mephedrone (Meow Meow) score clear. Pure material guaranteed. Send token amount on dark_supply@paytm to get GPS pin: 28.4595, 77.0266",
+    "is_fallback_mock": false,
+    "is_analyst": false
+}

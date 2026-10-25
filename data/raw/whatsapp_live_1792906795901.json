@@ -1,0 +1,31 @@
+{
+    "id": "live_msg_1792906795901_8700",
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-25T05:39:55.852Z",
+    "sender_id": "+91 95554 33211",
+    "chat_id": "919555433211@c.us",
+    "message_body": "venue groung m-cat at 6'o clock",
+    "message_text": "venue groung m-cat at 6'o clock",
+    "text_content": "venue groung m-cat at 6'o clock",
+    "has_media": false,
+    "media_path": null,
+    "flagged_status": true,
+    "isFlagged": true,
+    "threat_score": 0.5,
+    "extracted_entities": {
+        "upi_ids": [],
+        "bank_accounts": [],
+        "ifsc_codes": [],
+        "phone_numbers": [],
+        "gps_coordinates": [],
+        "narcotics_detected": [
+            "m-cat"
+        ]
+    },
+    "extracted_upi_or_bank": "None detected",
+    "is_analyst": false,
+    "is_fallback_mock": false,
+    "flag_reasons": [
+        "Narcotics: [m-cat]"
+    ]
+}

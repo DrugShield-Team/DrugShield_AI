@@ -1,0 +1,72 @@
+[
+    {
+        "platform": "whatsapp_simulation",
+        "timestamp": "2026-10-24T11:20:43.880Z",
+        "sender_id": "+91 98765 43210",
+        "chat_id": "simulated_group_001",
+        "message_body": "Mephedrone (Meow Meow) score clear. Pure material guaranteed. Send token amount on dark_supply@paytm to get GPS pin: 28.4595, 77.0266",
+        "has_media": false,
+        "media_path": null,
+        "extracted_upi_or_bank": "UPI: dark_supply@paytm",
+        "text_content": "Mephedrone (Meow Meow) score clear. Pure material guaranteed. Send token amount on dark_supply@paytm to get GPS pin: 28.4595, 77.0266",
+        "message_text": "Mephedrone (Meow Meow) score clear. Pure material guaranteed. Send token amount on dark_supply@paytm to get GPS pin: 28.4595, 77.0266",
+        "is_fallback_mock": false,
+        "is_analyst": false
+    },
+    {
+        "platform": "whatsapp_simulation",
+        "timestamp": "2026-10-24T11:27:09.459Z",
+        "sender_id": "+91 91234 56789",
+        "chat_id": "simulated_group_001",
+        "message_body": "Demo Live Test: LSD Stamps ready. Scan attached QR code or pay to dark_supply@paytm",
+        "has_media": true,
+        "media_path": "data/raw/images/wa_img_1792841229453_upi_qr_dealer.png",
+        "extracted_upi_or_bank": "UPI: dark_supply@paytm",
+        "text_content": "Demo Live Test: LSD Stamps ready. Scan attached QR code or pay to dark_supply@paytm",
+        "message_text": "Demo Live Test: LSD Stamps ready. Scan attached QR code or pay to dark_supply@paytm",
+        "is_fallback_mock": false,
+        "is_analyst": false
+    },
+    {
+        "platform": "whatsapp_simulation",
+        "timestamp": "2026-10-24T11:30:39.411Z",
+        "sender_id": "+91 90000 11223",
+        "chat_id": "919000011223@c.us",
+        "message_body": "5gm coke available",
+        "has_media": false,
+        "media_path": null,
+        "extracted_upi_or_bank": "Slang: coke",
+        "text_content": "5gm coke available",
+        "message_text": "5gm coke available",
+        "is_fallback_mock": false,
+        "is_analyst": false
+    },
+    {
+        "platform": "whatsapp_simulation",
+        "timestamp": "2026-10-24T11:32:46.427Z",
+        "sender_id": "+91 99999 00000",
+        "chat_id": "919123456789@c.us",
+        "message_body": "Understood. Ready to take 2 packets. Can you verify quality and send your receiver handle before I transfer the token?",
+        "has_media": false,
+        "media_path": null,
+        "extracted_upi_or_bank": "Slang: token",
+        "text_content": "Understood. Ready to take 2 packets. Can you verify quality and send your receiver handle before I transfer the token?",
+        "message_text": "Understood. Ready to take 2 packets. Can you verify quality and send your receiver handle before I transfer the token?",
+        "is_fallback_mock": false,
+        "is_analyst": true
+    },
+    {
+        "platform": "whatsapp_simulation",
+        "timestamp": "2026-10-24T11:38:11.443Z",
+        "sender_id": "+91 99887 76655",
+        "chat_id": "919988776655@c.us",
+        "message_body": "Fresh Dutch MDMA (Pure Crystal 💎) and Pink Molly ready in South Delhi. 1g: ₹3,500 | 5g: ₹14,000. Pay advance token via UPI: dark_supply@paytm to book slot.",
+        "has_media": true,
+        "media_path": "data/raw/images/upi_qr_dealer.png",
+        "extracted_upi_or_bank": "UPI: dark_supply@paytm | GPS: 3,50, 14,0",
+        "text_content": "Fresh Dutch MDMA (Pure Crystal 💎) and Pink Molly ready in South Delhi. 1g: ₹3,500 | 5g: ₹14,000. Pay advance token via UPI: dark_supply@paytm to book slot.",
+        "message_text": "Fresh Dutch MDMA (Pure Crystal 💎) and Pink Molly ready in South Delhi. 1g: ₹3,500 | 5g: ₹14,000. Pay advance token via UPI: dark_supply@paytm to book slot.",
+        "is_fallback_mock": false,
+        "is_analyst": false
+    }
+]

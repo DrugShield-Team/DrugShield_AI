@@ -1,0 +1,19 @@
+{
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-24T18:08:18.753Z",
+    "sender_id": "+919876543210",
+    "chat_id": "chat_aryan",
+    "message_body": "Mephedrone score ready. Transfer token amount on dark_supply@paytm GPS: 28.4595, 77.0266",
+    "has_media": false,
+    "media_path": null,
+    "extracted_upi_or_bank": "UPI: dark_supply@paytm | GPS: 28.4595, 77.0266",
+    "text_content": "Mephedrone score ready. Transfer token amount on dark_supply@paytm GPS: 28.4595, 77.0266",
+    "message_text": "Mephedrone score ready. Transfer token amount on dark_supply@paytm GPS: 28.4595, 77.0266",
+    "is_fallback_mock": false,
+    "is_analyst": false,
+    "flag_reasons": [
+        "Narcotics: [mephedrone]",
+        "Solicitation: [score, token, token amount]",
+        "Financial/Location: [UPI: dark_supply@paytm, GPS: 28.4595, 77.0266]"
+    ]
+}

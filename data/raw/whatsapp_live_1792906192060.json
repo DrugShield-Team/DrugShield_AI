@@ -1,0 +1,35 @@
+{
+    "id": "live_msg_1792906192060_7296",
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-25T05:29:52.057Z",
+    "sender_id": "+91 98765 43210",
+    "chat_id": "chat_aryan",
+    "message_body": "Fresh stock MDMA crystals 1g. Transfer advance on dark_supply@paytm to lock dead drop.",
+    "message_text": "Fresh stock MDMA crystals 1g. Transfer advance on dark_supply@paytm to lock dead drop.",
+    "text_content": "Fresh stock MDMA crystals 1g. Transfer advance on dark_supply@paytm to lock dead drop.",
+    "has_media": false,
+    "media_path": null,
+    "flagged_status": true,
+    "isFlagged": true,
+    "threat_score": 0.99,
+    "extracted_entities": {
+        "upi_ids": [
+            "dark_supply@paytm"
+        ],
+        "bank_accounts": [],
+        "ifsc_codes": [],
+        "phone_numbers": [],
+        "gps_coordinates": [],
+        "narcotics_detected": [
+            "mdma"
+        ]
+    },
+    "extracted_upi_or_bank": "dark_supply@paytm",
+    "is_analyst": false,
+    "is_fallback_mock": false,
+    "flag_reasons": [
+        "Narcotics: [mdma]",
+        "Solicitation: [drop, dead drop, advance, stock, fresh stock, 1g]",
+        "UPI: [dark_supply@paytm]"
+    ]
+}

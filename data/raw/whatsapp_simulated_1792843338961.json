@@ -1,0 +1,17 @@
+{
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-24T12:02:18.953Z",
+    "sender_id": "+91 98765 43210",
+    "chat_id": "919876543210@c.us",
+    "message_body": "weed 0.5 g available",
+    "has_media": false,
+    "media_path": null,
+    "extracted_upi_or_bank": "Substance: weed",
+    "text_content": "weed 0.5 g available",
+    "message_text": "weed 0.5 g available",
+    "is_fallback_mock": false,
+    "is_analyst": false,
+    "flag_reasons": [
+        "Narcotics: [weed]"
+    ]
+}

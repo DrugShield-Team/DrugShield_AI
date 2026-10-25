@@ -1,0 +1,32 @@
+{
+    "id": "live_msg_1792907102944_8371",
+    "platform": "telegram_simulation",
+    "timestamp": "2026-10-25T05:45:01.999Z",
+    "chat_type": "channel",
+    "chat_title": "Target Telegram Channel",
+    "sender_username": "@target_feed",
+    "sender_phone": "+91 99999 88888",
+    "sender_id": "+91 99999 88888",
+    "chat_id": "tg_chat_1792907031245",
+    "message_id": 54618,
+    "message_body": "",
+    "message_text": "",
+    "text_content": "",
+    "has_media": true,
+    "media_path": "data/raw/images/tg_img_1792907102933_whatsapp_test.jpg",
+    "flagged_status": false,
+    "isFlagged": false,
+    "threat_score": 0.05,
+    "extracted_entities": {
+        "upi_ids": [],
+        "bank_accounts": [],
+        "ifsc_codes": [],
+        "phone_numbers": [],
+        "gps_coordinates": [],
+        "narcotics_detected": []
+    },
+    "extracted_upi_or_bank": "None detected",
+    "is_fallback_mock": false,
+    "is_analyst": false,
+    "flag_reasons": []
+}

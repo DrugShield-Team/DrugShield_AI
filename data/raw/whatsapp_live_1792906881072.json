@@ -1,0 +1,27 @@
+{
+    "id": "live_msg_1792906881072_5193",
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-25T05:41:21.052Z",
+    "sender_id": "+91 95554 33211",
+    "chat_id": "919555433211@c.us",
+    "message_body": "[Photo Attached]",
+    "message_text": "[Photo Attached]",
+    "text_content": "[Photo Attached]",
+    "has_media": true,
+    "media_path": "data/raw/images/wa_img_1792906881057_whatsapp_test.jpg",
+    "flagged_status": false,
+    "isFlagged": false,
+    "threat_score": 0.05,
+    "extracted_entities": {
+        "upi_ids": [],
+        "bank_accounts": [],
+        "ifsc_codes": [],
+        "phone_numbers": [],
+        "gps_coordinates": [],
+        "narcotics_detected": []
+    },
+    "extracted_upi_or_bank": "None detected",
+    "is_analyst": false,
+    "is_fallback_mock": false,
+    "flag_reasons": []
+}
