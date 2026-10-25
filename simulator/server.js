@@ -28,8 +28,11 @@ const projectRoot = fs.existsSync(path.join(process.cwd(), 'data', 'raw'))
   ? process.cwd()
   : path.resolve(__dirname, '..');
 
-// Load environment configuration from .env if present
-const dotenvPath = path.join(projectRoot, '.env');
+// Load environment configuration: prioritize local .env then root .env
+const localEnvPath = path.join(__dirname, '.env');
+const rootEnvPath = path.join(projectRoot, '.env');
+const dotenvPath = fs.existsSync(localEnvPath) ? localEnvPath : rootEnvPath;
+
 if (fs.existsSync(dotenvPath)) {
   const envContent = fs.readFileSync(dotenvPath, 'utf-8');
   for (const line of envContent.split(/\r?\n/)) {
@@ -47,7 +50,7 @@ if (fs.existsSync(dotenvPath)) {
   }
 }
 
-const PORT = parseInt(process.env.PORT, 10) || 8090;
+const PORT = parseInt(process.env.WHATSAPP_PORT || process.env.PORT, 10) || 8090;
 const HOST = process.env.HOST || '0.0.0.0';
 
 const RAW_DIR = path.join(projectRoot, 'data', 'raw');

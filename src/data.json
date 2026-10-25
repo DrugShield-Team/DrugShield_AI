@@ -324,5 +324,58 @@
         "flag_reasons": [
             "Narcotics: [ice]"
         ]
+    },
+    {
+        "platform": "telegram_simulation",
+        "timestamp": "2026-10-24T17:24:51.246Z",
+        "chat_type": "channel",
+        "chat_title": "BLR Party Supplies",
+        "sender_username": "@blr_plug",
+        "sender_phone": "+919876543210",
+        "message_id": 19562,
+        "message_body": "Fresh stock MDMA 1g 3k. DM @blr_plug for drop pin. UPI dealer@ybl",
+        "has_media": false,
+        "media_path": null,
+        "extracted_entities": {
+            "upi_ids": [
+                "dealer@ybl"
+            ],
+            "bank_accounts": [],
+            "ifsc_codes": [],
+            "gps_coordinates": [],
+            "narcotics_detected": [
+                "mdma"
+            ]
+        },
+        "chat_id": "tg_blr_supplies",
+        "sender_id": "+919876543210",
+        "text_content": "Fresh stock MDMA 1g 3k. DM @blr_plug for drop pin. UPI dealer@ybl",
+        "message_text": "Fresh stock MDMA 1g 3k. DM @blr_plug for drop pin. UPI dealer@ybl",
+        "is_fallback_mock": false,
+        "is_analyst": false,
+        "flag_reasons": [
+            "Narcotics: [mdma]",
+            "Solicitation: [dealer, drop, drop pin, stock, fresh stock, 1g]",
+            "UPI: [dealer@ybl]"
+        ]
+    },
+    {
+        "platform": "whatsapp_simulation",
+        "timestamp": "2026-10-24T18:08:18.753Z",
+        "sender_id": "+919876543210",
+        "chat_id": "chat_aryan",
+        "message_body": "Mephedrone score ready. Transfer token amount on dark_supply@paytm GPS: 28.4595, 77.0266",
+        "has_media": false,
+        "media_path": null,
+        "extracted_upi_or_bank": "UPI: dark_supply@paytm | GPS: 28.4595, 77.0266",
+        "text_content": "Mephedrone score ready. Transfer token amount on dark_supply@paytm GPS: 28.4595, 77.0266",
+        "message_text": "Mephedrone score ready. Transfer token amount on dark_supply@paytm GPS: 28.4595, 77.0266",
+        "is_fallback_mock": false,
+        "is_analyst": false,
+        "flag_reasons": [
+            "Narcotics: [mephedrone]",
+            "Solicitation: [score, token, token amount]",
+            "Financial/Location: [UPI: dark_supply@paytm, GPS: 28.4595, 77.0266]"
+        ]
     }
 ]

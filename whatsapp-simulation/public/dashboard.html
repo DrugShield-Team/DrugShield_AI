@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DrugShield AI - Threat Intelligence Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0e17;
+      --card-bg: rgba(18, 26, 43, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-hover: rgba(30, 41, 67, 0.95);
+      --accent-cyan: #00f2fe;
+      --accent-blue: #4facfe;
+      --danger-red: #ff3366;
+      --danger-glow: rgba(255, 51, 102, 0.35);
+      --warning-amber: #f59e0b;
+      --success-green: #10b981;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --font-ui: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-code: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(0, 242, 254, 0.04) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(255, 51, 102, 0.05) 0%, transparent 40%),
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation Bar */
+    header.command-header {
+      background: rgba(10, 14, 23, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--danger-red));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 20px var(--danger-glow);
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-title span.sub {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-family: var(--font-code);
+    }
+
+    .live-status-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 30px;
+      font-family: var(--font-code);
+      font-size: 12px;
+      color: var(--success-green);
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success-green);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    /* Layout Container */
+    .dashboard-layout {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 28px 32px 60px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* KPI Stats Bar */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+    }
+
+    .kpi-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--card-accent, var(--accent-cyan));
+    }
+
+    .kpi-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .kpi-value {
+      font-size: 32px;
+      font-weight: 800;
+      font-family: var(--font-code);
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .kpi-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Node Port Decoupling Banner */
+    .nodes-banner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .node-status-card {
+      background: rgba(18, 26, 43, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .node-info-block h4 {
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .node-info-block p {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-code);
+      margin-top: 4px;
+    }
+
+    .node-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-family: var(--font-code);
+      text-transform: uppercase;
+    }
+
+    .badge-wa { background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.4); }
+    .badge-tg { background: rgba(79, 172, 254, 0.15); color: var(--accent-blue); border: 1px solid rgba(79, 172, 254, 0.4); }
+
+    /* Feed Toolbar & Filter */
+    .feed-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px 20px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 8px;
+    }
+
+    .tab-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: rgba(0, 242, 254, 0.15);
+      border-color: var(--accent-cyan);
+      color: #fff;
+    }
+
+    .action-btn-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-action {
+      background: rgba(255, 51, 102, 0.15);
+      border: 1px solid var(--danger-red);
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-action:hover {
+      background: var(--danger-red);
+      box-shadow: 0 0 15px var(--danger-glow);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Live Intelligence Stream Container */
+    .stream-container {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .feed-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      position: relative;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .feed-card.flagged-threat {
+      border: 1px solid rgba(255, 51, 102, 0.6);
+      background: linear-gradient(180deg, rgba(255, 51, 102, 0.08) 0%, rgba(18, 26, 43, 0.85) 100%);
+      box-shadow: 0 0 25px rgba(255, 51, 102, 0.15);
+    }
+
+    .feed-card.new-arrival {
+      animation: flash-highlight 1.5s ease-out;
+    }
+
+    @keyframes flash-highlight {
+      0% { border-color: var(--accent-cyan); box-shadow: 0 0 30px rgba(0, 242, 254, 0.4); }
+      100% { }
+    }
+
+    .feed-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .feed-platform-tag {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .platform-badge {
+      font-size: 11px;
+      font-weight: 800;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-family: var(--font-code);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .sender-handle {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .msg-timestamp {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-code);
+    }
+
+    .threat-score-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-family: var(--font-code);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .threat-critical {
+      background: rgba(255, 51, 102, 0.2);
+      border: 1px solid var(--danger-red);
+      color: var(--danger-red);
+      box-shadow: 0 0 12px var(--danger-glow);
+    }
+
+    .threat-low {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--success-green);
+      color: var(--success-green);
+    }
+
+    .feed-card-body {
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 10px;
+      padding: 14px 18px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 15px;
+      line-height: 1.55;
+      color: #f1f5f9;
+      word-break: break-word;
+    }
+
+    .feed-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .extracted-entities-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .entity-tag {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: var(--font-code);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .entity-tag.upi { border-color: rgba(245, 158, 11, 0.5); color: #fbbf24; background: rgba(245, 158, 11, 0.1); }
+    .entity-tag.drug { border-color: rgba(255, 51, 102, 0.5); color: #ff6b8b; background: rgba(255, 51, 102, 0.1); }
+    .entity-tag.bank { border-color: rgba(79, 172, 254, 0.5); color: #60a5fa; background: rgba(79, 172, 254, 0.1); }
+    .entity-tag.gps { border-color: rgba(16, 185, 129, 0.5); color: #34d399; background: rgba(16, 185, 129, 0.1); }
+
+    .media-preview-btn {
+      color: var(--accent-cyan);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      background: var(--card-bg);
+      border: 1px dashed var(--card-border);
+      border-radius: 16px;
+    }
+
+    .empty-state h3 {
+      font-size: 18px;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    /* Modal for Media Viewing */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal-content-img {
+      max-width: 90vw;
+      max-height: 85vh;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="command-header">
+    <div class="brand-group">
+      <div class="brand-icon">🛡️</div>
+      <div class="brand-title">
+        DRUGSHIELD AI
+        <span class="sub">OSINT THREAT COMMAND CENTER</span>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <div class="live-status-pill">
+        <div class="pulse-dot"></div>
+        LIVE INGESTION ACTIVE
+      </div>
+      <a href="/" class="btn-secondary" style="text-decoration: none; font-size: 12px;">← Return to Chat UI</a>
+    </div>
+  </header>
+
+  <div class="dashboard-layout">
+    
+    <!-- Decoupled Service Architecture Status -->
+    <div class="nodes-banner">
+      <div class="node-status-card">
+        <div class="node-info-block">
+          <h4>💬 WhatsApp Simulation Service</h4>
+          <p id="waNodeInfo">Host: 0.0.0.0 | Port: 8090 | Status: Listening</p>
+        </div>
+        <span class="node-badge badge-wa">PORT 8090 ACTIVE</span>
+      </div>
+      <div class="node-status-card">
+        <div class="node-info-block">
+          <h4>✈ Telegram Simulation Service</h4>
+          <p id="tgNodeInfo">Host: 0.0.0.0 | Port: 8000 | Status: Listening</p>
+        </div>
+        <span class="node-badge badge-tg">PORT 8000 ACTIVE</span>
+      </div>
+    </div>
+
+    <!-- KPI Metric Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card" style="--card-accent: var(--accent-cyan);">
+        <span class="kpi-title">Total Intercepted Messages</span>
+        <div class="kpi-value" id="kpiTotalMsgs">0</div>
+        <span class="kpi-sub">Across all live simulation streams</span>
+      </div>
+
+      <div class="kpi-card" style="--card-accent: var(--danger-red);">
+        <span class="kpi-title">Flagged Narcotics Threats (≥0.60)</span>
+        <div class="kpi-value" id="kpiFlaggedThreats" style="color: var(--danger-red);">0</div>
+        <span class="kpi-sub">Sent to Module 4 Graph & OS Toast</span>
+      </div>
+
+      <div class="kpi-card" style="--card-accent: var(--warning-amber);">
+        <span class="kpi-title">Financial Entities Identified</span>
+        <div class="kpi-value" id="kpiEntitiesCount" style="color: var(--warning-amber);">0</div>
+        <span class="kpi-sub">UPI VPAs & Bank Accounts parsed</span>
+      </div>
+
+      <div class="kpi-card" style="--card-accent: var(--accent-blue);">
+        <span class="kpi-title">Fine-Tuning Dataset Size</span>
+        <div class="kpi-value" id="kpiDatasetSize">0</div>
+        <span class="kpi-sub">data/raw/training_dataset.jsonl</span>
+      </div>
+    </div>
+
+    <!-- Feed Toolbar -->
+    <div class="feed-controls">
+      <div class="filter-tabs">
+        <button class="tab-btn active" data-filter="all" onclick="setFilter('all')">All Messages</button>
+        <button class="tab-btn" data-filter="threats" onclick="setFilter('threats')">🚨 Threats Only (≥0.60)</button>
+        <button class="tab-btn" data-filter="whatsapp" onclick="setFilter('whatsapp')">WhatsApp (8090)</button>
+        <button class="tab-btn" data-filter="telegram" onclick="setFilter('telegram')">Telegram (8000)</button>
+      </div>
+
+      <div class="action-btn-group">
+        <button class="btn-secondary" onclick="fetchRecentMessages()">🔄 Refresh Stream</button>
+        <button class="btn-action" onclick="clearLiveFeed()">🧹 Clear View</button>
+      </div>
+    </div>
+
+    <!-- Live Stream List -->
+    <div class="stream-container" id="streamContainer">
+      <div class="empty-state" id="emptyState">
+        <h3>Awaiting Live Interception Stream...</h3>
+        <p>Send a message in the WhatsApp (Port 8090) or Telegram (Port 8000) simulation to observe instant real-time threat evaluation.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Media Preview Modal -->
+  <div class="modal-overlay" id="mediaModal" onclick="closeModal()">
+    <img src="" alt="Evidence Media" class="modal-content-img" id="modalImg">
+  </div>
+
+  <script>
+    let activeFilter = 'all';
+    let allRecords = [];
+    const streamContainer = document.getElementById('streamContainer');
+    const emptyState = document.getElementById('emptyState');
+
+    // Determine backend host
+    const currentPort = window.location.port || '8090';
+    const isWhatsApp = currentPort === '8090';
+
+    // 1. Establish Real-time SSE Connection
+    function initEventStream() {
+      const sse = new EventSource('/api/stream');
+      
+      sse.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.event === 'new_message' && payload.data) {
+            handleIncomingRecord(payload.data, true);
+          }
+        } catch (e) {
+          console.error("SSE parse error:", e);
+        }
+      };
+
+      sse.onerror = () => {
+        console.warn("SSE connection interrupted. Polling fallback active.");
+      };
+    }
+
+    // 2. Fetch Initial History
+    async function fetchRecentMessages() {
+      try {
+        const [resLive, resStatus] = await Promise.all([
+          fetch('/api/live-messages?limit=100'),
+          fetch('/api/status')
+        ]);
+
+        const dataLive = await resLive.json();
+        const dataStatus = await resStatus.json();
+
+        if (dataStatus.ok && dataStatus.stats) {
+          document.getElementById('kpiDatasetSize').innerText = dataStatus.stats.training_dataset_lines || 0;
+        }
+
+        if (dataLive.success && Array.isArray(dataLive.messages)) {
+          allRecords = dataLive.messages;
+          renderFeed();
+          updateMetrics();
+        }
+      } catch (e) {
+        console.error("Error fetching live messages:", e);
+      }
+    }
+
+    function handleIncomingRecord(record, isNew = false) {
+      // Check if already in memory
+      if (!allRecords.some(r => r.id === record.id)) {
+        allRecords.unshift(record);
+        if (isNew) {
+          playAudioCue(record.threat_score >= 0.60);
+        }
+        renderFeed();
+        updateMetrics();
+      }
+    }
+
+    function playAudioCue(isThreat) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        if (isThreat) {
+          osc.frequency.setValueAtTime(880, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
+          gain.gain.setValueAtTime(0.2, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.3);
+        }
+      } catch (e) {}
+    }
+
+    function updateMetrics() {
+      const total = allRecords.length;
+      const flagged = allRecords.filter(r => r.threat_score >= 0.60 || r.isFlagged).length;
+      let financialCount = 0;
+
+      for (const r of allRecords) {
+        const upis = r.extracted_entities?.upi_ids || [];
+        const banks = r.extracted_entities?.bank_accounts || [];
+        financialCount += (upis.length + banks.length);
+      }
+
+      document.getElementById('kpiTotalMsgs').innerText = total;
+      document.getElementById('kpiFlaggedThreats').innerText = flagged;
+      document.getElementById('kpiEntitiesCount').innerText = financialCount;
+    }
+
+    function setFilter(filter) {
+      activeFilter = filter;
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-filter') === filter);
+      });
+      renderFeed();
+    }
+
+    function renderFeed() {
+      const filtered = allRecords.filter(r => {
+        if (activeFilter === 'threats') return (r.threat_score >= 0.60 || r.isFlagged);
+        if (activeFilter === 'whatsapp') return r.platform === 'whatsapp_simulation';
+        if (activeFilter === 'telegram') return r.platform === 'telegram_simulation';
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        streamContainer.innerHTML = '';
+        streamContainer.appendChild(emptyState);
+        return;
+      }
+
+      streamContainer.innerHTML = '';
+
+      filtered.forEach((r, idx) => {
+        const isFlagged = (r.threat_score >= 0.60 || r.isFlagged);
+        const card = document.createElement('div');
+        card.className = `feed-card ${isFlagged ? 'flagged-threat' : ''} ${idx === 0 ? 'new-arrival' : ''}`;
+
+        const isWA = (r.platform === 'whatsapp_simulation');
+        const platformBadgeClass = isWA ? 'badge-wa' : 'badge-tg';
+        const platformName = isWA ? 'WhatsApp (8090)' : 'Telegram (8000)';
+        const author = r.sender_username || r.sender_id || 'Unknown';
+        const timeStr = r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : 'Live';
+
+        const upis = r.extracted_entities?.upi_ids || [];
+        const banks = r.extracted_entities?.bank_accounts || [];
+        const drugs = r.extracted_entities?.narcotics_detected || [];
+        const geos = r.extracted_entities?.gps_coordinates || [];
+
+        let entitiesHtml = '';
+        drugs.forEach(d => entitiesHtml += `<span class="entity-tag drug">💊 ${d}</span>`);
+        upis.forEach(u => entitiesHtml += `<span class="entity-tag upi">💳 ${u}</span>`);
+        banks.forEach(b => entitiesHtml += `<span class="entity-tag bank">🏦 ACC: ${b}</span>`);
+        geos.forEach(g => entitiesHtml += `<span class="entity-tag gps">📍 ${g}</span>`);
+
+        let mediaHtml = '';
+        if (r.media_path || r.local_media_url) {
+          const mediaUrl = r.local_media_url || `/${r.media_path}`;
+          mediaHtml = `<a class="media-preview-btn" onclick="openModal('${mediaUrl}')">🖼️ View Attachment</a>`;
+        }
+
+        const score = (r.threat_score !== undefined ? r.threat_score : 0.05).toFixed(2);
+        const scoreClass = score >= 0.60 ? 'threat-critical' : 'threat-low';
+
+        card.innerHTML = `
+          <div class="feed-card-header">
+            <div class="feed-platform-tag">
+              <span class="platform-badge ${platformBadgeClass}">${platformName}</span>
+              <span class="sender-handle">${escapeHtml(author)} ${r.is_analyst ? '<span style="color:var(--accent-cyan);font-size:11px;">[ANALYST]</span>' : ''}</span>
+              <span class="msg-timestamp">${timeStr}</span>
+            </div>
+            <div class="threat-score-pill ${scoreClass}">
+              <span>THREAT SCORE:</span>
+              <span>${score}</span>
+            </div>
+          </div>
+
+          <div class="feed-card-body">
+            ${escapeHtml(r.message_text || r.message_body || '')}
+          </div>
+
+          <div class="feed-card-footer">
+            <div class="extracted-entities-tags">
+              ${entitiesHtml || '<span style="color:var(--text-muted);font-size:12px;">No financial or contraband indicators</span>'}
+            </div>
+            ${mediaHtml}
+          </div>
+        `;
+
+        streamContainer.appendChild(card);
+      });
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.innerText = text || '';
+      return div.innerHTML;
+    }
+
+    function clearLiveFeed() {
+      allRecords = [];
+      renderFeed();
+      updateMetrics();
+    }
+
+    function openModal(url) {
+      document.getElementById('modalImg').src = url;
+      document.getElementById('mediaModal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('mediaModal').classList.remove('open');
+    }
+
+    // Bootstrap
+    window.addEventListener('DOMContentLoaded', () => {
+      initEventStream();
+      fetchRecentMessages();
+      setInterval(fetchRecentMessages, 5000);
+    });
+  </script>
+</body>
+</html>

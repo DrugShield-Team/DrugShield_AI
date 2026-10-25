@@ -1,0 +1,27 @@
+{
+    "id": "live_msg_1792906761030_3380",
+    "platform": "whatsapp_simulation",
+    "timestamp": "2026-10-25T05:39:20.994Z",
+    "sender_id": "+91 98765 43210",
+    "chat_id": "919876543210@c.us",
+    "message_body": "hiii want to go out on lunch at icepark today ?",
+    "message_text": "hiii want to go out on lunch at icepark today ?",
+    "text_content": "hiii want to go out on lunch at icepark today ?",
+    "has_media": false,
+    "media_path": null,
+    "flagged_status": false,
+    "isFlagged": false,
+    "threat_score": 0.05,
+    "extracted_entities": {
+        "upi_ids": [],
+        "bank_accounts": [],
+        "ifsc_codes": [],
+        "phone_numbers": [],
+        "gps_coordinates": [],
+        "narcotics_detected": []
+    },
+    "extracted_upi_or_bank": "None detected",
+    "is_analyst": false,
+    "is_fallback_mock": false,
+    "flag_reasons": []
+}

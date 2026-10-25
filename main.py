@@ -1,40 +1,56 @@
+"""
+DrugShield AI - Master Threat Intelligence Pipeline Controller
+==============================================================
+Orchestrates live ingestion from decoupled WhatsApp (Port 8090) and Telegram (Port 8000)
+crawlers, routes live message streams through Module 2 (NLP & OCR) and Module 3 (UPI Parser),
+evaluates dynamic threat scores, and coordinates Module 4 persistence & alert dispatch.
+"""
+
 import json
 import inspect
 import asyncio
 from pathlib import Path
 
+# Ingestion Modules
 try:
-    from src.ingestion import telegram_listener
+    from src.ingestion import telegram_telegram as telegram_listener
 except (ImportError, Exception):
-    telegram_listener = None
+    try:
+        from src.ingestion import telegram_listener
+    except (ImportError, Exception):
+        telegram_listener = None
+
+try:
+    from src.ingestion import whatsapp_fast
+except (ImportError, Exception):
+    whatsapp_fast = None
 
 try:
     from src.ingestion import instagram_crawler
 except (ImportError, Exception):
     instagram_crawler = None
 
-try:
-    from src.ingestion import whatsapp_feed
-except (ImportError, Exception):
-    whatsapp_feed = None
-
 from src.ai_pipeline.qr_detector import scan_qr_payload
+from src.ai_pipeline.threat_pipeline import evaluate_live_message_threat
 
 BASE_DIR = Path(__file__).resolve().parent
 RAW_DIR = BASE_DIR / "data" / "raw"
 IMAGES_DIR = RAW_DIR / "images"
 
+
 def init_raw_landing_zone():
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+
 
 async def call_module_entry(mod):
     if not mod:
         return None
     possible_names = [
-        "run_instagram_crawler",
-        "run_telegram_crawler",
+        "run_telegram_crawler_async",
         "scrape_whatsapp_feed",
+        "run_telegram_crawler",
+        "run_whatsapp_fast",
         "main",
         "run",
         "crawl",
@@ -43,182 +59,90 @@ async def call_module_entry(mod):
 
     for fn_name in possible_names:
         fn = getattr(mod, fn_name, None)
-
         if callable(fn):
             result = fn()
-
             if inspect.isawaitable(result):
                 result = await result
-
             return result
 
     return None
 
+
 async def collect_all_crawlers():
     all_records = []
 
-    # Telegram: guarantee 1 record
+    # 1. Telegram Live Simulation Crawler (Port 8000)
     try:
         tg_data = await call_module_entry(telegram_listener)
         tg_records = tg_data if isinstance(tg_data, list) else [tg_data] if isinstance(tg_data, dict) else []
-
-        if tg_records:
-            all_records.extend(tg_records[:1])
-        else:
-            all_records.append({
-                "platform": "Telegram",
-                "status": "unavailable",
-                "is_fallback_mock": True
-            })
+        all_records.extend(tg_records)
+        print(f"[Pipeline] Intercepted {len(tg_records)} live Telegram record(s).")
     except Exception as e:
-        print(f"[Pipeline Notice] Telegram error: {e}")
-        all_records.append({
-            "platform": "Telegram",
-            "status": "error",
-            "is_fallback_mock": True
-        })
+        print(f"[Pipeline Notice] Telegram live crawler error: {e}")
 
-    # Instagram: guarantee 2 records
+    # 2. WhatsApp Live Simulation Crawler (Port 8090)
     try:
-        ig_data = await call_module_entry(instagram_crawler)
-        ig_records = ig_data if isinstance(ig_data, list) else [ig_data] if isinstance(ig_data, dict) else []
-
-        all_records.extend(ig_records[:2])
-
-        while len(ig_records) < 2:
-            all_records.append({
-                "platform": "Instagram",
-                "scrape_type": "profile" if len(ig_records) == 0 else "hashtag",
-                "status": "unavailable",
-                "is_fallback_mock": True
-            })
-            ig_records.append({})
+        wa_data = await call_module_entry(whatsapp_fast)
+        wa_records = wa_data if isinstance(wa_data, list) else [wa_data] if isinstance(wa_data, dict) else []
+        all_records.extend(wa_records)
+        print(f"[Pipeline] Intercepted {len(wa_records)} live WhatsApp record(s).")
     except Exception as e:
-        print(f"[Pipeline Notice] Instagram error: {e}")
-        all_records.extend([
-            {
-                "platform": "Instagram",
-                "scrape_type": "profile",
-                "status": "error",
-                "is_fallback_mock": True
-            },
-            {
-                "platform": "Instagram",
-                "scrape_type": "hashtag",
-                "status": "error",
-                "is_fallback_mock": True
-            }
-        ])
+        print(f"[Pipeline Notice] WhatsApp live crawler error: {e}")
 
-    # WhatsApp: guarantee 6 records
-    try:
-        wa_data = await call_module_entry(whatsapp_feed)
-        wa_records = wa_data if isinstance(wa_data, list) else []
+    # 3. Instagram Crawler (Optional ancillary OSINT source)
+    if instagram_crawler:
+        try:
+            ig_data = await call_module_entry(instagram_crawler)
+            ig_records = ig_data if isinstance(ig_data, list) else [ig_data] if isinstance(ig_data, dict) else []
+            all_records.extend(ig_records[:2])
+        except Exception as e:
+            print(f"[Pipeline Notice] Instagram crawler notice: {e}")
 
-        if not wa_records:
-            wa_file = BASE_DIR / "src" / "data.json"
-            if wa_file.exists():
-                with open(wa_file, "r", encoding="utf-8") as f:
-                    loaded_data = json.load(f)
-                    if isinstance(loaded_data, list):
-                        wa_records = loaded_data
+    return all_records
 
-        all_records.extend(wa_records[:6])
 
-        while len(wa_records) < 6:
-            all_records.append({
-                "platform": "WhatsApp",
-                "status": "unavailable",
-                "is_fallback_mock": True
-            })
-            wa_records.append({})
-    except Exception as e:
-        print(f"[Pipeline Notice] WhatsApp error: {e}")
-        all_records.extend([
-            {
-                "platform": "WhatsApp",
-                "status": "error",
-                "is_fallback_mock": True
-            }
-            for _ in range(6)
-        ])
-
-    return all_records[:9]
-
-def process_qr_intelligence(records):
+def process_threat_pipeline(records):
     """
-    Scans media attachments in ingested crawler records and local landing zone images
-    for QR codes, analyzing decoded payloads for narcotics & contraband threats.
+    Executes Module 2 & Module 3 active threat evaluation on all intercepted records.
     """
     print("\n--------------------------------------------------")
-    print("      DRUGSHIELD AI - QR FORENSICS PIPELINE       ")
+    print("      DRUGSHIELD AI - LIVE THREAT PIPELINE        ")
     print("--------------------------------------------------")
 
-    scanned_count = 0
+    evaluated_records = []
     flagged_threats = 0
-    scanned_paths = set()
 
-    # 1. Inspect records that have media_path
     for rec in records:
-        m_path = rec.get("media_path")
-        if m_path:
-            candidates = [
-                Path(m_path),
-                RAW_DIR / Path(m_path).name,
-                IMAGES_DIR / Path(m_path).name,
-            ]
-            valid_path = next((p for p in candidates if p.is_file()), None)
-            if valid_path:
-                abs_key = str(valid_path.resolve())
-                scanned_paths.add(abs_key)
-                scanned_count += 1
-                try:
-                    res = scan_qr_payload(str(valid_path))
-                    rec["qr_scan"] = res
-                    if res.get("qr_detected"):
-                        print(f" [!] QR Detected in {valid_path.name}: Status={res['status']} | Threat={res['confidence_score']}")
-                        if res.get("status") in ("DRUG_DETECTED", "SUSPICIOUS"):
-                            flagged_threats += 1
-                except Exception as e:
-                    print(f" [-] Error scanning QR in {valid_path.name}: {e}")
+        if isinstance(rec, dict):
+            # Run through active NLP & Threat Flagging Pipeline
+            evaluated = evaluate_live_message_threat(rec)
+            evaluated_records.append(evaluated)
+            if evaluated.get("threat_score", 0.0) >= 0.60 or evaluated.get("flagged_status"):
+                flagged_threats += 1
 
-    # 2. Inspect any additional images placed in RAW_DIR and IMAGES_DIR
-    for folder in [IMAGES_DIR, RAW_DIR]:
-        if folder.exists():
-            for ext in ("*.jpg", "*.jpeg", "*.png", "*.webp"):
-                for img_file in folder.glob(ext):
-                    abs_key = str(img_file.resolve())
-                    if abs_key not in scanned_paths:
-                        scanned_paths.add(abs_key)
-                        scanned_count += 1
-                        try:
-                            res = scan_qr_payload(str(img_file))
-                            if res.get("qr_detected"):
-                                print(f" [!] QR Detected in {img_file.name}: Status={res['status']} | Threat={res['confidence_score']}")
-                                if res.get("status") in ("DRUG_DETECTED", "SUSPICIOUS"):
-                                    flagged_threats += 1
-                        except Exception as e:
-                            print(f" [-] Error scanning QR in {img_file.name}: {e}")
-
-    print(f"Total Images Scanned for QR: {scanned_count}")
-    print(f"Threats Flagged (DRUG/SUSP): {flagged_threats}")
+    print(f"Total Intercepted Records Evaluated : {len(evaluated_records)}")
+    print(f"Threats Flagged (Score >= 0.60)     : {flagged_threats}")
     print("--------------------------------------------------\n")
+
+    return evaluated_records
+
 
 def write_to_landing_zone(records):
     init_raw_landing_zone()
-    process_qr_intelligence(records)
+    evaluated = process_threat_pipeline(records)
     output_path = RAW_DIR / "ingested_raw_data.json"
 
     with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(records, f, indent=4, ensure_ascii=False)
+        json.dump(evaluated, f, indent=4, ensure_ascii=False)
 
     print("\n==================================================")
     print("      CENTRAL RAW LANDING ZONE STATUS             ")
     print("==================================================")
     print(f"Target Directory   : {RAW_DIR.resolve()}")
     print(f"Ingested JSON File : {output_path.name}")
-    print(f"Total Raw Records  : {len(records)}")
+    print(f"Total Raw Records  : {len(evaluated)}")
     print("==================================================\n")
+
 
 if __name__ == "__main__":
     init_raw_landing_zone()

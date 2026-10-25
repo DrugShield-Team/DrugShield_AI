@@ -9,7 +9,14 @@ ENV/
 *.log
 *.session
 .env
+.env.*
+!.env.example
 *.zip
+*.db
+
+# Node dependencies
+node_modules/
+npm-debug.log*
 
 # Heavy training datasets & base downloaded weights
 src/ai_pipeline/New-Drugs-2/

@@ -1,654 +1,100 @@
 [
     {
-        "platform": "telegram",
-        "chat_title": "BLR Party Supplies",
-        "message_id": 991,
-        "sender_id": "1002345",
-        "sender_handle": "@blr_supplies_bot",
-        "text_content": "Fresh stock MDMA 1g 3k. Fast delivery in Bengaluru. DM @blr_supplies_bot UPI dealer@ybl",
-        "media_path": "D:\\DrugShield_Workspace\\DrugShield_AI\\src\\data\\raw\\images\\tg_991_demo.jpg",
-        "timestamp": "2026-10-06T12:44:06.044855",
-        "is_fallback_mock": true,
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "fresh stock mdma 1g 3k fast delivery in bengaluru dm blr supplies bot digital_payment dealer ybl",
-            "detected_slangs": [
-                "upi"
-            ],
-            "risk_score": 0.1,
-            "is_suspicious": false
-        },
-        "risk_score": 0.1,
-        "high_risk": false
-    },
-    {
-        "platform": "Instagram",
-        "scrape_type": "profile",
-        "status": "unavailable",
-        "is_fallback_mock": true,
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "",
-            "detected_slangs": [],
-            "risk_score": 0.0,
-            "is_suspicious": false
-        },
-        "risk_score": 0.0,
-        "high_risk": false
-    },
-    {
-        "platform": "Instagram",
-        "scrape_type": "hashtag",
-        "status": "unavailable",
-        "is_fallback_mock": true,
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "",
-            "detected_slangs": [],
-            "risk_score": 0.0,
-            "is_suspicious": false
-        },
-        "risk_score": 0.0,
-        "high_risk": false
-    },
-    {
-        "entry_id": "WA_MOCK_001",
-        "timestamp": "2026-08-15T20:50:59.361705",
-        "platform": "WhatsApp",
-        "chat_id": "919988776655@c.us",
-        "chat_title": "Gurgaon Underground Network",
-        "sender_id": "+91 99887 76655",
-        "sender_username": "Vibe_Dealer_Gurgaon",
-        "message_text": "Top quality LSD Stamps and Chitta available. DM for drop location. UPI ID: score_vendor@ybl",
-        "has_media": true,
-        "media_path": "downloads/price_list_03.jpg",
-        "extracted_vpa": "score_vendor@ybl",
-        "processed_by_ai": false,
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "top quality lsd stamps and heroin available dm for drop location digital_payment id buy_drugs vendor ybl",
-            "detected_slangs": [
-                "chitta",
-                "upi"
-            ],
-            "risk_score": 0.5,
-            "is_suspicious": true
-        },
-        "risk_score": 0.5,
-        "high_risk": true
-    },
-    {
-        "entry_id": "WA_MOCK_002",
-        "timestamp": "2026-08-15T21:16:59.361705",
-        "platform": "WhatsApp",
-        "chat_id": "919123456789@c.us",
-        "chat_title": "Fast Delivery NCR/Noida",
+        "id": "live_msg_1792906194335_3440",
+        "platform": "telegram_simulation",
+        "timestamp": "2026-10-25T05:29:54.333Z",
         "sender_id": "+91 91234 56789",
-        "sender_username": "Delhi_Score_Bot",
-        "message_text": "Mephedrone score clear. Pure material guaranteed. Send token amount on score_vendor@ybl to get GPS pin.",
-        "has_media": true,
-        "media_path": "downloads/price_list_03.jpg",
-        "extracted_vpa": "score_vendor@ybl",
-        "processed_by_ai": false,
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "mephedrone buy_drugs clear pure material guaranteed send token amount on buy_drugs vendor ybl to get gps pin",
-            "detected_slangs": [
-                "score"
-            ],
-            "risk_score": 0.4,
-            "is_suspicious": true
-        },
-        "risk_score": 0.4,
-        "high_risk": true
-    },
-    {
-        "entry_id": "WA_MOCK_003",
-        "timestamp": "2026-08-15T20:18:59.361705",
-        "platform": "WhatsApp",
-        "chat_id": "919000011223@c.us",
-        "chat_title": "Fast Delivery NCR/Noida",
-        "sender_id": "+91 90000 11223",
-        "sender_username": "Anon_Delivery_01",
-        "message_text": "MDMA and Stamp stock refreshed. Check menu image attached. UPI handle: token_receiver@icici",
-        "has_media": true,
-        "media_path": "downloads/menu_card_01.jpg",
-        "extracted_vpa": "token_receiver@icici",
-        "processed_by_ai": false,
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "mdma and lsd stock refreshed check menu image attached digital_payment handle token receiver icici",
-            "detected_slangs": [
-                "stamp",
-                "upi"
-            ],
-            "risk_score": 0.5,
-            "is_suspicious": true
-        },
-        "risk_score": 0.5,
-        "high_risk": true
-    },
-    {
-        "entry_id": "WA_MOCK_004",
-        "timestamp": "2026-08-15T19:56:59.361705",
-        "platform": "WhatsApp",
-        "chat_id": "919123456789@c.us",
-        "chat_title": "NCR Private Party Supplies",
-        "sender_id": "+91 91234 56789",
-        "sender_username": "Delhi_Score_Bot",
-        "message_text": "Ganja 100g packs ready. Fast deal near Metro Station. UPI payment only: dark_supply@paytm",
-        "has_media": true,
-        "media_path": "downloads/price_list_03.jpg",
-        "extracted_vpa": "dark_supply@paytm",
-        "processed_by_ai": false,
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "cannabis 100g packs ready fast deal near metro station digital_payment payment only dark supply digital_payment",
-            "detected_slangs": [
-                "ganja",
+        "sender_username": "@suspect_dealer",
+        "chat_id": "tg_target_channel",
+        "message_text": "Meow Meow / M-Cat scores cleared. Dead drop pin: 28.4595, 77.0266. UPI dealer_delhi@okhdfcbank.",
+        "message_body": "Meow Meow / M-Cat scores cleared. Dead drop pin: 28.4595, 77.0266. UPI dealer_delhi@okhdfcbank.",
+        "threat_score": 0.99,
+        "flagged_status": true,
+        "isFlagged": true,
+        "has_media": false,
+        "media_path": null,
+        "extracted_entities": {
+            "narcotics_detected": [
+                "m-cat",
                 "upi",
-                "paytm"
+                "meow meow"
             ],
-            "risk_score": 0.45,
-            "is_suspicious": true
+            "upi_ids": [
+                "dealer_delhi@okhdfcbank"
+            ],
+            "bank_accounts": [],
+            "ifsc_codes": [],
+            "phone_numbers": [],
+            "gps_coordinates": [
+                "28.4595, 77.0266"
+            ],
+            "crypto_wallets": {
+                "btc": [],
+                "eth": [],
+                "xmr": []
+            }
         },
-        "risk_score": 0.45,
-        "high_risk": true
-    },
-    {
-        "entry_id": "WA_MOCK_005",
-        "timestamp": "2026-08-15T21:03:59.361705",
-        "platform": "WhatsApp",
-        "chat_id": "919123456789@c.us",
-        "chat_title": "Delhi Score & Chill",
-        "sender_id": "+91 91234 56789",
-        "sender_username": "Delhi_Score_Bot",
-        "message_text": "Ganja 100g packs ready. Fast deal near Metro Station. UPI payment only: dark_supply@paytm",
-        "has_media": true,
-        "media_path": "downloads/price_list_03.jpg",
-        "extracted_vpa": "dark_supply@paytm",
-        "processed_by_ai": false,
-        "processed": true,
         "nlp_analysis": {
-            "normalized_text": "cannabis 100g packs ready fast deal near metro station digital_payment payment only dark supply digital_payment",
-            "detected_slangs": [
-                "ganja",
-                "upi",
-                "paytm"
-            ],
-            "risk_score": 0.45,
-            "is_suspicious": true
+            "risk_score": 0.9,
+            "risk_level": "CRITICAL",
+            "solicitation_intent": true
         },
-        "risk_score": 0.45,
-        "high_risk": true
-    },
-    {
-        "platform": "WhatsApp",
-        "status": "unavailable",
-        "is_fallback_mock": true,
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "",
-            "detected_slangs": [],
-            "risk_score": 0.0,
-            "is_suspicious": false
-        },
-        "risk_score": 0.0,
-        "high_risk": false
-    },
-    {
-        "platform": "whatsapp_simulation",
-        "timestamp": "2026-10-24T11:20:43.880Z",
-        "sender_id": "+91 98765 43210",
-        "chat_id": "simulated_group_001",
-        "message_body": "Mephedrone (Meow Meow) score clear. Pure material guaranteed. Send token amount on dark_supply@paytm to get GPS pin: 28.4595, 77.0266",
-        "text_content": "Mephedrone (Meow Meow) score clear. Pure material guaranteed. Send token amount on dark_supply@paytm to get GPS pin: 28.4595, 77.0266",
-        "message_text": "Mephedrone (Meow Meow) score clear. Pure material guaranteed. Send token amount on dark_supply@paytm to get GPS pin: 28.4595, 77.0266",
-        "has_media": false,
-        "media_path": null,
-        "extracted_upi_or_bank": "UPI: dark_supply@paytm",
-        "extracted_vpa": "UPI: dark_supply@paytm",
-        "is_analyst": false,
-        "is_fallback_mock": false,
-        "source_file": "whatsapp_simulated_1792840843880.json",
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "mephedrone mephedrone buy_drugs clear pure material guaranteed send token amount on dark supply digital_payment to get gps pin 28 4595 77 0266",
-            "detected_slangs": [
-                "paytm",
-                "score"
-            ],
-            "risk_score": 0.5,
-            "is_suspicious": true
-        },
-        "risk_score": 0.5,
-        "high_risk": true
-    },
-    {
-        "platform": "whatsapp_simulation",
-        "timestamp": "2026-10-24T11:27:09.459Z",
-        "sender_id": "+91 91234 56789",
-        "chat_id": "simulated_group_001",
-        "message_body": "Demo Live Test: LSD Stamps ready. Scan attached QR code or pay to dark_supply@paytm",
-        "has_media": true,
-        "media_path": "data/raw/images/wa_img_1792841229453_upi_qr_dealer.png",
-        "extracted_upi_or_bank": "UPI: dark_supply@paytm",
-        "text_content": "Demo Live Test: LSD Stamps ready. Scan attached QR code or pay to dark_supply@paytm",
-        "message_text": "Demo Live Test: LSD Stamps ready. Scan attached QR code or pay to dark_supply@paytm",
-        "is_fallback_mock": false,
-        "is_analyst": false,
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "demo live test lsd stamps ready scan attached qr_code_payment code or pay to dark supply digital_payment",
-            "detected_slangs": [
-                "qr",
-                "paytm"
-            ],
-            "risk_score": 0.2,
-            "is_suspicious": false
-        },
-        "qr_scan": {
-            "qr_detected": true,
-            "payload_raw": "upi://pay?pa=dark_supply@paytm&pn=DarkSupplyNCR&am=4500&cu=INR&tn=Molly+LSD+Stamps",
-            "extracted_keywords": [
-                "lsd",
-                "molly",
-                "stamps"
-            ],
-            "status": "DRUG_DETECTED",
-            "confidence_score": 0.94,
-            "threat_indicators": [
-                "EXPLICIT_SUBSTANCE: LSD",
-                "EXPLICIT_SUBSTANCE: MOLLY",
-                "EXPLICIT_SUBSTANCE: STAMPS",
-                "PILL_INDICATOR: 'stamps'"
-            ],
-            "source_image": "data\\raw\\images\\wa_img_1792841229453_upi_qr_dealer.png",
-            "crop_path": "D:\\drugshield\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_1487ea5a7e_20261024_120723_0.png",
-            "bbox": [
-                41,
-                41,
-                368,
-                368
-            ],
-            "engine_used": "fallback_pyzbar",
-            "evidence_id": "DS-QR-20261024120720-C7CF44",
-            "all_decoded_codes": [
-                {
-                    "payload": "upi://pay?pa=dark_supply@paytm&pn=DarkSupplyNCR&am=4500&cu=INR&tn=Molly+LSD+Stamps",
-                    "bbox": [
-                        41,
-                        41,
-                        368,
-                        368
-                    ],
-                    "crop_path": "D:\\drugshield\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_1487ea5a7e_20261024_120723_0.png",
-                    "engine": "fallback_pyzbar"
-                }
-            ]
-        },
-        "high_risk": true,
-        "risk_score": 0.94,
-        "threat_status": "DRUG_DETECTED"
-    },
-    {
-        "platform": "whatsapp_simulation",
-        "timestamp": "2026-10-24T11:30:39.411Z",
-        "sender_id": "+91 90000 11223",
-        "chat_id": "919000011223@c.us",
-        "message_body": "5gm coke available",
-        "text_content": "5gm coke available",
-        "message_text": "5gm coke available",
-        "has_media": false,
-        "media_path": null,
-        "extracted_upi_or_bank": "Slang: coke",
-        "extracted_vpa": "Slang: coke",
-        "is_analyst": false,
-        "is_fallback_mock": false,
-        "source_file": "whatsapp_simulated_1792841439438.json",
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "5gm coke available",
-            "detected_slangs": [],
-            "risk_score": 0.0,
-            "is_suspicious": false
-        },
-        "risk_score": 0.0,
-        "high_risk": false
-    },
-    {
-        "platform": "whatsapp_simulation",
-        "timestamp": "2026-10-24T11:32:46.427Z",
-        "sender_id": "+91 99999 00000",
-        "chat_id": "919123456789@c.us",
-        "message_body": "Understood. Ready to take 2 packets. Can you verify quality and send your receiver handle before I transfer the token?",
-        "has_media": false,
-        "media_path": null,
-        "extracted_upi_or_bank": "Slang: token",
-        "text_content": "Understood. Ready to take 2 packets. Can you verify quality and send your receiver handle before I transfer the token?",
-        "message_text": "Understood. Ready to take 2 packets. Can you verify quality and send your receiver handle before I transfer the token?",
-        "is_fallback_mock": false,
-        "is_analyst": true,
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "understood ready to take 2 packets can you verify quality and send your receiver handle before i transfer the token",
-            "detected_slangs": [],
-            "risk_score": 0.0,
-            "is_suspicious": false
-        },
-        "risk_score": 0.0,
-        "high_risk": false
-    },
-    {
-        "platform": "whatsapp_simulation",
-        "timestamp": "2026-10-24T11:38:11.443Z",
-        "sender_id": "+91 99887 76655",
-        "chat_id": "919988776655@c.us",
-        "message_body": "Fresh Dutch MDMA (Pure Crystal 💎) and Pink Molly ready in South Delhi. 1g: ₹3,500 | 5g: ₹14,000. Pay advance token via UPI: dark_supply@paytm to book slot.",
-        "has_media": true,
-        "media_path": "data/raw/images/upi_qr_dealer.png",
-        "extracted_upi_or_bank": "UPI: dark_supply@paytm | GPS: 3,50, 14,0",
-        "text_content": "Fresh Dutch MDMA (Pure Crystal 💎) and Pink Molly ready in South Delhi. 1g: ₹3,500 | 5g: ₹14,000. Pay advance token via UPI: dark_supply@paytm to book slot.",
-        "message_text": "Fresh Dutch MDMA (Pure Crystal 💎) and Pink Molly ready in South Delhi. 1g: ₹3,500 | 5g: ₹14,000. Pay advance token via UPI: dark_supply@paytm to book slot.",
-        "is_fallback_mock": false,
-        "is_analyst": false,
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "fresh dutch mdma pure crystal and pink mdma ready in south delhi 1g 3 500 5g 14 00 pay upfront_payment token via digital_payment dark supply digital_payment to book slot",
-            "detected_slangs": [
-                "advance",
-                "molly",
-                "upi",
-                "paytm"
-            ],
-            "risk_score": 0.7,
-            "is_suspicious": true
-        },
-        "qr_scan": {
-            "qr_detected": true,
-            "payload_raw": "upi://pay?pa=dark_supply@paytm&pn=DarkSupplyNCR&am=4500&cu=INR&tn=Molly+LSD+Stamps",
-            "extracted_keywords": [
-                "lsd",
-                "molly",
-                "stamps"
-            ],
-            "status": "DRUG_DETECTED",
-            "confidence_score": 0.94,
-            "threat_indicators": [
-                "EXPLICIT_SUBSTANCE: LSD",
-                "EXPLICIT_SUBSTANCE: MOLLY",
-                "EXPLICIT_SUBSTANCE: STAMPS",
-                "PILL_INDICATOR: 'stamps'"
-            ],
-            "source_image": "data\\raw\\images\\upi_qr_dealer.png",
-            "crop_path": "D:\\drugshield\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_1487ea5a7e_20261024_120723_0.png",
-            "bbox": [
-                41,
-                41,
-                368,
-                368
-            ],
-            "engine_used": "fallback_pyzbar",
-            "evidence_id": "DS-QR-20261024120723-7F268D",
-            "all_decoded_codes": [
-                {
-                    "payload": "upi://pay?pa=dark_supply@paytm&pn=DarkSupplyNCR&am=4500&cu=INR&tn=Molly+LSD+Stamps",
-                    "bbox": [
-                        41,
-                        41,
-                        368,
-                        368
-                    ],
-                    "crop_path": "D:\\drugshield\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_1487ea5a7e_20261024_120723_0.png",
-                    "engine": "fallback_pyzbar"
-                }
-            ]
-        },
-        "high_risk": true,
-        "risk_score": 0.94,
-        "threat_status": "DRUG_DETECTED"
-    },
-    {
-        "platform": "whatsapp_simulation",
-        "timestamp": "2026-10-24T11:53:39.016Z",
-        "sender_id": "+91 98765 43210",
-        "chat_id": "group_ncr_weekend@g.us",
-        "message_body": "what about coke and chitta",
-        "has_media": false,
-        "media_path": null,
-        "extracted_upi_or_bank": "Substance: chitta, coke",
-        "text_content": "what about coke and chitta",
-        "message_text": "what about coke and chitta",
-        "is_fallback_mock": false,
-        "is_analyst": false,
-        "flag_reasons": [
-            "Narcotics: [chitta, coke]"
-        ],
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "what about coke and heroin",
-            "detected_slangs": [
-                "chitta"
-            ],
-            "risk_score": 0.4,
-            "is_suspicious": true
-        },
-        "risk_score": 0.4,
-        "high_risk": true
-    },
-    {
-        "platform": "whatsapp_simulation",
-        "timestamp": "2026-10-24T11:57:42.413Z",
-        "sender_id": "+91 98765 43210",
-        "chat_id": "919876543210@c.us",
-        "message_body": "Fresh Molly and LSD stamps available in South Delhi. Send advance token on dark_supply@paytm to get dead drop GPS pin: 28.4595, 77.0266",
-        "has_media": true,
-        "media_path": "data/raw/images/upi_qr_dealer.png",
-        "extracted_upi_or_bank": "UPI: dark_supply@paytm | GPS: 28.4595, 77.0266",
-        "text_content": "Fresh Molly and LSD stamps available in South Delhi. Send advance token on dark_supply@paytm to get dead drop GPS pin: 28.4595, 77.0266",
-        "message_text": "Fresh Molly and LSD stamps available in South Delhi. Send advance token on dark_supply@paytm to get dead drop GPS pin: 28.4595, 77.0266",
-        "is_fallback_mock": false,
-        "is_analyst": false,
-        "flag_reasons": [
-            "Narcotics: [molly, lsd, stamps]",
-            "Solicitation: [drop, dead drop, gps pin, token, advance]",
-            "Financial/Location: [UPI: dark_supply@paytm, GPS: 28.4595, 77.0266]",
-            "Suspicious Media: [upi_qr_dealer.png]"
-        ],
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "fresh mdma and lsd stamps available in south delhi send upfront_payment token on dark supply digital_payment to get dead drop gps pin 28 4595 77 0266",
-            "detected_slangs": [
-                "advance",
-                "molly",
-                "paytm"
-            ],
-            "risk_score": 0.6,
-            "is_suspicious": true
-        },
-        "qr_scan": {
-            "qr_detected": true,
-            "payload_raw": "upi://pay?pa=dark_supply@paytm&pn=DarkSupplyNCR&am=4500&cu=INR&tn=Molly+LSD+Stamps",
-            "extracted_keywords": [
-                "lsd",
-                "molly",
-                "stamps"
-            ],
-            "status": "DRUG_DETECTED",
-            "confidence_score": 0.94,
-            "threat_indicators": [
-                "EXPLICIT_SUBSTANCE: LSD",
-                "EXPLICIT_SUBSTANCE: MOLLY",
-                "EXPLICIT_SUBSTANCE: STAMPS",
-                "PILL_INDICATOR: 'stamps'"
-            ],
-            "source_image": "data\\raw\\images\\upi_qr_dealer.png",
-            "crop_path": "D:\\drugshield\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_1487ea5a7e_20261024_120723_0.png",
-            "bbox": [
-                41,
-                41,
-                368,
-                368
-            ],
-            "engine_used": "fallback_pyzbar",
-            "evidence_id": "DS-QR-20261024120723-45364A",
-            "all_decoded_codes": [
-                {
-                    "payload": "upi://pay?pa=dark_supply@paytm&pn=DarkSupplyNCR&am=4500&cu=INR&tn=Molly+LSD+Stamps",
-                    "bbox": [
-                        41,
-                        41,
-                        368,
-                        368
-                    ],
-                    "crop_path": "D:\\drugshield\\DrugShield_AI\\data\\forensic_cache\\qr_crops\\qr_crop_1487ea5a7e_20261024_120723_0.png",
-                    "engine": "fallback_pyzbar"
-                }
-            ]
-        },
-        "high_risk": true,
-        "risk_score": 0.94,
-        "threat_status": "DRUG_DETECTED"
-    },
-    {
-        "platform": "whatsapp_simulation",
-        "timestamp": "2026-10-24T12:02:18.953Z",
-        "sender_id": "+91 98765 43210",
-        "chat_id": "919876543210@c.us",
-        "message_body": "weed 0.5 g available",
-        "has_media": false,
-        "media_path": null,
-        "extracted_upi_or_bank": "Substance: weed",
-        "text_content": "weed 0.5 g available",
-        "message_text": "weed 0.5 g available",
-        "is_fallback_mock": false,
-        "is_analyst": false,
-        "flag_reasons": [
-            "Narcotics: [weed]"
-        ],
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "weed 0 5 g available",
-            "detected_slangs": [],
-            "risk_score": 0.0,
-            "is_suspicious": false
-        },
-        "risk_score": 0.0,
-        "high_risk": false
-    },
-    {
-        "platform": "whatsapp_simulation",
-        "timestamp": "2026-10-24T11:38:52.306Z",
-        "sender_id": "+91 95554 33211",
-        "chat_id": "919555433211@c.us",
-        "message_body": "Full weekend menu attached with rates and stealth delivery options across Delhi-NCR. Check image below.",
-        "text_content": "Full weekend menu attached with rates and stealth delivery options across Delhi-NCR. Check image below.",
-        "message_text": "Full weekend menu attached with rates and stealth delivery options across Delhi-NCR. Check image below.",
-        "has_media": true,
-        "media_path": "data/raw/images/sample_menu.jpg",
-        "extracted_upi_or_bank": "Slang: rates, menu",
-        "extracted_vpa": "Slang: rates, menu",
-        "is_analyst": false,
-        "is_fallback_mock": false,
-        "source_file": "whatsapp_simulated_1792841932308.json",
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "full weekend menu attached with rates and stealth delivery options across delhi ncr check image below",
-            "detected_slangs": [],
-            "risk_score": 0.0,
-            "is_suspicious": false
+        "ocr_forensics": {
+            "performed": false,
+            "text_extracted": false
         },
         "qr_scan": {
             "qr_detected": false,
-            "payload_raw": null,
-            "extracted_keywords": [],
-            "status": "CLEAN",
-            "confidence_score": 0.0,
-            "threat_indicators": [],
-            "source_image": "data\\raw\\images\\sample_menu.jpg",
-            "crop_path": null,
-            "evidence_id": "DS-QR-20261024120723-4213EC"
+            "confidence_score": 0.0
         },
-        "risk_score": 0.0,
-        "high_risk": false
+        "processed": true
     },
     {
+        "id": "live_msg_1792906192060_7296",
         "platform": "whatsapp_simulation",
-        "timestamp": "2026-10-24T11:39:39.858Z",
-        "sender_id": "+91 91234 56789",
-        "chat_id": "919123456789@c.us",
-        "message_body": "any pics of item available",
-        "text_content": "any pics of item available",
-        "message_text": "any pics of item available",
+        "timestamp": "2026-10-25T05:29:52.057Z",
+        "sender_id": "+91 98765 43210",
+        "sender_username": null,
+        "chat_id": "chat_aryan",
+        "message_text": "Fresh stock MDMA crystals 1g. Transfer advance on dark_supply@paytm to lock dead drop.",
+        "message_body": "Fresh stock MDMA crystals 1g. Transfer advance on dark_supply@paytm to lock dead drop.",
+        "threat_score": 0.99,
+        "flagged_status": true,
+        "isFlagged": true,
         "has_media": false,
         "media_path": null,
-        "extracted_upi_or_bank": "None detected",
-        "extracted_vpa": "None detected",
-        "is_analyst": false,
-        "is_fallback_mock": false,
-        "source_file": "whatsapp_simulated_1792841979860.json",
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "any pics of item available",
-            "detected_slangs": [],
-            "risk_score": 0.0,
-            "is_suspicious": false
-        },
-        "risk_score": 0.0,
-        "high_risk": false
-    },
-    {
-        "platform": "whatsapp_simulation",
-        "timestamp": "2026-10-24T11:40:14.089Z",
-        "sender_id": "+91 99999 00000",
-        "chat_id": "919123456789@c.us",
-        "message_body": "pics of queen",
-        "text_content": "pics of queen",
-        "message_text": "pics of queen",
-        "has_media": false,
-        "media_path": null,
-        "extracted_upi_or_bank": "None detected",
-        "extracted_vpa": "None detected",
-        "is_analyst": true,
-        "is_fallback_mock": false,
-        "source_file": "whatsapp_simulated_1792842014092.json",
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "pics of queen",
-            "detected_slangs": [],
-            "risk_score": 0.0,
-            "is_suspicious": false
-        },
-        "risk_score": 0.0,
-        "high_risk": false
-    },
-    {
-        "platform": "whatsapp_simulation",
-        "timestamp": "2026-10-24T12:06:34.212Z",
-        "sender_id": "+91 99887 76655",
-        "chat_id": "919988776655@c.us",
-        "message_body": "coke packet at grounds",
-        "has_media": false,
-        "media_path": null,
-        "extracted_upi_or_bank": "Substance: coke",
-        "text_content": "coke packet at grounds",
-        "message_text": "coke packet at grounds",
-        "is_fallback_mock": false,
-        "is_analyst": false,
-        "flag_reasons": [
-            "Narcotics: [coke]",
-            "Solicitation: [packet]"
-        ],
-        "processed": true,
-        "nlp_analysis": {
-            "normalized_text": "coke drug_packet at grounds",
-            "detected_slangs": [
-                "packet"
+        "extracted_entities": {
+            "narcotics_detected": [
+                "advance",
+                "paytm",
+                "mdma"
             ],
-            "risk_score": 0.4,
-            "is_suspicious": true
+            "upi_ids": [
+                "dark_supply@paytm"
+            ],
+            "bank_accounts": [],
+            "ifsc_codes": [],
+            "phone_numbers": [],
+            "gps_coordinates": [],
+            "crypto_wallets": {
+                "btc": [],
+                "eth": [],
+                "xmr": []
+            }
         },
-        "risk_score": 0.4,
-        "high_risk": true
+        "nlp_analysis": {
+            "risk_score": 0.99,
+            "risk_level": "CRITICAL",
+            "solicitation_intent": true
+        },
+        "ocr_forensics": {
+            "performed": false,
+            "text_extracted": false
+        },
+        "qr_scan": {
+            "qr_detected": false,
+            "confidence_score": 0.0
+        },
+        "processed": true
     }
 ]

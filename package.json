@@ -1,16 +1,15 @@
 {
   "name": "drugshield-ai-osint",
   "version": "1.0.0",
-  "description": "DrugShield AI - OSINT Threat Intelligence System & Synthetic WhatsApp Simulation",
+  "description": "DrugShield AI - Decoupled OSINT Threat Intelligence System & Live Simulation Pipeline",
   "scripts": {
-    "start": "node simulator/server.js",
-    "dev": "node simulator/tunnel.js",
-    "share": "node simulator/tunnel.js",
-    "tunnel": "node simulator/tunnel.js",
-    "simulator": "node simulator/server.js",
-    "crawler": "python src/ingestion/whatsapp_fast.py",
-    "crawler:watch": "python src/ingestion/whatsapp_fast.py --watch",
-    "ingest:fast": "python src/ingestion/whatsapp_fast.py",
+    "start": "node whatsapp-simulation/server.js",
+    "start:whatsapp": "node whatsapp-simulation/server.js",
+    "start:telegram": "node telegram-simulation/server.js",
+    "crawler:whatsapp": "python src/ingestion/whatsapp_fast.py",
+    "crawler:telegram": "python src/ingestion/telegram_telegram.py",
+    "crawler:whatsapp:playwright": "python src/ingestion/whatsapp_fast.py --playwright",
+    "crawler:telegram:playwright": "python src/ingestion/telegram_telegram.py --playwright",
     "process": "python process_data.py",
     "pipeline": "python main.py"
   },
@@ -19,7 +18,8 @@
     "threat-intelligence",
     "drugshield",
     "whatsapp-simulator",
-    "synthetic-data"
+    "telegram-simulator",
+    "nlp-pipeline"
   ],
   "author": "DrugShield Team",
   "license": "ISC"
