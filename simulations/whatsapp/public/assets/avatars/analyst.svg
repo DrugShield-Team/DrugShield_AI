@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
+  <defs>
+    <linearGradient id="g-analyst" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#005c4b" />
+      <stop offset="100%" stop-color="#00a884" />
+    </linearGradient>
+  </defs>
+  <circle cx="40" cy="40" r="40" fill="url(#g-analyst)" />
+  <!-- Shield and eye -->
+  <path d="M40 18 L58 26 V42 C58 53 49 61 40 64 C31 61 22 53 22 42 V26 Z" fill="#ffffff" opacity="0.95" />
+  <circle cx="40" cy="41" r="7" fill="#005c4b" />
+  <circle cx="40" cy="41" r="3" fill="#ffffff" />
+</svg>

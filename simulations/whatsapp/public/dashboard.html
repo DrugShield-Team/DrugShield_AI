@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DrugShield AI - Threat Intelligence Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0e17;
+      --card-bg: rgba(18, 26, 43, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-hover: rgba(30, 41, 67, 0.95);
+      --accent-cyan: #00f2fe;
+      --accent-blue: #4facfe;
+      --danger-red: #ff3366;
+      --danger-glow: rgba(255, 51, 102, 0.35);
+      --warning-amber: #f59e0b;
+      --success-green: #10b981;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --font-ui: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-code: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(0, 242, 254, 0.04) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(255, 51, 102, 0.05) 0%, transparent 40%),
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation Bar */
+    header.command-header {
+      background: rgba(10, 14, 23, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--danger-red));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 20px var(--danger-glow);
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-title span.sub {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-family: var(--font-code);
+    }
+
+    .live-status-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 30px;
+      font-family: var(--font-code);
+      font-size: 12px;
+      color: var(--success-green);
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success-green);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    /* Layout Container */
+    .dashboard-layout {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 28px 32px 60px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* KPI Stats Bar */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+    }
+
+    .kpi-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--card-accent, var(--accent-cyan));
+    }
+
+    .kpi-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .kpi-value {
+      font-size: 32px;
+      font-weight: 800;
+      font-family: var(--font-code);
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .kpi-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Node Port Decoupling Banner */
+    .nodes-banner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .node-status-card {
+      background: rgba(18, 26, 43, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .node-info-block h4 {
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .node-info-block p {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-code);
+      margin-top: 4px;
+    }
+
+    .node-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-family: var(--font-code);
+      text-transform: uppercase;
+    }
+
+    .badge-wa { background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.4); }
+    .badge-tg { background: rgba(79, 172, 254, 0.15); color: var(--accent-blue); border: 1px solid rgba(79, 172, 254, 0.4); }
+
+    /* Feed Toolbar & Filter */
+    .feed-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px 20px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 8px;
+    }
+
+    .tab-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: rgba(0, 242, 254, 0.15);
+      border-color: var(--accent-cyan);
+      color: #fff;
+    }
+
+    .action-btn-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-action {
+      background: rgba(255, 51, 102, 0.15);
+      border: 1px solid var(--danger-red);
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-action:hover {
+      background: var(--danger-red);
+      box-shadow: 0 0 15px var(--danger-glow);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Live Intelligence Stream Container */
+    .stream-container {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .feed-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      position: relative;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .feed-card.flagged-threat {
+      border: 1px solid rgba(255, 51, 102, 0.6);
+      background: linear-gradient(180deg, rgba(255, 51, 102, 0.08) 0%, rgba(18, 26, 43, 0.85) 100%);
+      box-shadow: 0 0 25px rgba(255, 51, 102, 0.15);
+    }
+
+    .feed-card.new-arrival {
+      animation: flash-highlight 1.5s ease-out;
+    }
+
+    @keyframes flash-highlight {
+      0% { border-color: var(--accent-cyan); box-shadow: 0 0 30px rgba(0, 242, 254, 0.4); }
+      100% { }
+    }
+
+    .feed-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .feed-platform-tag {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .platform-badge {
+      font-size: 11px;
+      font-weight: 800;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-family: var(--font-code);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .sender-handle {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .msg-timestamp {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-code);
+    }
+
+    .threat-score-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-family: var(--font-code);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .threat-critical {
+      background: rgba(255, 51, 102, 0.2);
+      border: 1px solid var(--danger-red);
+      color: var(--danger-red);
+      box-shadow: 0 0 12px var(--danger-glow);
+    }
+
+    .threat-low {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--success-green);
+      color: var(--success-green);
+    }
+
+    .feed-card-body {
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 10px;
+      padding: 14px 18px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 15px;
+      line-height: 1.55;
+      color: #f1f5f9;
+      word-break: break-word;
+    }
+
+    .feed-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .extracted-entities-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .entity-tag {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: var(--font-code);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .entity-tag.upi { border-color: rgba(245, 158, 11, 0.5); color: #fbbf24; background: rgba(245, 158, 11, 0.1); }
+    .entity-tag.drug { border-color: rgba(255, 51, 102, 0.5); color: #ff6b8b; background: rgba(255, 51, 102, 0.1); }
+    .entity-tag.bank { border-color: rgba(79, 172, 254, 0.5); color: #60a5fa; background: rgba(79, 172, 254, 0.1); }
+    .entity-tag.gps { border-color: rgba(16, 185, 129, 0.5); color: #34d399; background: rgba(16, 185, 129, 0.1); }
+
+    .media-preview-btn {
+      color: var(--accent-cyan);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      background: var(--card-bg);
+      border: 1px dashed var(--card-border);
+      border-radius: 16px;
+    }
+
+    .empty-state h3 {
+      font-size: 18px;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    /* Modal for Media Viewing */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal-content-img {
+      max-width: 90vw;
+      max-height: 85vh;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    }
+  
+    .live-status-pill.offline { color: var(--danger-red); background: rgba(255, 51, 102, .12); border-color: rgba(255, 51, 102, .35); }
+    .network-panel { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 20px; }
+    .network-panel h2 { font-size: 16px; margin-bottom: 12px; }
+    #evidenceGraph svg { width: 100%; min-height: 220px; overflow: visible; }
+    .graph-edge { stroke: rgba(79, 172, 254, .38); stroke-width: 1.5; }
+    .graph-node { fill: #0b1724; stroke: var(--accent-cyan); stroke-width: 2; }
+    .graph-node.message { stroke: var(--accent-blue); } .graph-node.attachment { stroke: var(--warning-amber); } .graph-node.candidate_vpa { stroke: var(--danger-red); }
+    #evidenceGraph text { fill: var(--text-muted); font: 10px var(--font-code); }
+    .graph-empty, .graph-caption { color: var(--text-muted); font-size: 12px; } .graph-caption { margin-top: 6px; }
+    .case-actions, .attachment-links { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .case-actions details { flex: 1 1 100%; color: var(--accent-cyan); } .case-actions summary { cursor: pointer; }
+    .report-json { max-height: 320px; overflow: auto; margin-top: 8px; padding: 12px; border-radius: 8px; background: rgba(0,0,0,.3); color: var(--text-muted); white-space: pre-wrap; word-break: break-word; }
+    .review-button { min-height: 34px; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="command-header">
+    <div class="brand-group">
+      <div class="brand-icon">🛡️</div>
+      <div class="brand-title">
+        DRUGSHIELD AI
+        <span class="sub">SIMULATION EVIDENCE REVIEW</span>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <div class="live-status-pill" id="backendStatus"><div class="pulse-dot"></div>CHECKING ANALYSIS API</div>
+      <a href="/" class="btn-secondary" style="text-decoration: none; font-size: 12px;">← Return to Chat UI</a>
+    </div>
+  </header>
+
+  <div class="dashboard-layout">
+    
+    <!-- Backend and human review status -->
+    <div class="nodes-banner">
+      <div class="node-status-card">
+        <div class="node-info-block">
+          <h4>DrugShield Analysis API</h4><p id="apiNodeInfo">Checking backend health...</p>
+        </div>
+        <span class="node-badge badge-wa">PIPELINE</span>
+      </div>
+      <div class="node-status-card">
+        <div class="node-info-block">
+          <h4>Human Review Queue</h4><p id="reviewQueueInfo">Loading review cases...</p>
+        </div>
+        <span class="node-badge badge-tg">REVIEW</span>
+      </div>
+    </div>
+
+    <!-- KPI Metric Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card" style="--card-accent: var(--accent-cyan);">
+        <span class="kpi-title">Evidence Cases</span>
+        <div class="kpi-value" id="kpiTotalMsgs">0</div>
+        <span class="kpi-sub">Messages that triggered a review case</span>
+      </div>
+
+      <div class="kpi-card" style="--card-accent: var(--danger-red);">
+        <span class="kpi-title">Pending Human Review</span>
+        <div class="kpi-value" id="kpiFlaggedThreats" style="color: var(--danger-red);">0</div>
+        <span class="kpi-sub">Awaiting a human reviewer decision</span>
+      </div>
+
+      <div class="kpi-card" style="--card-accent: var(--warning-amber);">
+        <span class="kpi-title">Candidate UPI / VPA Values</span>
+        <div class="kpi-value" id="kpiEntitiesCount" style="color: var(--warning-amber);">0</div>
+        <span class="kpi-sub">Extracted candidates across evidence cases</span>
+      </div>
+
+      <div class="kpi-card" style="--card-accent: var(--accent-blue);">
+        <span class="kpi-title">Evidence Graph Nodes</span>
+        <div class="kpi-value" id="kpiDatasetSize">0</div>
+        <span class="kpi-sub">Fictional participants and linked evidence</span>
+      </div>
+    </div>
+
+    <section class="network-panel"><h2>Evidence Network</h2><div id="evidenceGraph"></div></section>
+
+    <!-- Feed Toolbar -->
+    <div class="feed-controls">
+      <div class="filter-tabs">
+        <button class="tab-btn active" data-filter="all">All Evidence Cases</button>
+        <button class="tab-btn" data-filter="instagram">Instagram</button>
+        <button class="tab-btn" data-filter="review">Needs Review</button>
+        <button class="tab-btn" data-filter="whatsapp">WhatsApp</button>
+        <button class="tab-btn" data-filter="telegram">Telegram</button>
+      </div>
+
+      <div class="action-btn-group">
+        <button class="btn-secondary" onclick="fetchRecentMessages()">Refresh Cases</button>
+      </div>
+    </div>
+
+    <!-- Live Stream List -->
+    <div class="stream-container" id="streamContainer">
+      <div class="empty-state" id="emptyState">
+        <h3>Loading evidence cases...</h3>
+        <p>Newly composed simulation messages that meet a review trigger appear here with their evidence report.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Media Preview Modal -->
+
+  <script src="/dashboard.js"></script>
+</body>
+</html>

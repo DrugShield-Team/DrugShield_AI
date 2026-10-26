@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
+  <defs>
+    <linearGradient id="g-s3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b45309" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+  </defs>
+  <circle cx="40" cy="40" r="40" fill="url(#g-s3)" />
+  <circle cx="40" cy="30" r="13" fill="#ffffff" opacity="0.9" />
+  <path d="M22 62 C24 49 31 46 40 46 C49 46 56 49 58 62 Z" fill="#ffffff" opacity="0.9" />
+  <!-- Neon Sunglasses -->
+  <rect x="29" y="27" width="9" height="5" rx="1.5" fill="#111827" />
+  <rect x="42" y="27" width="9" height="5" rx="1.5" fill="#111827" />
+  <line x1="38" y1="29" x2="42" y2="29" stroke="#111827" stroke-width="1.5" />
+</svg>
