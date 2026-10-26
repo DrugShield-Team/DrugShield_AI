@@ -1,0 +1,35 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: drugshield-api:local
+    env_file:
+      - .env
+    environment:
+      DRUGSHIELD_ENV: ${DRUGSHIELD_ENV:-development}
+      DRUGSHIELD_RUNTIME_DIR: /var/lib/drugshield
+      DRUGSHIELD_DATABASE_PATH: /var/lib/drugshield/drugshield.sqlite3
+      DRUGSHIELD_BACKUP_DIR: /var/lib/drugshield/backups
+      DRUGSHIELD_ALLOWED_HOSTS: ${DRUGSHIELD_ALLOWED_HOSTS:-localhost,127.0.0.1,api}
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - drugshield-runtime:/var/lib/drugshield
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ready', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  drugshield-runtime:

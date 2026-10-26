@@ -1,0 +1,322 @@
+{
+  "task": "visual_evidence_classification",
+  "trained_at_utc": "2026-10-25T18:22:55.241304+00:00",
+  "feature_extractor": "96px grayscale HOG with RGB color histograms",
+  "drug_model": {
+    "dataset_archive": "Drug detection.v1i.multiclass (1).zip",
+    "classes": [
+      "Charas",
+      "Cocaine",
+      "Flour",
+      "Ganja",
+      "Heroine",
+      "Salt"
+    ],
+    "drug_related_classes": [
+      "Charas",
+      "Cocaine",
+      "Ganja",
+      "Heroine"
+    ],
+    "lookalike_classes": [
+      "Flour",
+      "Salt"
+    ],
+    "counts": {
+      "train": {
+        "Cocaine": 31,
+        "Heroine": 34,
+        "Flour": 27,
+        "Charas": 36,
+        "Salt": 34,
+        "Ganja": 34
+      },
+      "valid": {
+        "Salt": 9,
+        "Flour": 12,
+        "Cocaine": 12,
+        "Ganja": 8,
+        "Charas": 9,
+        "Heroine": 8
+      },
+      "test": {
+        "Charas": 2,
+        "Flour": 7,
+        "Ganja": 6,
+        "Salt": 4,
+        "Heroine": 6,
+        "Cocaine": 4
+      }
+    },
+    "splits": {
+      "valid": {
+        "rows": 58,
+        "multiclass_accuracy": 0.25862068965517243,
+        "multiclass_report": {
+          "Charas": {
+            "precision": 0.4,
+            "recall": 0.4444444444444444,
+            "f1-score": 0.42105263157894735,
+            "support": 9.0
+          },
+          "Cocaine": {
+            "precision": 0.3333333333333333,
+            "recall": 0.25,
+            "f1-score": 0.2857142857142857,
+            "support": 12.0
+          },
+          "Flour": {
+            "precision": 0.2222222222222222,
+            "recall": 0.16666666666666666,
+            "f1-score": 0.19047619047619047,
+            "support": 12.0
+          },
+          "Ganja": {
+            "precision": 0.21428571428571427,
+            "recall": 0.375,
+            "f1-score": 0.2727272727272727,
+            "support": 8.0
+          },
+          "Heroine": {
+            "precision": 0.14285714285714285,
+            "recall": 0.125,
+            "f1-score": 0.13333333333333333,
+            "support": 8.0
+          },
+          "Salt": {
+            "precision": 0.2222222222222222,
+            "recall": 0.2222222222222222,
+            "f1-score": 0.2222222222222222,
+            "support": 9.0
+          },
+          "accuracy": 0.25862068965517243,
+          "macro avg": {
+            "precision": 0.2558201058201058,
+            "recall": 0.2638888888888889,
+            "f1-score": 0.2542543226753753,
+            "support": 58.0
+          },
+          "weighted avg": {
+            "precision": 0.2607553366174055,
+            "recall": 0.25862068965517243,
+            "f1-score": 0.25434903874105325,
+            "support": 58.0
+          }
+        },
+        "drug_related_binary": {
+          "precision": 0.6666666666666666,
+          "recall": 0.8648648648648649,
+          "f1": 0.7529411764705882,
+          "balanced_accuracy": 0.5514800514800515,
+          "confusion_matrix_labels_0_1": [
+            [
+              5,
+              16
+            ],
+            [
+              5,
+              32
+            ]
+          ]
+        }
+      },
+      "test": {
+        "rows": 29,
+        "multiclass_accuracy": 0.3448275862068966,
+        "multiclass_report": {
+          "Charas": {
+            "precision": 0.5,
+            "recall": 1.0,
+            "f1-score": 0.6666666666666666,
+            "support": 2.0
+          },
+          "Cocaine": {
+            "precision": 0.2,
+            "recall": 0.25,
+            "f1-score": 0.2222222222222222,
+            "support": 4.0
+          },
+          "Flour": {
+            "precision": 0.3333333333333333,
+            "recall": 0.14285714285714285,
+            "f1-score": 0.2,
+            "support": 7.0
+          },
+          "Ganja": {
+            "precision": 0.5,
+            "recall": 0.6666666666666666,
+            "f1-score": 0.5714285714285714,
+            "support": 6.0
+          },
+          "Heroine": {
+            "precision": 0.25,
+            "recall": 0.3333333333333333,
+            "f1-score": 0.2857142857142857,
+            "support": 6.0
+          },
+          "Salt": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 4.0
+          },
+          "accuracy": 0.3448275862068966,
+          "macro avg": {
+            "precision": 0.2972222222222222,
+            "recall": 0.3988095238095238,
+            "f1-score": 0.3243386243386243,
+            "support": 29.0
+          },
+          "weighted avg": {
+            "precision": 0.29770114942528736,
+            "recall": 0.3448275862068966,
+            "f1-score": 0.30224411603721946,
+            "support": 29.0
+          }
+        },
+        "drug_related_binary": {
+          "precision": 0.6666666666666666,
+          "recall": 1.0,
+          "f1": 0.8,
+          "balanced_accuracy": 0.5909090909090909,
+          "confusion_matrix_labels_0_1": [
+            [
+              2,
+              9
+            ],
+            [
+              0,
+              18
+            ]
+          ]
+        }
+      }
+    }
+  },
+  "pill_shape_models": {
+    "dataset_archive": "Pills Pills.v3i.multiclass.zip",
+    "classes": [
+      "Capsule",
+      "Tablet"
+    ],
+    "counts": {
+      "train": {
+        "Capsule": 1560,
+        "Tablet": 1547
+      },
+      "valid": {
+        "Capsule": 243,
+        "Tablet": 255
+      },
+      "test": {
+        "Capsule": 126,
+        "Tablet": 134
+      }
+    },
+    "multi_label_rows": {
+      "train": 1140,
+      "valid": 181,
+      "test": 99
+    },
+    "splits": {
+      "valid": {
+        "rows": 317,
+        "subset_accuracy": 0.5709779179810726,
+        "macro_f1": 0.8711985688729875,
+        "macro_precision": 0.7858094603597602,
+        "macro_recall": 0.9784313725490197,
+        "classification_report": {
+          "Capsule": {
+            "precision": 0.7689873417721519,
+            "recall": 1.0,
+            "f1-score": 0.8694096601073346,
+            "support": 243.0
+          },
+          "Tablet": {
+            "precision": 0.8026315789473685,
+            "recall": 0.9568627450980393,
+            "f1-score": 0.8729874776386404,
+            "support": 255.0
+          },
+          "micro avg": {
+            "precision": 0.785483870967742,
+            "recall": 0.9779116465863453,
+            "f1-score": 0.8711985688729875,
+            "support": 498.0
+          },
+          "macro avg": {
+            "precision": 0.7858094603597602,
+            "recall": 0.9784313725490197,
+            "f1-score": 0.8711985688729875,
+            "support": 498.0
+          },
+          "weighted avg": {
+            "precision": 0.7862148126148834,
+            "recall": 0.9779116465863453,
+            "f1-score": 0.8712416751083044,
+            "support": 498.0
+          },
+          "samples avg": {
+            "precision": 0.777602523659306,
+            "recall": 0.9700315457413249,
+            "f1-score": 0.840168243953733,
+            "support": 498.0
+          }
+        }
+      },
+      "test": {
+        "rows": 161,
+        "subset_accuracy": 0.6273291925465838,
+        "macro_f1": 0.8861734756471599,
+        "macro_precision": 0.8142798013245033,
+        "macro_recall": 0.9738805970149254,
+        "classification_report": {
+          "Capsule": {
+            "precision": 0.7875,
+            "recall": 1.0,
+            "f1-score": 0.8811188811188811,
+            "support": 126.0
+          },
+          "Tablet": {
+            "precision": 0.8410596026490066,
+            "recall": 0.9477611940298507,
+            "f1-score": 0.8912280701754386,
+            "support": 134.0
+          },
+          "micro avg": {
+            "precision": 0.8135048231511254,
+            "recall": 0.9730769230769231,
+            "f1-score": 0.8861646234676007,
+            "support": 260.0
+          },
+          "macro avg": {
+            "precision": 0.8142798013245033,
+            "recall": 0.9738805970149254,
+            "f1-score": 0.8861734756471599,
+            "support": 260.0
+          },
+          "weighted avg": {
+            "precision": 0.8151037952114111,
+            "recall": 0.9730769230769231,
+            "f1-score": 0.8863290016326454,
+            "support": 260.0
+          },
+          "samples avg": {
+            "precision": 0.8043478260869565,
+            "recall": 0.9627329192546584,
+            "f1-score": 0.8550724637681159,
+            "support": 260.0
+          }
+        }
+      }
+    }
+  },
+  "limitations": [
+    "The drug image export is very small and supports prototype evaluation only.",
+    "Drug-related output is limited to the four labeled substance classes and two lookalikes.",
+    "Capsule and Tablet are object-shape labels, not illicitness or suspiciousness labels.",
+    "Pills dataset contains multi-label rows; predictions are auxiliary object evidence only.",
+    "No OCR text-recognition training data is present in either archive.",
+    "Image predictions require review and must not be treated as findings about a person."
+  ]
+}

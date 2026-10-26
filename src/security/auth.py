@@ -1,0 +1,139 @@
+"""Configured-user authentication and role checks for the API."""
+from __future__ import annotations
+
+import base64
+import hashlib
+import hmac
+import json
+import secrets
+import time
+from dataclasses import dataclass
+from typing import Dict
+
+from fastapi import Depends, HTTPException, Request, status
+from config.settings import (
+    AUTH_SECRET, AUTH_USERS_JSON, SESSION_TTL_SECONDS, APP_ENV,
+    CORS_ORIGINS, ALLOWED_HOSTS, SESSION_COOKIE_NAME,
+)
+
+ITERATIONS = 310_000
+VALID_ROLES = {"simulator", "reviewer", "admin"}
+_attempts: Dict[str, list[float]] = {}
+
+@dataclass(frozen=True)
+class Principal:
+    username: str
+    roles: frozenset[str]
+
+def configured_users() -> dict[str, dict]:
+    try:
+        users = json.loads(AUTH_USERS_JSON)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("DRUGSHIELD_USERS_JSON must be valid JSON") from exc
+    if not isinstance(users, list):
+        raise RuntimeError("DRUGSHIELD_USERS_JSON must be a JSON list")
+    result = {}
+    for user in users:
+        if not isinstance(user, dict) or not user.get("username") or not user.get("password_hash"):
+            raise RuntimeError("Each user needs username and password_hash")
+        roles = user.get("roles")
+        if not isinstance(roles, list) or not roles or not set(roles) <= VALID_ROLES:
+            raise RuntimeError("Roles must be simulator, reviewer, or admin")
+        result[str(user["username"])] = user
+    return result
+
+def validate_configuration() -> None:
+    if len(AUTH_SECRET.encode("utf-8")) < 32 or AUTH_SECRET.startswith(("SET_ME", "REPLACE_", "CHANGE_ME")):
+        raise RuntimeError("DRUGSHIELD_AUTH_SECRET must contain at least 32 characters")
+    if not configured_users():
+        raise RuntimeError("Configure users in DRUGSHIELD_USERS_JSON")
+    if not 60 <= SESSION_TTL_SECONDS <= 86400:
+        raise RuntimeError("Session lifetime must be from 60 to 86400 seconds")
+    if not ALLOWED_HOSTS or "*" in ALLOWED_HOSTS:
+        raise RuntimeError("Configure explicit DRUGSHIELD_ALLOWED_HOSTS; wildcards are not allowed")
+    if not CORS_ORIGINS or "*" in CORS_ORIGINS:
+        raise RuntimeError("Configure exact DRUGSHIELD_CORS_ORIGINS; wildcards are not allowed")
+    if APP_ENV == "production" and any(not origin.startswith("https://") for origin in CORS_ORIGINS):
+        raise RuntimeError("Production browser origins must use HTTPS")
+    if APP_ENV not in {"development", "test", "staging", "production"}:
+        raise RuntimeError("DRUGSHIELD_ENV must be development, test, staging, or production")
+    from config.settings import RETENTION_DAYS, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS_PER_MESSAGE, MAX_TOTAL_ATTACHMENT_BYTES
+    if RETENTION_DAYS < 1 or min(MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS_PER_MESSAGE, MAX_TOTAL_ATTACHMENT_BYTES) < 1:
+        raise RuntimeError("Retention and attachment limits must be positive")
+    from config.settings import MAX_REQUEST_BYTES
+    if MAX_REQUEST_BYTES < 1024:
+        raise RuntimeError("DRUGSHIELD_MAX_REQUEST_BYTES must be at least 1024")
+
+def hash_password(password: str) -> str:
+    if len(password) < 12:
+        raise ValueError("Password must be at least 12 characters")
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, ITERATIONS)
+    return "pbkdf2_sha256$" + str(ITERATIONS) + "$" + salt.hex() + "$" + digest.hex()
+
+def verify_password(password: str, encoded: str) -> bool:
+    try:
+        scheme, rounds, salt_hex, expected = encoded.split("$", 3)
+        if scheme != "pbkdf2_sha256" or int(rounds) < 100_000:
+            return False
+        actual = hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt_hex), int(rounds)).hex()
+        return hmac.compare_digest(actual, expected)
+    except (ValueError, TypeError):
+        return False
+
+def check_login(username: str, password: str, remote: str) -> Principal:
+    now = time.monotonic()
+    if len(_attempts) > 10_000:
+        for address in list(_attempts):
+            _attempts[address] = [when for when in _attempts[address] if now - when < 300]
+            if not _attempts[address]:
+                _attempts.pop(address, None)
+    attempts = [when for when in _attempts.get(remote, []) if now - when < 300]
+    if len(attempts) >= 10:
+        raise HTTPException(429, "Too many login attempts; wait five minutes")
+    user = configured_users().get(username)
+    if not user or not verify_password(password, user["password_hash"]):
+        attempts.append(now)
+        _attempts[remote] = attempts
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid username or password")
+    _attempts.pop(remote, None)
+    return Principal(username, frozenset(user["roles"]))
+
+def _b64(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+def issue_token(principal: Principal) -> str:
+    payload = {"sub": principal.username, "roles": sorted(principal.roles), "exp": int(time.time()) + SESSION_TTL_SECONDS}
+    body = _b64(json.dumps(payload, separators=(",", ":")).encode())
+    signature = _b64(hmac.new(AUTH_SECRET.encode(), body.encode(), hashlib.sha256).digest())
+    return body + "." + signature
+
+def _principal_from_token(token: str) -> Principal:
+    try:
+        body, signature = token.split(".", 1)
+        expected = _b64(hmac.new(AUTH_SECRET.encode(), body.encode(), hashlib.sha256).digest())
+        if not hmac.compare_digest(signature, expected):
+            raise ValueError("Invalid signature")
+        payload = json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)))
+        if int(payload["exp"]) < int(time.time()):
+            raise ValueError("Expired token")
+        user = configured_users().get(payload["sub"])
+        if not user or sorted(user["roles"]) != sorted(payload["roles"]):
+            raise ValueError("Revoked user")
+        return Principal(payload["sub"], frozenset(user["roles"]))
+    except Exception as exc:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Authentication required") from exc
+
+def get_current_user(request: Request) -> Principal:
+    authorization = request.headers.get("Authorization", "")
+    token = authorization[7:] if authorization.lower().startswith("bearer ") else request.cookies.get(SESSION_COOKIE_NAME, "")
+    if not token:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Authentication required", headers={"WWW-Authenticate": "Bearer"})
+    return _principal_from_token(token)
+
+def require_roles(*roles: str):
+    def dependency(principal: Principal = Depends(get_current_user)) -> Principal:
+        if not principal.roles.intersection(roles):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient role")
+        return principal
+    return dependency

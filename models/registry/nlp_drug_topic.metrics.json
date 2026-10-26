@@ -1,0 +1,116 @@
+{
+  "task": "full_message_drug_topic_classification",
+  "label_definition": "1=drug-related topic; 0=not labeled drug-related",
+  "source_dataset": "cardiffnlp/x_sensitive",
+  "class_counts": {
+    "train": {
+      "0": 4817,
+      "1": 183
+    },
+    "validation": {
+      "0": 968,
+      "1": 32
+    },
+    "test": {
+      "0": 1901,
+      "1": 99
+    }
+  },
+  "splits": {
+    "validation": {
+      "rows": 1000,
+      "accuracy": 0.97,
+      "balanced_accuracy": 0.6672262396694215,
+      "drug_related_precision": 0.55,
+      "drug_related_recall": 0.34375,
+      "drug_related_f1": 0.4230769230769231,
+      "confusion_matrix_labels_0_1": [
+        [
+          959,
+          9
+        ],
+        [
+          21,
+          11
+        ]
+      ],
+      "classification_report": {
+        "not_drug_related": {
+          "precision": 0.9785714285714285,
+          "recall": 0.9907024793388429,
+          "f1-score": 0.9845995893223819,
+          "support": 968.0
+        },
+        "drug_related": {
+          "precision": 0.55,
+          "recall": 0.34375,
+          "f1-score": 0.4230769230769231,
+          "support": 32.0
+        },
+        "accuracy": 0.97,
+        "macro avg": {
+          "precision": 0.7642857142857142,
+          "recall": 0.6672262396694215,
+          "f1-score": 0.7038382561996525,
+          "support": 1000.0
+        },
+        "weighted avg": {
+          "precision": 0.9648571428571429,
+          "recall": 0.97,
+          "f1-score": 0.9666308640025272,
+          "support": 1000.0
+        }
+      }
+    },
+    "test": {
+      "rows": 2000,
+      "accuracy": 0.9475,
+      "balanced_accuracy": 0.6324714796571714,
+      "drug_related_precision": 0.45161290322580644,
+      "drug_related_recall": 0.2828282828282828,
+      "drug_related_f1": 0.34782608695652173,
+      "confusion_matrix_labels_0_1": [
+        [
+          1867,
+          34
+        ],
+        [
+          71,
+          28
+        ]
+      ],
+      "classification_report": {
+        "not_drug_related": {
+          "precision": 0.9633642930856553,
+          "recall": 0.98211467648606,
+          "f1-score": 0.9726491273769211,
+          "support": 1901.0
+        },
+        "drug_related": {
+          "precision": 0.45161290322580644,
+          "recall": 0.2828282828282828,
+          "f1-score": 0.34782608695652173,
+          "support": 99.0
+        },
+        "accuracy": 0.9475,
+        "macro avg": {
+          "precision": 0.7074885981557308,
+          "recall": 0.6324714796571714,
+          "f1-score": 0.6602376071667214,
+          "support": 2000.0
+        },
+        "weighted avg": {
+          "precision": 0.9380325992875927,
+          "recall": 0.9475,
+          "f1-score": 0.9417203868761115,
+          "support": 2000.0
+        }
+      }
+    }
+  },
+  "limitations": [
+    "The source labels drug-related topic, not suspicious dealing or trafficking.",
+    "English social-media source; performance on Hinglish and simulation chat must be evaluated separately.",
+    "A prediction is evidence for human review, not a finding about a person."
+  ]
+}

@@ -1,21 +1,21 @@
 # process_data.py
-"""
-DrugShield AI - Unified Data Processing Pipeline
-================================================
-Processes ingested raw records, executes Hinglish NLP slang analysis,
-QR & OCR forensics, financial entity extraction, and updates processed_data.json.
-"""
-
 import json
 import logging
 from pathlib import Path
-from src.ai_pipeline.threat_pipeline import evaluate_live_message_threat
+from src.ai_pipeline.message_analyzer import analyze_message
+from src.ai_pipeline.nlp_classifier import HinglishSlangDetector
 
 logger = logging.getLogger("DrugShield.ProcessData")
 
 
 def process_raw_data():
+    """
+    Unified Data Processing Pipeline:
+    Enriches ingested records with text analysis and QR/VPA evidence extraction.
+    """
     raw_file = Path("data/raw/ingested_raw_data.json")
+    raw_dir = Path("data/raw")
+    images_dir = raw_dir / "images"
     processed_dir = Path("data/processed")
     processed_dir.mkdir(parents=True, exist_ok=True)
 
@@ -27,28 +27,64 @@ def process_raw_data():
     try:
         with open(raw_file, "r", encoding="utf-8") as f:
             data = json.load(f)
-            if not isinstance(data, list):
-                data = [data] if isinstance(data, dict) else []
     except Exception as e:
         print(f"Error reading {raw_file}: {e}")
         data = []
 
-    print(f"Executing active threat evaluation on {len(data)} raw record(s)...")
-    processed_records = []
+    detector = HinglishSlangDetector()
+    print("Executing per-message NLP, QR decoding, and VPA candidate extraction...")
+
     for item in data:
-        if isinstance(item, dict):
-            enriched = evaluate_live_message_threat(item)
-            enriched["processed"] = True
-            processed_records.append(enriched)
+        item["processed"] = True
+
+        # Resolve the message's optional image attachment before per-message
+        # analysis. The analyzer handles text, QR payloads, and VPA candidates.
+        text_content = item.get("text_content") or item.get("text") or item.get("message_text") or item.get("message") or ""
+        media_path = item.get("media_path")
+        resolved_img = None
+        if media_path:
+            candidate_paths = [
+                Path(media_path),
+                raw_dir / Path(media_path).name,
+                images_dir / Path(media_path).name,
+            ]
+            resolved_img = next((p for p in candidate_paths if p.is_file()), None)
+
+        result = analyze_message(
+            text_content,
+            [resolved_img] if resolved_img else [],
+            text_detector=detector,
+        )
+        analysis = result["text_analysis"]
+        item["nlp_analysis"] = {
+            "normalized_text": analysis["normalized_text"],
+            "detected_slangs": analysis["detected_slangs"],
+            "risk_score": analysis["risk_score"],
+            "is_suspicious": analysis["is_suspicious"],
+        }
+        item["qr_scans"] = result["qr_scans"]
+        if result["qr_scans"]:
+            # Retain the old singular field for existing report consumers.
+            item["qr_scan"] = result["qr_scans"][0]
+        item["vpa_candidates"] = result["vpa_candidates"]
+
+        # QR payloads and VPA candidates are evidence only. They do not set
+        # message risk by themselves; the current threshold uses text analysis.
+        nlp_risk = analysis["risk_score"]
+        current_risk = item.get("risk_score", 0.0)
+        item["risk_score"] = round(max(current_risk, nlp_risk), 2)
+        if "high_risk" not in item:
+            item["high_risk"] = item["risk_score"] > 0.40 or analysis["is_suspicious"]
 
     output_file = processed_dir / "processed_data.json"
     with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(processed_records, f, indent=4, ensure_ascii=False)
+        json.dump(data, f, indent=4, ensure_ascii=False)
 
     print(f"Data successfully processed and saved to: {output_file}")
-    return processed_records
+    return data
 
 
+# Pipeline alias for compatibility
 def process_ingested_messages():
     return process_raw_data()
 

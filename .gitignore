@@ -8,15 +8,19 @@ ENV/
 .idea/
 *.log
 *.session
+*.db
 .env
 .env.*
 !.env.example
 *.zip
-*.db
+credentials.json
+**/node_modules/
+data/runtime/
+/data/backups/
 
-# Node dependencies
-node_modules/
-npm-debug.log*
+# Keep downloaded/training corpora local; retain only the intake instructions.
+/data/training/*
+!/data/training/README.md
 
 # Heavy training datasets & base downloaded weights
 src/ai_pipeline/New-Drugs-2/
