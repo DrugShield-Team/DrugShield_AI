@@ -39,7 +39,18 @@ const viteEnvironment = (import.meta as ImportMeta & {
 }).env;
 const ANALYSIS_API = viteEnvironment?.VITE_DRUGSHIELD_API_URL ?? 'http://127.0.0.1:8000';
 
-export type AnalysisSubmissionResult = { review_required: boolean; case_id: string | null };
+export type AnalysisSubmissionResult = {
+  review_required: boolean;
+  case_id: string | null;
+  bot_response?: string | null;
+  honeypot_link?: string | null;
+  smart_bot?: {
+    dispatched_message?: string;
+    invoice_url?: string;
+    tracking_token?: string;
+    turn_count?: number;
+  } | null;
+};
 
 export async function submitMessageForAnalysis(input: {
   conversation: Conversation;
@@ -50,14 +61,15 @@ export async function submitMessageForAnalysis(input: {
   const [senderName, recipientName] = input.sender === 0
     ? [input.conversation.people[0], input.conversation.people[1]]
     : [input.conversation.people[1], input.conversation.people[0]];
+  const isAnalyst = input.sender === 1;
   const event = {
     schema_version: 1,
     channel: 'instagram',
     message_id: crypto.randomUUID(),
     conversation_id: input.conversation.id,
-    sender_id: `${input.conversation.id}:participant:${input.sender}`,
+    sender_id: isAnalyst ? `analyst:${input.conversation.id}` : `participant:${input.conversation.id}`,
     sender_display_name: senderName,
-    recipient_id: `${input.conversation.id}:participant:${input.sender === 0 ? 1 : 0}`,
+    recipient_id: isAnalyst ? `participant:${input.conversation.id}` : `analyst:${input.conversation.id}`,
     recipient_display_name: recipientName,
     timestamp: new Date().toISOString(),
     text: input.text.trim(),

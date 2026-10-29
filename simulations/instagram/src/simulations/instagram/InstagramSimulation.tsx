@@ -85,6 +85,28 @@ function formatFileSize(bytes: number) {
   return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function renderMessageText(text: string) {
+  if (!text) return '';
+  const urlPattern = /(https?:\/\/[^\s<]+)/g;
+  const parts = text.split(urlPattern);
+  return parts.map((part, i) => {
+    if (part.match(urlPattern)) {
+      return (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: '#53bdeb', textDecoration: 'underline', wordBreak: 'break-all', fontWeight: 500 }}
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+}
+
 export default function InstagramSimulation() {
   const [theme, setTheme] = useState<'light' | 'dark'>(readTheme);
   const [conversations, setConversations] = useState<Conversation[]>(loadConversations);
@@ -161,11 +183,13 @@ export default function InstagramSimulation() {
   async function sendMessage(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     if (!active || (!draft.trim() && pendingAttachments.length === 0)) return;
+    const currentSpeaker = speaker;
+    const currentActiveId = active.id;
     let result: AnalysisSubmissionResult;
     try {
       result = await submitMessageForAnalysis({
         conversation: active,
-        sender: speaker,
+        sender: currentSpeaker,
         text: draft,
         attachments: pendingAttachments,
       });
@@ -174,7 +198,7 @@ export default function InstagramSimulation() {
       return;
     }
     try {
-      const messages = await sendLocalMessage({ conversationId: active.id, sender: speaker, text: draft, attachments: pendingAttachments });
+      const messages = await sendLocalMessage({ conversationId: active.id, sender: currentSpeaker, text: draft, attachments: pendingAttachments });
       setConversations((current) => appendMessagesToConversation(current, active.id, messages));
       setAttachmentSources((current) => ({ ...current, ...Object.fromEntries(pendingAttachments.map((attachment) => [attachment.id, attachment.previewUrl])) }));
       if (result.review_required) setNotice(`Message analyzed and sent for human review${result.case_id ? ` (case ${result.case_id.slice(0, 8)})` : ''}.`);
@@ -185,6 +209,31 @@ export default function InstagramSimulation() {
     }
     setDraft('');
     setPendingAttachments([]);
+
+    // 1. Auto-shift sender:
+    // If dealer (0) sent a message, automatically toggle to Undercover Buyer (1) for next turn
+    // If buyer (1) sent a message, automatically toggle back to dealer (0)
+    const nextSpeaker: 0 | 1 = currentSpeaker === 0 ? 1 : 0;
+    setSpeaker(nextSpeaker);
+
+    // 2. Check if Smart Buyer Bot triggered an automated honeypot or follow-up response
+    const botText = result?.bot_response || result?.smart_bot?.dispatched_message;
+    if (botText && currentSpeaker === 0) {
+      setTimeout(() => {
+        const botMessage: Message = {
+          id: `bot-${Date.now()}`,
+          sender: 1, // Undercover Buyer -> renders on the RIGHT!
+          text: botText,
+          time: Date.now(),
+          origin: 'user',
+        };
+        setConversations((current) => appendMessagesToConversation(current, currentActiveId, [botMessage]));
+
+        // When buyer bot sends its response, auto-shift composer back to dealer (0) for their turn
+        setSpeaker(0);
+        setNotice('Smart Buyer Bot responded with payment tracking link.');
+      }, 700);
+    }
   }
 
   function handleComposerKey(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -343,14 +392,14 @@ export default function InstagramSimulation() {
                     : attachment?.kind === 'document' ? attachmentUrl
                       ? <div className={`message-bubble message-bubble--attachment ${message.sender === 1 ? 'message-bubble--sent' : ''}`} title={`${active.people[message.sender]} · ${formatTime(message.time)}`}><a className="message-document" href={attachmentUrl} download={attachment.name}><span className="document-icon"><Icon name="attachment" size={20} /></span><span className="document-copy"><strong>{attachment.name}</strong><small>{formatFileSize(attachment.sizeBytes)} · {attachment.mimeType}</small></span></a></div>
                       : <div className="image-loading" role="status">Loading {attachment.name}…</div>
-                      : <div className={`message-bubble ${message.sender === 1 ? 'message-bubble--sent' : ''}`} title={`${active.people[message.sender]} · ${formatTime(message.time)}`}>{message.text}</div>}
+                      : <div className={`message-bubble ${message.sender === 1 ? 'message-bubble--sent' : ''}`} title={`${active.people[message.sender]} · ${formatTime(message.time)}`}>{renderMessageText(message.text)}</div>}
                 {message.sender === 1 && (grouped ? <span className="message-spacer" aria-hidden="true" /> : <Avatar name={active.people[1]} size="small" />)}
               </div>;
             })}
             <div ref={messageEnd} />
           </div>
           <div className="composer-wrap">
-            <div className="speaker-row"><label htmlFor="speaker-select">Sending as</label><select id="speaker-select" value={speaker} onChange={(event) => setSpeaker(Number(event.target.value) as 0 | 1)}><option value={0}>{active.people[0]}</option><option value={1}>{active.people[1]}</option></select><span>· Messages stay in this browser</span></div>
+            <div className="speaker-row"><label htmlFor="speaker-select">Sending as</label><select id="speaker-select" value={speaker} onChange={(event) => setSpeaker(Number(event.target.value) as 0 | 1)}><option value={0}>{active.people[0]} (Target/Dealer)</option><option value={1}>{active.people[1] === 'You' ? 'Undercover Buyer (You)' : `${active.people[1]} (Undercover Buyer)`}</option></select><span>· Auto-shifts turn after each message</span></div>
             {emojiPickerOpen && <div className="emoji-picker-popover"><EmojiPicker className="emoji-picker-widget" width="100%" height={390} colorScheme={theme} previewConfig={{ showPreview: false }} onEmojiClick={({ emoji }) => addEmoji(emoji)} /></div>}
             {pendingAttachments.length > 0 && <div className="attachment-previews" aria-label="Attachments ready to send">{pendingAttachments.map((attachment) => <div className={`attachment-preview attachment-preview--${attachment.kind}`} key={attachment.id}><div className="attachment-preview-media">{attachment.kind === 'image' ? <img src={attachment.previewUrl} alt={`Preview of ${attachment.name}`} /> : <><Icon name={attachment.kind === 'audio' ? 'mic' : 'attachment'} size={22} /><small>{attachment.kind === 'audio' ? 'Audio' : 'Document'}</small></>}</div><span title={attachment.name}>{attachment.name}</span><button type="button" aria-label={`Remove ${attachment.name}`} onClick={() => removePendingAttachment(attachment.id)}><Icon name="close" size={15} /></button></div>)}</div>}
             <input ref={imageInput} className="sr-only" type="file" accept="image/*" multiple aria-label="Choose images from your device" onChange={(event) => handleAttachmentSelection(event, 'images')} />

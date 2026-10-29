@@ -1,0 +1,180 @@
+{
+  "docket_id": "DOCKET-B6E8DACA63DB",
+  "classification": "CONFIDENTIAL // LAW ENFORCEMENT SENSITIVE",
+  "jurisdiction": "Central Narcotics Control Bureau & Cyber Cell Command",
+  "generated_at": "2026-10-29T16:23:33.895731+00:00",
+  "metadata": {
+    "tracking_token": "inv_test_dispatch_01",
+    "target_entity_id": "919988776655@c.us",
+    "target_display_name": "Vikram Malhotra",
+    "channel": "WHATSAPP",
+    "case_status": "ESCALATED_DISPATCH_INITIATED",
+    "threat_flag_count": 0,
+    "highest_threat_score": 0.0
+  },
+  "chat_evidence": {
+    "total_messages_recorded": 13,
+    "threat_escalation_threshold_met": true,
+    "transcript": [
+      {
+        "message_id": "fd4a9856-f79e-42df-8ff0-c61b214856af",
+        "timestamp": "2026-10-29T14:19:06.645000Z",
+        "role": "SUSPECT_VENDOR",
+        "sender_display_name": "Vikram Malhotra",
+        "message_text": "2gm mcat available",
+        "risk_score": 0.0,
+        "narcotics_detected": [],
+        "is_flagged": false
+      },
+      {
+        "message_id": "88e0f45d-494b-4b04-92e4-d87b140a5df1",
+        "timestamp": "2026-10-29T14:19:01.529000Z",
+        "role": "SUSPECT_VENDOR",
+        "sender_display_name": "Vikram Malhotra",
+        "message_text": "2gm mcat available",
+        "risk_score": 0.0,
+        "narcotics_detected": [],
+        "is_flagged": false
+      },
+      {
+        "message_id": "39a240f3-ed9d-4616-a6af-148c0e57f5de",
+        "timestamp": "2026-10-29T14:19:02.595000Z",
+        "role": "SUSPECT_VENDOR",
+        "sender_display_name": "Vikram Malhotra",
+        "message_text": "2gm mcat available",
+        "risk_score": 0.0,
+        "narcotics_detected": [],
+        "is_flagged": false
+      },
+      {
+        "message_id": "a5affb60-d38c-4942-afd4-855fb6397a0d",
+        "timestamp": "2026-10-29T14:18:58.833000Z",
+        "role": "SUSPECT_VENDOR",
+        "sender_display_name": "Vikram Malhotra",
+        "message_text": "2gm mcat available",
+        "risk_score": 0.0,
+        "narcotics_detected": [],
+        "is_flagged": false
+      },
+      {
+        "message_id": "898b62dc-e5fe-430f-8c96-b3d4e19ba9fb",
+        "timestamp": "2026-10-29T14:19:23.206000Z",
+        "role": "SUSPECT_VENDOR",
+        "sender_display_name": "Vikram Malhotra",
+        "message_text": "2 mg m-cat available",
+        "risk_score": 0.0,
+        "narcotics_detected": [],
+        "is_flagged": false
+      },
+      {
+        "message_id": "e7e2feaa-269c-4f84-860d-5b0f70ca0c95",
+        "timestamp": "2026-10-29T14:20:57.227000Z",
+        "role": "SUSPECT_VENDOR",
+        "sender_display_name": "Vikram Malhotra",
+        "message_text": "5 g coke",
+        "risk_score": 0.0,
+        "narcotics_detected": [],
+        "is_flagged": false
+      },
+      {
+        "message_id": "7db8a340-4322-482e-b2dd-389114fb44e3",
+        "timestamp": "2026-10-29T14:21:00.696000Z",
+        "role": "SUSPECT_VENDOR",
+        "sender_display_name": "Vikram Malhotra",
+        "message_text": "hii",
+        "risk_score": 0.0,
+        "narcotics_detected": [],
+        "is_flagged": false
+      },
+      {
+        "message_id": "937e7943-d892-4813-97e3-8a1290a34b11",
+        "timestamp": "2026-10-29T14:21:19.480000Z",
+        "role": "SUSPECT_VENDOR",
+        "sender_display_name": "Vikram Malhotra",
+        "message_text": "do u want more details",
+        "risk_score": 0.0,
+        "narcotics_detected": [],
+        "is_flagged": false
+      },
+      {
+        "message_id": "25c5791d-830f-480d-936a-6c93372ccb92",
+        "timestamp": "2026-10-29T14:21:54.357000Z",
+        "role": "SUSPECT_VENDOR",
+        "sender_display_name": "Vikram Malhotra",
+        "message_text": "5 g chitta",
+        "risk_score": 0.0,
+        "narcotics_detected": [],
+        "is_flagged": false
+      },
+      {
+        "message_id": "ff04c412-d0d2-47af-85d7-744578ccf4c0",
+        "timestamp": "2026-10-29T14:21:59.921000Z",
+        "role": "SUSPECT_VENDOR",
+        "sender_display_name": "Vikram Malhotra",
+        "message_text": "lsd",
+        "risk_score": 0.0,
+        "narcotics_detected": [],
+        "is_flagged": false
+      },
+      {
+        "message_id": "de34d263-a9d4-4c6b-87d2-194d5b318fb4",
+        "timestamp": "2026-10-29T14:54:06.730000Z",
+        "role": "SUSPECT_VENDOR",
+        "sender_display_name": "Vikram Malhotra",
+        "message_text": "but did not recieve i t",
+        "risk_score": 0.0,
+        "narcotics_detected": [],
+        "is_flagged": false
+      },
+      {
+        "message_id": "967f73e4-aaa6-4788-97b4-5a3c2f791e76",
+        "timestamp": "2026-10-29T16:14:54.986000Z",
+        "role": "SUSPECT_VENDOR",
+        "sender_display_name": "Vikram Malhotra",
+        "message_text": "",
+        "risk_score": 0.0,
+        "narcotics_detected": [],
+        "is_flagged": false
+      },
+      {
+        "message_id": "968f66f6-a496-4ba6-a342-f649cb1ee190",
+        "timestamp": "2026-10-29T16:14:57.001000Z",
+        "role": "SUSPECT_VENDOR",
+        "sender_display_name": "Vikram Malhotra",
+        "message_text": "",
+        "risk_score": 0.0,
+        "narcotics_detected": [],
+        "is_flagged": false
+      }
+    ]
+  },
+  "osint_telemetry": {
+    "captured": true,
+    "hit_timestamp": "2026-10-29 15:40:18",
+    "visitor_ip": "127.0.0.1",
+    "country": "India",
+    "region": "Delhi",
+    "city": "New Delhi",
+    "latitude": 28.6139,
+    "longitude": 77.209,
+    "isp": "Simulated Broadband Local",
+    "device_fingerprint_sha256": "e554e82a05936675a49088db633651be2c95230581f5211df5fc43374a8cf6dc",
+    "user_agent": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-IN) WindowsPowerShell/5.1.26100.9711",
+    "heuristics": {
+      "os": "Windows",
+      "browser": "Unknown Browser",
+      "device_type": "Desktop"
+    }
+  },
+  "geospatial_dispatch": {
+    "dispatch_initiated": true,
+    "dispatch_timestamp": "2026-10-29 15:40:18",
+    "assigned_precinct_id": "PRECINCT_NORTH",
+    "assigned_precinct_name": "Delhi Metro North Precinct (HQ Command)",
+    "haversine_distance_km": 0.0,
+    "estimated_arrival_minutes": 2,
+    "dispatch_status": "READY_FOR_DISPATCH",
+    "emergency_priority": "CRITICAL_INTERCEPTION_ALPHA"
+  },
+  "evidence_integrity_sha256": "11b11f3eb7e1d27d00fa7cb5287377107ec237ec978f979e249212e4a0e82acc"
+}

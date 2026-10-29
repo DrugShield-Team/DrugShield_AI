@@ -257,8 +257,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const messages = chatHistories[currentContact.id] || [];
 
     messages.forEach((msg, idx) => {
+      const isRight = Boolean(msg.is_analyst || msg.is_honeypot);
       const row = document.createElement("div");
-      row.className = `message-bubble-row ${msg.is_analyst ? "outgoing" : "incoming"}`;
+      row.className = `message-bubble-row ${isRight ? "outgoing" : "incoming"}`;
 
       let contentHtml = "";
 
@@ -345,16 +346,22 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       // Standard Text Bubble
       else {
-        contentHtml = `<div class="bubble-text">${escapeHtml(msg.text)}</div>`;
+        let formatted = escapeHtml(msg.text);
+        // Turn http(s) links into clean clickable hyperlinks
+        formatted = formatted.replace(
+          /(https?:\/\/[^\s<]+)/g,
+          '<a href="$1" target="_blank" rel="noopener" style="color: #53bdeb; text-decoration: underline; font-weight: 500; word-break: break-all;">$1</a>'
+        );
+        contentHtml = `<div class="bubble-text">${formatted}</div>`;
       }
 
       row.innerHTML = `
-        <div class="message-bubble ${msg.is_analyst ? "outgoing" : "incoming"}">
+        <div class="message-bubble ${isRight ? "outgoing" : "incoming"}">
           ${senderTag}
           ${contentHtml}
           <div class="bubble-meta-info">
             <span>${msg.timestamp || "11:20 AM"}</span>
-            ${msg.is_analyst ? '<span class="tick-icon blue">✓✓</span>' : ''}
+            ${isRight ? '<span class="tick-icon blue">✓✓</span>' : ''}
           </div>
         </div>
       `;
@@ -1097,6 +1104,30 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Update Chat UI
     chatHistories[currentContact.id].push(msgObj);
+
+    // Check if Smart Bot honeypot was triggered on threshold reach
+    const botText = (analysisResult && (analysisResult.bot_response || (analysisResult.smart_bot && analysisResult.smart_bot.dispatched_message))) || null;
+    if (botText) {
+      setTimeout(() => {
+        const botMsg = {
+          id: `msg_buyer_${Date.now()}`,
+          is_analyst: true, // Right-aligned outgoing buyer persona
+          sender_id: "+91 99999 00000",
+          sender_name: "You",
+          text: botText,
+          has_media: false,
+          timestamp: getFormattedTime(),
+          status: "read",
+          is_honeypot: true
+        };
+        chatHistories[currentContact.id].push(botMsg);
+        persistLocalState();
+        renderMessages();
+        renderContacts();
+        playAudioClick();
+      }, 700);
+    }
+
     persistLocalState();
     renderMessages();
     renderContacts();

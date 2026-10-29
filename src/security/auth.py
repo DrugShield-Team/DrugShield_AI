@@ -137,3 +137,17 @@ def require_roles(*roles: str):
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient role")
         return principal
     return dependency
+
+
+def optional_simulation_user(request: Request) -> Principal:
+    """Allow unauthenticated simulation events in local development mode, or extract user if token present."""
+    authorization = request.headers.get("Authorization", "")
+    token = authorization[7:] if authorization.lower().startswith("bearer ") else request.cookies.get(SESSION_COOKIE_NAME, "")
+    if token:
+        try:
+            return _principal_from_token(token)
+        except Exception:
+            pass
+    if APP_ENV != "production":
+        return Principal(username="simulation_agent", roles=frozenset(["simulator"]))
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Authentication required", headers={"WWW-Authenticate": "Bearer"})

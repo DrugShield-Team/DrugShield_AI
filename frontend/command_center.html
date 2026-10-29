@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DrugShield AI - Dashboard</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --danger: #ef4444;
+            --success: #22c55e;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); min-height: 100vh; display: flex; justify-content: center; align-items: center; }
+        .hidden { display: none !important; }
+        #auth-container { width: 100%; max-width: 420px; padding: 2.5rem; background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); }
+        #auth-container h2 { margin-bottom: 0.5rem; font-size: 1.75rem; text-align: center; }
+        #auth-container p { color: var(--text-muted); font-size: 0.875rem; text-align: center; margin-bottom: 1.5rem; }
+        .form-group { margin-bottom: 1.25rem; }
+        .form-group label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-muted); }
+        .form-group input { width: 100%; padding: 0.75rem 1rem; background-color: var(--bg-color); border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); font-size: 1rem; outline: none; }
+        .form-group input:focus { border-color: var(--primary); }
+        .btn { width: 100%; padding: 0.75rem 1rem; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 0.5rem; }
+        .btn:hover { background-color: var(--primary-hover); }
+        .secondary-btn { background-color: transparent; border: 1px solid var(--border); color: var(--text-muted); margin-top: 0.75rem; }
+        .secondary-btn:hover { background-color: var(--border); color: var(--text-main); }
+        .msg { font-size: 0.875rem; margin-top: 1rem; text-align: center; }
+        .error-msg { color: var(--danger); }
+        .success-msg { color: var(--success); }
+        #dashboard-container { width: 100%; min-height: 100vh; display: flex; flex-direction: column; background-color: var(--bg-color); }
+        header { background-color: var(--card-bg); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        header h1 { font-size: 1.25rem; font-weight: 600; }
+        .logout-btn { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
+        .logout-btn:hover { border-color: var(--danger); color: var(--danger); }
+        main { padding: 2rem; flex-grow: 1; max-width: 1200px; width: 100%; margin: 0 auto; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .metric-card { background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; }
+        .metric-card h3 { font-size: 0.875rem; color: var(--text-muted); font-weight: 500; margin-bottom: 0.5rem; }
+        .metric-card .value { font-size: 1.875rem; font-weight: 700; }
+        .panel { background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; }
+        .panel h2 { font-size: 1.125rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; }
+        .status-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background-color: rgba(34,197,94,0.1); color: var(--success); }
+        .dispatch-banner { background: linear-gradient(135deg, #7f1d1d, #991b1b); border: 1px solid #ef4444; color: #fff; padding: 1.25rem; border-radius: 10px; margin-bottom: 2rem; box-shadow: 0 8px 24px rgba(239,68,68,0.3); display: flex; justify-content: space-between; align-items: center; }
+        .dispatch-banner h4 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+        .badge-precinct { background: #fee2e2; color: #991b1b; padding: 0.25rem 0.6rem; border-radius: 6px; font-weight: 700; font-size: 0.8rem; display: inline-block; margin-top: 0.25rem; }
+        .dispatch-card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; }
+        .dispatch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem; font-size: 0.875rem; }
+        .tag-coord { font-family: monospace; color: #38bdf8; background: #082f49; padding: 0.15rem 0.4rem; border-radius: 4px; }
+        .eta-pill { color: #f59e0b; font-weight: 600; }
+    </style>
+</head>
+<body>
+
+    <!-- AUTHENTICATION & REGISTRATION VIEW -->
+    <div id="auth-container">
+        <h2 id="form-title">Dashboard Login</h2>
+        <p id="form-subtitle">Enter credentials from external config or register a new user</p>
+        <form id="auth-form">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" required placeholder="Enter username">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" required placeholder="Enter password">
+            </div>
+            <button type="submit" id="submit-btn" class="btn">Sign In</button>
+            <button type="button" id="toggle-mode-btn" class="btn secondary-btn">Need an account? Register</button>
+            <div id="auth-msg" class="msg hidden"></div>
+        </form>
+    </div>
+
+    <!-- MAIN DASHBOARD VIEW -->
+    <div id="dashboard-container" class="hidden">
+        <header>
+            <h1>🛡️ DrugShield AI Dashboard (Frontend Mode)</h1>
+            <div>
+                <span id="welcome-user" style="margin-right: 1rem; font-size: 0.875rem; color: var(--text-muted);"></span>
+                <button id="logout-btn" class="logout-btn">Sign Out</button>
+            </div>
+        </header>
+        <main>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>Pipeline Status</h3>
+                    <div class="value" style="font-size: 1.25rem; margin-top: 0.5rem;">
+                        <span class="status-badge">Active Honeypot & Dispatch Online</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <h3>Active Slang Filters</h3>
+                    <div class="value">42+</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Honeypot Hits (Passive)</h3>
+                    <div id="metric-honeypot-hits" class="value" style="color: #38bdf8;">0</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Precinct Dispatches</h3>
+                    <div id="metric-precinct-dispatches" class="value" style="color: #ef4444;">0</div>
+                </div>
+            </div>
+
+            <!-- LIVE DISPATCH NOTIFICATION POPUP BANNER -->
+            <div id="dispatch-alert-banner" class="dispatch-banner hidden">
+                <div>
+                    <h4 id="banner-title">🚨 PRIORITY DISPATCH ALERT TRIGGERED</h4>
+                    <p id="banner-details" style="font-size: 0.875rem; opacity: 0.9;">Suspect opened tracking invoice. Routing to nearest police command...</p>
+                </div>
+                <span class="badge-precinct" id="banner-precinct-badge">ROUTING</span>
+            </div>
+
+            <div class="panel" style="margin-bottom: 2rem;">
+                <h2>🚔 Live Police Precinct Haversine Dispatch Stream</h2>
+                <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;">
+                    Targets localized via silent IP/EXIF telemetry are automatically evaluated against simulated jurisdictional precincts using the Haversine formula.
+                </p>
+                <div id="dispatch-feed">
+                    <p style="color: var(--text-muted); font-size: 0.875rem; font-style: italic;">Awaiting incoming dispatch events...</p>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>🎯 Captured Honeypot Visitors & OSINT Telemetry</h2>
+                <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;">
+                    Passively extracted visitor IP, browser heuristics, and device fingerprint hashes from invoice links.
+                </p>
+                <div id="honeypot-feed">
+                    <p style="color: var(--text-muted); font-size: 0.875rem; font-style: italic;">No honeypot hits logged yet.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const authContainer = document.getElementById('auth-container');
+        const dashboardContainer = document.getElementById('dashboard-container');
+        const authForm = document.getElementById('auth-form');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const submitBtn = document.getElementById('submit-btn');
+        const toggleModeBtn = document.getElementById('toggle-mode-btn');
+        const formTitle = document.getElementById('form-title');
+        const formSubtitle = document.getElementById('form-subtitle');
+        const authMsg = document.getElementById('auth-msg');
+        const welcomeUser = document.getElementById('welcome-user');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        let isRegisterMode = false;
+
+        // Load users from credentials.json and sync with localStorage state
+        async function getStoredUsers() {
+            let users = {};
+            try {
+                const response = await fetch('credentials.json');
+                const data = await response.json();
+                users = data.users || {};
+            } catch (err) {
+                console.warn("Could not load credentials.json via fetch, using local storage fallback.");
+            }
+
+            // Merge with any dynamically registered users stored in browser session
+            const localSaved = localStorage.getItem('drugshield_users');
+            if (localSaved) {
+                const parsed = JSON.parse(localSaved);
+                users = { ...users, ...parsed };
+            }
+            return users;
+        }
+
+        // Toggle between Login and Register modes
+        toggleModeBtn.addEventListener('click', () => {
+            isRegisterMode = !isRegisterMode;
+            authMsg.classList.add('hidden');
+            if (isRegisterMode) {
+                formTitle.textContent = "Register User";
+                formSubtitle.textContent = "Add a new credential entry to the config records";
+                submitBtn.textContent = "Create Account & Login";
+                toggleModeBtn.textContent = "Already have an account? Sign In";
+            } else {
+                formTitle.textContent = "Dashboard Login";
+                formSubtitle.textContent = "Enter credentials from external config or registered accounts";
+                submitBtn.textContent = "Sign In";
+                toggleModeBtn.textContent = "Need an account? Register";
+            }
+        });
+
+        // Handle Form Submission (Login or Register)
+        authForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const userInput = usernameInput.value.trim();
+            const passInput = passwordInput.value;
+
+            const users = await getStoredUsers();
+
+            if (isRegisterMode) {
+                // Registration Flow: Write user input data into persistent storage record
+                if (users[userInput]) {
+                    authMsg.textContent = "Username already exists. Choose another.";
+                    authMsg.className = "msg error-msg";
+                    authMsg.classList.remove('hidden');
+                    return;
+                }
+
+                users[userInput] = passInput;
+                
+                // Save updated user list locally
+                localStorage.setItem('drugshield_users', JSON.stringify(users));
+
+                authMsg.textContent = "Registration successful! Logging in...";
+                authMsg.className = "msg success-msg";
+                authMsg.classList.remove('hidden');
+
+                setTimeout(() => {
+                    launchDashboard(userInput);
+                }, 800);
+
+            } else {
+                // Login Flow: Verify user input against credentials record
+                if (users[userInput] && users[userInput] === passInput) {
+                    authMsg.classList.add('hidden');
+                    launchDashboard(userInput);
+                } else {
+                    authMsg.textContent = "Invalid username or password.";
+                    authMsg.className = "msg error-msg";
+                    authMsg.classList.remove('hidden');
+                }
+            }
+        });
+
+        function launchDashboard(username) {
+            authContainer.classList.add('hidden');
+            dashboardContainer.classList.remove('hidden');
+            welcomeUser.textContent = `Logged in as: ${username}`;
+            authForm.reset();
+            initDispatchAndHoneypotFeeds();
+        }
+
+        logoutBtn.addEventListener('click', function() {
+            dashboardContainer.classList.add('hidden');
+            authContainer.classList.remove('hidden');
+            authMsg.classList.add('hidden');
+        });
+
+        // =========================================================================
+        // LIVE POLICE DISPATCH & HONEYPOT WEBSOCKET / REST INTEGRATION
+        // =========================================================================
+        let dispatchWs = null;
+        const API_URL = "http://127.0.0.1:8000";
+
+        function initDispatchAndHoneypotFeeds() {
+            fetchFeeds();
+            setInterval(fetchFeeds, 5000);
+            connectDispatchWebSocket();
+        }
+
+        async function fetchFeeds() {
+            try {
+                // Fetch Police Dispatch Alerts
+                const dispRes = await fetch(`${API_URL}/api/v1/dispatch/alerts?limit=10`);
+                if (dispRes.ok) {
+                    const data = await dispRes.json();
+                    renderDispatchAlerts(data.alerts || []);
+                }
+                // Fetch Honeypot Hits
+                const hitRes = await fetch(`${API_URL}/api/v1/honeypot/logs?limit=10`);
+                if (hitRes.ok) {
+                    const data = await hitRes.json();
+                    renderHoneypotHits(data.hits || []);
+                }
+            } catch (err) {
+                console.debug("Backend feed fetch notice:", err);
+            }
+        }
+
+        function renderDispatchAlerts(alerts) {
+            const container = document.getElementById('dispatch-feed');
+            const counter = document.getElementById('metric-precinct-dispatches');
+            if (counter) counter.textContent = alerts.length;
+            if (!alerts || alerts.length === 0) return;
+
+            container.innerHTML = alerts.map(a => {
+                const assigned = a.precinct_name || (a.details && a.details.assigned_precinct ? a.details.assigned_precinct.name : "Simulated Precinct");
+                const dist = a.distance_km != null ? a.distance_km : (a.details && a.details.assigned_precinct ? a.details.assigned_precinct.distance_km : "?");
+                const eta = a.eta_minutes != null ? a.eta_minutes : (a.details && a.details.assigned_precinct ? a.details.assigned_precinct.estimated_eta_minutes : "5");
+                const lat = a.target_lat != null ? a.target_lat.toFixed(4) : "28.6139";
+                const lon = a.target_lon != null ? a.target_lon.toFixed(4) : "77.2090";
+
+                return `
+                <div class="dispatch-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="badge-precinct">${assigned}</span>
+                        <span class="eta-pill">⚡ Response ETA: ~${eta} mins</span>
+                    </div>
+                    <div class="dispatch-grid">
+                        <div><strong>Target Coordinates:</strong> <span class="tag-coord">${lat}, ${lon}</span></div>
+                        <div><strong>Haversine Distance:</strong> <span style="color:#a7f3d0; font-weight:600;">${dist} km</span></div>
+                        <div><strong>Tracking Token:</strong> <code>${a.tracking_token}</code></div>
+                        <div><strong>Dispatch Status:</strong> <span style="color:#22c55e;">${a.dispatch_status || 'DISPATCH_COMMITTED'}</span></div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function renderHoneypotHits(hits) {
+            const container = document.getElementById('honeypot-feed');
+            const counter = document.getElementById('metric-honeypot-hits');
+            if (counter) counter.textContent = hits.length;
+            if (!hits || hits.length === 0) return;
+
+            container.innerHTML = hits.map(h => {
+                const city = h.city || "New Delhi";
+                const ip = h.ip || "127.0.0.1";
+                const fp = (h.fingerprint_hash || "").slice(0, 16) + "...";
+                const dev = h.heuristics && h.heuristics.os ? `${h.heuristics.os} (${h.heuristics.browser || 'Browser'})` : "Simulated Client";
+
+                return `
+                <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:1rem; margin-bottom:0.75rem; font-size:0.875rem;">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span style="font-weight:600; color:#38bdf8;">🌐 ${ip} (${city})</span>
+                        <span style="color:var(--text-muted); font-size:0.75rem;">Token: ${h.tracking_token}</span>
+                    </div>
+                    <div style="margin-top:0.4rem; color:var(--text-muted);">
+                        <span>Device: <strong style="color:#f8fafc;">${dev}</strong></span> • 
+                        <span>Fingerprint: <code style="color:#94a3b8;">${fp}</code></span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function triggerDispatchAlertBanner(dispatchData) {
+            const banner = document.getElementById('dispatch-alert-banner');
+            const title = document.getElementById('banner-title');
+            const details = document.getElementById('banner-details');
+            const badge = document.getElementById('banner-precinct-badge');
+
+            const assigned = dispatchData.assigned_precinct || {};
+            title.textContent = `🚨 POLICE DISPATCH COMMITTED: ${assigned.name || 'Precinct Command'}`;
+            details.textContent = `Target located at (${dispatchData.target_coordinates?.latitude?.toFixed(4)}, ${dispatchData.target_coordinates?.longitude?.toFixed(4)}). Distance: ${assigned.distance_km} km. Estimated ETA: ~${assigned.estimated_eta_minutes} mins.`;
+            badge.textContent = `DISPATCHED (${assigned.precinct_id || 'LOCAL'})`;
+
+            banner.classList.remove('hidden');
+            setTimeout(() => { banner.classList.add('hidden'); }, 12000);
+            fetchFeeds();
+        }
+
+        function connectDispatchWebSocket() {
+            try {
+                const wsUrl = "ws://127.0.0.1:8000/api/v1/ws/dispatch";
+                dispatchWs = new WebSocket(wsUrl);
+
+                dispatchWs.onmessage = (event) => {
+                    try {
+                        const payload = JSON.parse(event.data);
+                        if (payload.event === "POLICE_DISPATCH_ALERT" && payload.data) {
+                            triggerDispatchAlertBanner(payload.data);
+                        }
+                    } catch (e) {
+                        console.debug("WS parse error:", e);
+                    }
+                };
+
+                dispatchWs.onclose = () => {
+                    setTimeout(connectDispatchWebSocket, 4000);
+                };
+            } catch (err) {
+                console.debug("WS connection error:", err);
+            }
+        }
+    </script>
+</body>
+</html>

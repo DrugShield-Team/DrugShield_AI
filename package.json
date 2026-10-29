@@ -3,14 +3,10 @@
   "version": "1.0.0",
   "description": "DrugShield AI - Decoupled OSINT Threat Intelligence System & Live Simulation Pipeline",
   "scripts": {
-    "start": "node whatsapp-simulation/server.js",
-    "start:whatsapp": "node whatsapp-simulation/server.js",
-    "start:telegram": "node telegram-simulation/server.js",
-    "crawler:whatsapp": "python src/ingestion/whatsapp_fast.py",
-    "crawler:telegram": "python src/ingestion/telegram_telegram.py",
-    "crawler:whatsapp:playwright": "python src/ingestion/whatsapp_fast.py --playwright",
-    "crawler:telegram:playwright": "python src/ingestion/telegram_telegram.py --playwright",
-    "process": "python process_data.py",
+    "start": "node simulations/whatsapp/server.js",
+    "start:whatsapp": "node simulations/whatsapp/server.js",
+    "start:telegram": "node simulations/telegram/server.js",
+    "start:instagram": "cd simulations/instagram && npm run dev",
     "pipeline": "python main.py"
   },
   "keywords": [

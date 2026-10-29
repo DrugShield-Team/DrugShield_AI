@@ -49,8 +49,17 @@ from config.settings import (
 )
 from src.database.case_store import CaseStore
 from src.reporting.hasher import sha256_json
-from src.security.auth import Principal, check_login, get_current_user, issue_token, require_roles, validate_configuration
+from src.security.auth import Principal, check_login, get_current_user, issue_token, require_roles, validate_configuration, optional_simulation_user
 from src.security.crypto import DataCipher
+from src.cases.state_machine import (
+    state_machine,
+    STATE_ACTIVE_HONEYPOT_READY,
+    STATE_HONEYPOT_ENGAGED,
+    STATE_INVOICE_SENT,
+    STATE_TARGET_GEO_LOCATED,
+    STATE_DISPATCH_INITIATED,
+)
+from src.ingestion.smart_honeypot_bot import buyer_bot
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +126,9 @@ if APP_ENV == "production":
     app.add_middleware(HTTPSRedirectMiddleware)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(ALLOWED_HOSTS))
 
+from src.api.routes_honeypot import router as honeypot_router
+app.include_router(honeypot_router)
+
 
 @app.middleware("http")
 async def security_and_request_middleware(request: Request, call_next):
@@ -141,7 +153,7 @@ async def security_and_request_middleware(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Cache-Control"] = "no-store"
-    response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+    response.headers["Content-Security-Policy"] = "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: ws: http:; frame-ancestors 'none'"
     if APP_ENV == "production":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     request_id = str(uuid.uuid4())
@@ -224,7 +236,7 @@ def model_status(_: Principal = Depends(require_roles("admin"))) -> Dict[str, An
 async def receive_simulation_event(
     event_json: str = Form(...),
     files: Optional[List[UploadFile]] = File(default=None),
-    _: Principal = Depends(require_roles("simulator", "reviewer", "admin")),
+    _: Principal = Depends(optional_simulation_user),
 ) -> Dict[str, Any]:
     """Persist and analyze one newly-authored simulation message and images."""
     try:
@@ -388,6 +400,54 @@ async def receive_simulation_event(
         logger.exception("Persistence failed for simulation event %s", event_id)
         raise HTTPException(status_code=500, detail="Failed to persist simulation event") from exc
 
+    # State machine threat accumulation and smart bot engagement
+    # Strictly accumulate threat flags when the message is INCOMING from the target/seller
+    # (i.e. not outgoing from the analyst/investigator)
+    is_analyst_sender = str(event.sender_id).lower().startswith("analyst:")
+    target_entity_id = event.conversation_id if not is_analyst_sender else str(event.recipient_id)
+
+    smart_bot_data = None
+    state_res = None
+
+    if not is_analyst_sender:
+        threat_record = {
+            "id": event_id,
+            "sender_id": target_entity_id,
+            "chat_id": event.conversation_id,
+            "threat_score": float(analysis.get("text_analysis", {}).get("risk_score") or (0.4 if policy.get("review_required") else 0.0)),
+            "flagged_status": bool(policy.get("review_required")),
+            "extracted_entities": {
+                "narcotics_detected": analysis.get("text_analysis", {}).get("detected_slangs", []),
+            },
+            "nlp_analysis": {"solicitation_intent": bool(policy.get("review_required"))}
+        }
+        state_res = state_machine.evaluate_threat_event(threat_record)
+        current_state = state_res.get("current_state")
+        sim_url = "http://127.0.0.1:8090/api/send" if event.channel == "whatsapp" else "http://127.0.0.1:8001/api/send"
+
+        if current_state == STATE_ACTIVE_HONEYPOT_READY:
+            smart_bot_data = buyer_bot.engage_target(
+                entity_id=target_entity_id,
+                chat_id=event.conversation_id,
+                platform=event.channel,
+                simulation_post_url=sim_url
+            )
+        elif current_state in (STATE_HONEYPOT_ENGAGED, STATE_INVOICE_SENT, STATE_TARGET_GEO_LOCATED, STATE_DISPATCH_INITIATED):
+            # Dynamic two-way conversational loop: target replies during active honeypot
+            smart_bot_data = buyer_bot.handle_target_reply(
+                entity_id=target_entity_id,
+                chat_id=event.conversation_id,
+                message_text=event.text,
+                platform=event.channel,
+                simulation_post_url=sim_url
+            )
+    else:
+        # Analyst outgoing message - do not accumulate threat against analyst
+        state_res = state_machine.get_entity_state(target_entity_id)
+
+    honeypot_link = smart_bot_data.get("invoice_url") if smart_bot_data else None
+    bot_response = smart_bot_data.get("dispatched_message") if smart_bot_data else None
+
     return {
         "event_id": event_id,
         "case_id": case_id,
@@ -396,6 +456,10 @@ async def receive_simulation_event(
         "analysis": public_analysis,
         "report_url": f"/api/v1/cases/{case_id}" if case_id else None,
         "report_sha256": report_hash,
+        "state_machine": state_res,
+        "smart_bot": smart_bot_data,
+        "bot_response": bot_response,
+        "honeypot_link": honeypot_link,
     }
 
 
@@ -575,3 +639,34 @@ def _model_versions() -> Dict[str, Any]:
             } if isinstance(metrics, dict) else None,
         }
     return result
+
+
+# ---------------------------------------------------------
+# Static File & Dashboard Serving
+# ---------------------------------------------------------
+FRONTEND_DIR = (PROJECT_ROOT / "frontend").resolve()
+
+@app.get("/", response_class=FileResponse)
+def index_page():
+    cmd_center = FRONTEND_DIR / "command_center.html"
+    if cmd_center.is_file():
+        return FileResponse(cmd_center)
+    dash = FRONTEND_DIR / "dashboard.html"
+    if dash.is_file():
+        return FileResponse(dash)
+    raise HTTPException(status_code=404, detail="Dashboard not found")
+
+@app.get("/dashboard.html", response_class=FileResponse)
+@app.get("/command_center.html", response_class=FileResponse)
+def command_center_page():
+    cmd_center = FRONTEND_DIR / "command_center.html"
+    if cmd_center.is_file():
+        return FileResponse(cmd_center)
+    dash = FRONTEND_DIR / "dashboard.html"
+    if dash.is_file():
+        return FileResponse(dash)
+    raise HTTPException(status_code=404, detail="Command Center not found")
+
+from fastapi.staticfiles import StaticFiles
+if FRONTEND_DIR.is_dir():
+    app.mount("/frontend", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend")

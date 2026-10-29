@@ -47,6 +47,8 @@ except ImportError:
 
 import requests
 from src.ai_pipeline.threat_pipeline import evaluate_live_message_threat
+from src.cases.state_machine import state_machine
+from src.ingestion.smart_honeypot_bot import buyer_bot
 
 WHATSAPP_PORT = int(os.getenv("WHATSAPP_PORT", 8090))
 WHATSAPP_HOST = os.getenv("HOST", "localhost")
@@ -110,8 +112,27 @@ class WhatsAppPassiveCrawler:
 
                                 if msg_id and msg_id not in self.processed_ids:
                                     self.processed_ids.add(msg_id)
+                                    target_chat = raw_rec.get("chat_id") or raw_rec.get("sender_id") or ""
+                                    target_sender = raw_rec.get("sender_id") or raw_rec.get("sender_username") or ""
+
+                                    # Check crawler pause status for thread
+                                    if state_machine.is_thread_paused(target_chat) or state_machine.is_thread_paused(target_sender):
+                                        print(f"[WhatsApp Crawler] ⏸ Thread '{target_chat}' is PAUSED (Active Honeypot engaged). Skipping duplicate crawl.")
+                                        continue
+
                                     # Route directly through Active NLP & Threat Flagging Pipeline
                                     enriched = evaluate_live_message_threat(raw_rec)
+
+                                    # Accumulate flags & check honeypot trigger threshold
+                                    state_res = state_machine.evaluate_threat_event(enriched)
+                                    if state_res.get("state_changed") and state_res.get("current_state") == "ACTIVE_HONEYPOT_READY":
+                                        print(f"[WhatsApp Crawler] 🎯 Threshold reached ({state_res['flag_count']} flags) for '{state_res['entity_id']}'. Launching Smart Buyer Bot...")
+                                        buyer_bot.engage_target(
+                                            entity_id=state_res["entity_id"],
+                                            chat_id=target_chat,
+                                            platform="whatsapp",
+                                        )
+
                                     if on_message_callback:
                                         on_message_callback(enriched)
                         except Exception as e:

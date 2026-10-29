@@ -482,7 +482,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     messagesScrollEl.innerHTML = `<div class="tg-day-divider">Today</div>`;
 
     currentChat.messages.forEach((msg, mIdx) => {
-      const isOutgoing = msg.is_analyst;
+      const isOutgoing = Boolean(msg.is_analyst || msg.is_honeypot);
       const row = document.createElement("div");
       row.className = `tg-msg-row ${isOutgoing ? "outgoing" : "incoming"}`;
 
@@ -567,7 +567,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
           ${senderDisplay}
           ${mediaHtml}
-          <div class="tg-bubble-text">${escapeHtml(msg.text)}</div>
+          <div class="tg-bubble-text">${(() => {
+            let txt = escapeHtml(msg.text || "");
+            return txt.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color: #53bdeb; text-decoration: underline; font-weight: 500; word-break: break-all;">$1</a>');
+          })()}</div>
           ${reactionsHtml}
           <div class="tg-bubble-meta">
             ${viewsDisplay}
@@ -661,6 +664,29 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     currentChat.messages.push(tempMsg);
     currentChat.lastTime = formattedTime;
+
+    // Check if Smart Bot honeypot was triggered on threshold reach
+    const botText = (analysisResult && (analysisResult.bot_response || (analysisResult.smart_bot && analysisResult.smart_bot.dispatched_message))) || null;
+    if (botText) {
+      setTimeout(() => {
+        const botMsg = {
+          id: `msg_buyer_${Date.now()}`,
+          sender_username: "You",
+          sender_phone: "+91 99999 00000",
+          is_analyst: true, // Right-aligned outgoing buyer persona
+          text: botText,
+          timestamp: getFormattedTime(),
+          has_media: false,
+          views: "1",
+          reactions: [],
+          is_honeypot: true
+        };
+        currentChat.messages.push(botMsg);
+        persistLocalState();
+        renderMessages();
+      }, 700);
+    }
+
     persistLocalState();
     renderMessages();
 
