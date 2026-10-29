@@ -200,3 +200,4 @@ def route_to_nearest_precinct(
         "dispatch_status": "ASSIGNED_PRIMARY",
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
+
