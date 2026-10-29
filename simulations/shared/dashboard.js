@@ -320,12 +320,14 @@
 
   function connectDispatchWS() {
     try {
-      const wsUrl = `${API_BASE.replace(/^http/, "ws")}/api/v1/ws/dispatch`;
+      const urlParams = new URLSearchParams(window.location.search);
+      const nodeParam = urlParams.get("node") || urlParams.get("precinct_id") || "ALL";
+      const wsUrl = `${API_BASE.replace(/^http/, "ws")}/api/v1/ws/dispatch?node=${encodeURIComponent(nodeParam)}`;
       const ws = new WebSocket(wsUrl);
       ws.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
-          if (payload.event === "POLICE_DISPATCH_ALERT" && payload.data) {
+          if (payload.event === "POLICE_DISPATCH_ALERT" && payload.is_primary && payload.data) {
             showDispatchToast(payload.data);
           }
         } catch (e) {}

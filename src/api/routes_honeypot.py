@@ -23,7 +23,12 @@ from src.cases.state_machine import (
     state_machine,
 )
 from src.database.postgres_client import postgres_client
-from src.osint_triangulation.haversine_router import route_to_nearest_precinct
+from src.cases.police_router import (
+    POLICE_PRECINCTS,
+    get_precinct_by_id,
+    normalize_precinct_id,
+    route_to_nearest_precinct,
+)
 from src.osint_triangulation.ip_geolocation import (
     extract_client_ip,
     generate_device_fingerprint,
@@ -36,27 +41,115 @@ router = APIRouter(tags=["Honeypot & Police Dispatch"])
 
 
 class DispatchConnectionManager:
-    """Manages active WebSocket connections for live police precinct dashboards."""
+    """
+    Manages active WebSocket connections across multi-PC demo nodes.
+    Tracks each connected client's assigned precinct/node ID and routes live
+    dispatch alerts exclusively to the single nearest assigned node.
+    """
 
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
+        # Maps WebSocket connection to assigned precinct_id ("PRECINCT_NORTH", "PRECINCT_SOUTH", "PRECINCT_EAST", "ALL")
+        self.connections: Dict[WebSocket, str] = {}
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket, precinct_id: str = "ALL"):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        normalized = normalize_precinct_id(precinct_id)
+        self.connections[websocket] = normalized
+        logger.info(f"[WebSocket Connect] Client registered for node: {normalized}")
+
+    def set_client_precinct(self, websocket: WebSocket, precinct_id: str):
+        normalized = normalize_precinct_id(precinct_id)
+        if websocket in self.connections:
+            self.connections[websocket] = normalized
+            logger.info(f"[WebSocket Node Switch] Client re-assigned to node: {normalized}")
 
     def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
+        if websocket in self.connections:
+            del self.connections[websocket]
+
+    async def dispatch_to_nearest(self, dispatch_info: Dict[str, Any]):
+        """
+        Dynamically identify the single nearest precinct and push the live
+        pop-up alert ONLY to that specific node's dashboard.
+        Standby nodes receive standby notifications without triggering the priority alert banner.
+        """
+        assigned = dispatch_info.get("assigned_precinct") or {}
+        nearest_id = assigned.get("precinct_id", "")
+
+        eval_by_id = {
+            item["precinct_id"]: item
+            for item in dispatch_info.get("all_precinct_evaluations", [])
+        }
+
+        dead_connections = []
+        for ws, client_node in list(self.connections.items()):
+            try:
+                is_closest = (client_node == nearest_id)
+                is_admin_all = (client_node == "ALL")
+
+                if is_closest:
+                    # PUSH LIVE WEBSOCKET POP-UP ALERT EXCLUSIVELY TO CLOSEST SYSTEM
+                    await ws.send_json({
+                        "event": "POLICE_DISPATCH_ALERT",
+                        "is_primary": True,
+                        "highlight_role": "ASSIGNED PRIMARY DISPATCH NODE",
+                        "client_node": client_node,
+                        "data": {
+                            **dispatch_info,
+                            "is_primary": True,
+                            "assigned_role": "ASSIGNED PRIMARY DISPATCH NODE",
+                            "display_distance_km": assigned.get("distance_km"),
+                            "display_eta_minutes": assigned.get("estimated_eta_minutes"),
+                        },
+                    })
+                elif is_admin_all:
+                    # Master HQ/Admin view: receives full overview
+                    await ws.send_json({
+                        "event": "POLICE_DISPATCH_ALERT",
+                        "is_primary": True,
+                        "highlight_role": "MASTER COMMAND AUDIT",
+                        "client_node": "ALL",
+                        "data": {
+                            **dispatch_info,
+                            "is_primary": True,
+                            "assigned_role": "ASSIGNED PRIMARY DISPATCH NODE",
+                            "display_distance_km": assigned.get("distance_km"),
+                            "display_eta_minutes": assigned.get("estimated_eta_minutes"),
+                        },
+                    })
+                else:
+                    # STANDBY NODE: Jurisdictional boundary clear, keep on standby
+                    node_eval = eval_by_id.get(client_node) or {}
+                    await ws.send_json({
+                        "event": "POLICE_STANDBY_STATUS",
+                        "is_primary": False,
+                        "highlight_role": "STANDBY JURISDICTION",
+                        "client_node": client_node,
+                        "assigned_primary_precinct": assigned.get("name"),
+                        "data": {
+                            **dispatch_info,
+                            "is_primary": False,
+                            "assigned_role": "STANDBY SECONDARY NODE",
+                            "display_distance_km": node_eval.get("distance_km"),
+                            "display_eta_minutes": node_eval.get("estimated_eta_minutes"),
+                        },
+                    })
+            except Exception as e:
+                logger.warning(f"Failed sending dispatch to WebSocket: {e}")
+                dead_connections.append(ws)
+
+        for dead in dead_connections:
+            self.disconnect(dead)
 
     async def broadcast_alert(self, message: Dict[str, Any]):
-        disconnected = []
-        for connection in self.active_connections:
+        """Legacy broadcast or general message distribution."""
+        dead_connections = []
+        for ws in list(self.connections.keys()):
             try:
-                await connection.send_json(message)
+                await ws.send_json(message)
             except Exception:
-                disconnected.append(connection)
-        for dead in disconnected:
+                dead_connections.append(ws)
+        for dead in dead_connections:
             self.disconnect(dead)
 
 
@@ -194,15 +287,18 @@ async def track_honeypot_hit(
     tracking_token: str,
     request: Request,
     format: Optional[str] = Query(default=None),
+    lat: Optional[float] = Query(default=None),
+    lon: Optional[float] = Query(default=None),
+    target_node: Optional[str] = Query(default=None),
 ):
     """
     Silent honeypot tracking route:
     1. Extracts client IP & headers without browser permissions.
     2. Resolves geolocation and generates device fingerprint.
-    3. Calculates nearest police precinct via Haversine formula.
+    3. Calculates nearest police precinct via Haversine formula across 3 demo nodes.
     4. Records audit logs to PostgreSQL / SQLite fallback.
     5. Advances state machine to TARGET_GEO_LOCATED and DISPATCH_INITIATED.
-    6. Broadcasts instant dispatch alert via WebSocket.
+    6. Dispatches real-time pop-up alert EXCLUSIVELY to the absolute single nearest precinct node.
     7. Serves clean decoy invoice receipt to the target.
     """
     headers = dict(request.headers)
@@ -229,10 +325,22 @@ async def track_honeypot_hit(
         "heuristics": fp_meta.get("heuristics", {}),
     }
 
+    # Proximity override for multi-PC presentation testing
+    if target_node:
+        sim_precinct = get_precinct_by_id(target_node)
+        if sim_precinct:
+            hit_record["latitude"] = sim_precinct["latitude"] + 0.0002
+            hit_record["longitude"] = sim_precinct["longitude"] + 0.0002
+            hit_record["city"] = f"{sim_precinct['address']} (Sector Test)"
+    elif lat is not None and lon is not None:
+        hit_record["latitude"] = lat
+        hit_record["longitude"] = lon
+        hit_record["city"] = f"Coordinates ({lat:.4f}, {lon:.4f})"
+
     # 2. Commit visitor hit to database
     hit_id = postgres_client.record_honeypot_hit(hit_record)
 
-    # 3. Haversine Police Routing
+    # 3. Haversine Police Routing - Calculate nearest among all 3 demo nodes
     dispatch_info = route_to_nearest_precinct(
         target_lat=hit_record["latitude"],
         target_lon=hit_record["longitude"],
@@ -261,15 +369,12 @@ async def track_honeypot_hit(
         details=dispatch_info,
     )
 
-    # 6. Broadcast Real-Time Dispatch Alert via WebSocket
-    await dispatch_manager.broadcast_alert({
-        "event": "POLICE_DISPATCH_ALERT",
-        "data": dispatch_info,
-    })
+    # 6. Targeted Dispatch - Pushes live pop-up alert ONLY to the single closest node
+    await dispatch_manager.dispatch_to_nearest(dispatch_info)
 
     logger.info(
         f"[Honeypot Hit] Token: {tracking_token} | IP: {ip} | City: {hit_record['city']} | "
-        f"Assigned: {dispatch_info['assigned_precinct']['name']} ({dispatch_info['assigned_precinct']['distance_km']} km)"
+        f"Assigned Primary Node: {dispatch_info['assigned_precinct']['name']} ({dispatch_info['assigned_precinct']['distance_km']} km)"
     )
 
     if format == "json" or "application/json" in headers.get("accept", ""):
@@ -334,20 +439,54 @@ def get_forensic_case_report(
     return HTMLResponse(content=html_content, status_code=200)
 
 
+@router.get("/api/v1/dispatch/precincts")
+def list_registered_precincts():
+    """Retrieve all configured police precinct dispatch nodes."""
+    return {
+        "status": "success",
+        "count": len(POLICE_PRECINCTS),
+        "precincts": POLICE_PRECINCTS,
+    }
+
+
 @router.websocket("/api/v1/ws/dispatch")
-async def websocket_dispatch_stream(websocket: WebSocket):
-    """WebSocket stream streaming live police precinct dispatch alerts."""
-    await dispatch_manager.connect(websocket)
+async def websocket_dispatch_stream(
+    websocket: WebSocket,
+    precinct_id: Optional[str] = Query(default=None),
+    node: Optional[str] = Query(default=None),
+):
+    """
+    WebSocket stream streaming live police precinct dispatch alerts.
+    Supports node filtering via ?precinct_id=... or ?node=1/2/3.
+    Push alerts trigger exclusively on the single closest precinct node.
+    """
+    selected_node = precinct_id or node or "ALL"
+    await dispatch_manager.connect(websocket, precinct_id=selected_node)
     try:
-        # Send initial confirmation
+        norm_id = normalize_precinct_id(selected_node)
+        # Send initial confirmation with node binding
         await websocket.send_json({
             "event": "CONNECTED",
             "message": "Connected to DrugShield AI Police Dispatch WebSocket Stream",
-            "active_precincts": ["PRECINCT_NORTH", "PRECINCT_SOUTH"],
+            "assigned_client_node": norm_id,
+            "registered_precincts": [p["id"] for p in POLICE_PRECINCTS],
         })
         while True:
-            # Keep connection alive
-            await websocket.receive_text()
+            # Listen for client actions (e.g. changing assigned node from dropdown)
+            text_data = await websocket.receive_text()
+            try:
+                msg = json.loads(text_data)
+                if msg.get("action") == "SET_NODE":
+                    new_node = msg.get("node") or msg.get("precinct_id")
+                    dispatch_manager.set_client_precinct(websocket, new_node)
+                    norm_new = normalize_precinct_id(new_node)
+                    await websocket.send_json({
+                        "event": "NODE_UPDATED",
+                        "assigned_client_node": norm_new,
+                        "message": f"Dashboard node bound to {norm_new}",
+                    })
+            except Exception:
+                pass
     except WebSocketDisconnect:
         dispatch_manager.disconnect(websocket)
     except Exception:

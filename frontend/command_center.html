@@ -3,132 +3,220 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DrugShield AI - Dashboard</title>
+    <title>DrugShield AI - Police Dispatch Command Center</title>
     <style>
         :root {
             --primary: #4f46e5;
             --primary-hover: #4338ca;
-            --bg-color: #0f172a;
+            --bg-color: #0b1120;
             --card-bg: #1e293b;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --border: #334155;
             --danger: #ef4444;
             --success: #22c55e;
+            --warning: #f59e0b;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); min-height: 100vh; display: flex; justify-content: center; align-items: center; }
         .hidden { display: none !important; }
-        #auth-container { width: 100%; max-width: 420px; padding: 2.5rem; background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); }
-        #auth-container h2 { margin-bottom: 0.5rem; font-size: 1.75rem; text-align: center; }
+        
+        /* Auth Screen */
+        #auth-container { width: 100%; max-width: 440px; padding: 2.5rem; background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        #auth-container h2 { margin-bottom: 0.5rem; font-size: 1.6rem; text-align: center; }
         #auth-container p { color: var(--text-muted); font-size: 0.875rem; text-align: center; margin-bottom: 1.5rem; }
         .form-group { margin-bottom: 1.25rem; }
-        .form-group label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-muted); }
-        .form-group input { width: 100%; padding: 0.75rem 1rem; background-color: var(--bg-color); border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); font-size: 1rem; outline: none; }
-        .form-group input:focus { border-color: var(--primary); }
-        .btn { width: 100%; padding: 0.75rem 1rem; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 0.5rem; }
+        .form-group label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-muted); }
+        .form-group input, .form-group select { width: 100%; padding: 0.75rem 1rem; background-color: var(--bg-color); border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); font-size: 0.95rem; outline: none; }
+        .form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+        .btn { width: 100%; padding: 0.75rem 1rem; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; margin-top: 0.5rem; transition: background 0.2s; }
         .btn:hover { background-color: var(--primary-hover); }
         .secondary-btn { background-color: transparent; border: 1px solid var(--border); color: var(--text-muted); margin-top: 0.75rem; }
         .secondary-btn:hover { background-color: var(--border); color: var(--text-main); }
         .msg { font-size: 0.875rem; margin-top: 1rem; text-align: center; }
         .error-msg { color: var(--danger); }
         .success-msg { color: var(--success); }
+        
+        /* Dashboard */
         #dashboard-container { width: 100%; min-height: 100vh; display: flex; flex-direction: column; background-color: var(--bg-color); }
-        header { background-color: var(--card-bg); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
-        header h1 { font-size: 1.25rem; font-weight: 600; }
-        .logout-btn { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
+        header { background-color: rgba(30, 41, 59, 0.95); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); padding: 0.85rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 50; }
+        header h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; gap: 0.5rem; }
+        .header-actions { display: flex; align-items: center; gap: 1rem; }
+        .node-select-badge { background: #0f172a; color: #38bdf8; border: 1px solid #0284c7; padding: 0.4rem 0.85rem; border-radius: 6px; font-weight: 700; font-size: 0.85rem; cursor: pointer; outline: none; }
+        .logout-btn { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 0.4rem 0.85rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer; }
         .logout-btn:hover { border-color: var(--danger); color: var(--danger); }
-        main { padding: 2rem; flex-grow: 1; max-width: 1200px; width: 100%; margin: 0 auto; }
-        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
-        .metric-card { background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; }
-        .metric-card h3 { font-size: 0.875rem; color: var(--text-muted); font-weight: 500; margin-bottom: 0.5rem; }
-        .metric-card .value { font-size: 1.875rem; font-weight: 700; }
-        .panel { background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; }
-        .panel h2 { font-size: 1.125rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; }
-        .status-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background-color: rgba(34,197,94,0.1); color: var(--success); }
-        .dispatch-banner { background: linear-gradient(135deg, #7f1d1d, #991b1b); border: 1px solid #ef4444; color: #fff; padding: 1.25rem; border-radius: 10px; margin-bottom: 2rem; box-shadow: 0 8px 24px rgba(239,68,68,0.3); display: flex; justify-content: space-between; align-items: center; }
-        .dispatch-banner h4 { font-size: 1.1rem; margin-bottom: 0.25rem; }
-        .badge-precinct { background: #fee2e2; color: #991b1b; padding: 0.25rem 0.6rem; border-radius: 6px; font-weight: 700; font-size: 0.8rem; display: inline-block; margin-top: 0.25rem; }
-        .dispatch-card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; }
-        .dispatch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem; font-size: 0.875rem; }
-        .tag-coord { font-family: monospace; color: #38bdf8; background: #082f49; padding: 0.15rem 0.4rem; border-radius: 4px; }
-        .eta-pill { color: #f59e0b; font-weight: 600; }
+        
+        main { padding: 1.75rem 2rem; flex-grow: 1; max-width: 1300px; width: 100%; margin: 0 auto; }
+        
+        /* Station Jurisdiction Ribbon */
+        .station-ribbon { background: rgba(30, 41, 59, 0.7); border: 1px solid var(--border); border-radius: 10px; padding: 0.9rem 1.25rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+        .station-title-box { display: flex; align-items: center; gap: 0.75rem; }
+        .pulse-indicator { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .pulse-green { background: #22c55e; box-shadow: 0 0 10px #22c55e; }
+        .pulse-red { background: #ef4444; box-shadow: 0 0 15px #ef4444; animation: blinker 1s cubic-bezier(0.5, 0, 1, 1) infinite alternate; }
+        @keyframes blinker { from { opacity: 1; } to { opacity: 0.2; } }
+        
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 1.75rem; }
+        .metric-card { background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+        .metric-card h3 { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+        .metric-card .value { font-size: 1.75rem; font-weight: 800; }
+        .status-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; background-color: rgba(34,197,94,0.15); color: var(--success); }
+        
+        /* High Urgency Live Dispatch Banner */
+        .dispatch-banner { background: linear-gradient(135deg, #7f1d1d, #b91c1c); border: 2px solid #ef4444; color: #fff; padding: 1.25rem 1.5rem; border-radius: 10px; margin-bottom: 1.75rem; box-shadow: 0 10px 30px rgba(239,68,68,0.4); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+        .dispatch-banner.active-nearest { border-color: #fca5a5; box-shadow: 0 0 30px rgba(239, 68, 68, 0.7); animation: bannerGlow 2s infinite alternate; }
+        @keyframes bannerGlow { from { box-shadow: 0 0 15px rgba(239,68,68,0.5); } to { box-shadow: 0 0 35px rgba(239,68,68,0.9); } }
+        .badge-role-primary { background: #fee2e2; color: #991b1b; padding: 0.25rem 0.6rem; border-radius: 6px; font-weight: 800; font-size: 0.75rem; letter-spacing: 0.05em; display: inline-block; }
+        
+        /* Secondary Standby Notice */
+        .standby-banner { background: rgba(15, 23, 42, 0.9); border: 1px solid #0284c7; color: #e2e8f0; padding: 1rem 1.25rem; border-radius: 10px; margin-bottom: 1.75rem; display: flex; justify-content: space-between; align-items: center; }
+        
+        .panel { background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.75rem; }
+        .panel h2 { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .panel-subtitle { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem; }
+        
+        /* Cards */
+        .dispatch-card { background: #0f172a; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; transition: border 0.2s; }
+        .dispatch-card.primary-nearest { border: 2px solid #ef4444; background: rgba(30, 41, 59, 0.9); box-shadow: 0 4px 20px rgba(239,68,68,0.25); }
+        .dispatch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; margin-top: 0.75rem; font-size: 0.85rem; }
+        .tag-coord { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: #38bdf8; background: #082f49; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; }
+        .eta-pill { color: var(--warning); font-weight: 700; }
+        .badge-standby { background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
     </style>
 </head>
 <body>
 
-    <!-- AUTHENTICATION & REGISTRATION VIEW -->
+    <!-- AUTHENTICATION VIEW -->
     <div id="auth-container">
-        <h2 id="form-title">Dashboard Login</h2>
-        <p id="form-subtitle">Enter credentials from external config or register a new user</p>
+        <h2 id="form-title">🛡️ Police Dispatch Login</h2>
+        <p id="form-subtitle">Select node station identity & authenticate session</p>
         <form id="auth-form">
             <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" required placeholder="Enter username">
+                <label for="initial-node-select">Designated Laptop / Station Node</label>
+                <select id="initial-node-select">
+                    <option value="PRECINCT_NORTH">💻 Node 1: Delhi North HQ (Civil Lines)</option>
+                    <option value="PRECINCT_SOUTH">💻 Node 2: Gurugram South (Cyber Hub)</option>
+                    <option value="PRECINCT_EAST">💻 Node 3: East Delhi Transit (Anand Vihar)</option>
+                    <option value="ALL">🌐 Master Command Audit (All Sectors)</option>
+                </select>
             </div>
             <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" required placeholder="Enter password">
+                <label for="username">Badge ID / Username</label>
+                <input type="text" id="username" required value="officer_command">
             </div>
-            <button type="submit" id="submit-btn" class="btn">Sign In</button>
-            <button type="button" id="toggle-mode-btn" class="btn secondary-btn">Need an account? Register</button>
+            <div class="form-group">
+                <label for="password">Security Password</label>
+                <input type="password" id="password" required value="shield2026">
+            </div>
+            <button type="submit" id="submit-btn" class="btn">Access Tactical Command</button>
+            <button type="button" id="quick-demo-btn" class="btn secondary-btn">⚡ Instant Presentation Launch (Bypass Auth)</button>
             <div id="auth-msg" class="msg hidden"></div>
         </form>
     </div>
 
-    <!-- MAIN DASHBOARD VIEW -->
+    <!-- MAIN DISPATCH DASHBOARD VIEW -->
     <div id="dashboard-container" class="hidden">
         <header>
-            <h1>🛡️ DrugShield AI Dashboard (Frontend Mode)</h1>
-            <div>
-                <span id="welcome-user" style="margin-right: 1rem; font-size: 0.875rem; color: var(--text-muted);"></span>
-                <button id="logout-btn" class="logout-btn">Sign Out</button>
+            <h1>
+                <span>🛡️ DrugShield AI</span>
+                <span style="font-size: 0.85rem; font-weight: 500; color: var(--text-muted); border-left: 1px solid #334155; padding-left: 0.75rem;">
+                    Geo-Spatial Police Precinct Dispatch Engine
+                </span>
+            </h1>
+            <div class="header-actions">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <label for="node-selector" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Station Node:</label>
+                    <select id="node-selector" class="node-select-badge">
+                        <option value="PRECINCT_NORTH">Node 1: Delhi North HQ</option>
+                        <option value="PRECINCT_SOUTH">Node 2: Gurugram South</option>
+                        <option value="PRECINCT_EAST">Node 3: East Delhi Transit</option>
+                        <option value="ALL">Master Command (All)</option>
+                    </select>
+                </div>
+                <button id="logout-btn" class="logout-btn">Disconnect</button>
             </div>
         </header>
+
         <main>
+            <!-- STATION STATUS JURISDICTION RIBBON -->
+            <div class="station-ribbon" id="station-ribbon">
+                <div class="station-title-box">
+                    <span id="station-pulse" class="pulse-indicator pulse-green"></span>
+                    <div>
+                        <div id="station-name-text" style="font-weight: 800; font-size: 1rem; color: #f8fafc;">Node 1: Delhi Metro North Precinct (HQ Command)</div>
+                        <div id="station-jurisdiction-text" style="font-size: 0.8rem; color: var(--text-muted);">Jurisdiction: North Delhi Metropolitan & Civil Lines Tactical Zone</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; font-size: 0.85rem;">
+                    <span id="station-coords-badge" class="tag-coord">28.6139° N, 77.2090° E</span>
+                    <span id="station-freq-badge" style="color: #cbd5e1; font-size: 0.8rem; font-weight: 600;">VHF-148.55 MHz</span>
+                    <span id="station-state-badge" style="color: #22c55e; font-weight: 700;">🟢 STANDBY MONITORING</span>
+                </div>
+            </div>
+
+            <!-- METRICS SUMMARY -->
             <div class="metrics-grid">
                 <div class="metric-card">
-                    <h3>Pipeline Status</h3>
-                    <div class="value" style="font-size: 1.25rem; margin-top: 0.5rem;">
-                        <span class="status-badge">Active Honeypot & Dispatch Online</span>
+                    <h3>Tactical System Status</h3>
+                    <div class="value" style="font-size: 1.15rem; margin-top: 0.5rem;">
+                        <span class="status-badge">Haversine Triangulation Online</span>
                     </div>
                 </div>
                 <div class="metric-card">
-                    <h3>Active Slang Filters</h3>
-                    <div class="value">42+</div>
+                    <h3>Jurisdiction Radius</h3>
+                    <div class="value" style="color: #38bdf8;">~35 km</div>
                 </div>
                 <div class="metric-card">
-                    <h3>Honeypot Hits (Passive)</h3>
-                    <div id="metric-honeypot-hits" class="value" style="color: #38bdf8;">0</div>
+                    <h3>Local Distance to Target</h3>
+                    <div id="metric-local-distance" class="value" style="color: #a7f3d0;">-- km</div>
                 </div>
                 <div class="metric-card">
-                    <h3>Precinct Dispatches</h3>
+                    <h3>Total Dispatches Logged</h3>
                     <div id="metric-precinct-dispatches" class="value" style="color: #ef4444;">0</div>
                 </div>
             </div>
 
-            <!-- LIVE DISPATCH NOTIFICATION POPUP BANNER -->
+            <!-- POPUP DISPATCH BANNER (EXCLUSIVELY TRIGGERED ON NEAREST NODE) -->
             <div id="dispatch-alert-banner" class="dispatch-banner hidden">
                 <div>
-                    <h4 id="banner-title">🚨 PRIORITY DISPATCH ALERT TRIGGERED</h4>
-                    <p id="banner-details" style="font-size: 0.875rem; opacity: 0.9;">Suspect opened tracking invoice. Routing to nearest police command...</p>
+                    <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.35rem;">
+                        <span class="badge-role-primary" id="banner-role-badge">⭐ ASSIGNED PRIMARY DISPATCH NODE</span>
+                        <span style="font-size: 0.8rem; background: #000; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700;">IMMEDIATE INTERCEPTION</span>
+                    </div>
+                    <h4 id="banner-title" style="font-size: 1.25rem; font-weight: 800;">🚨 PRIORITY TACTICAL DISPATCH COMMITTED</h4>
+                    <p id="banner-details" style="font-size: 0.9rem; margin-top: 0.35rem; color: #fef2f2;"></p>
                 </div>
-                <span class="badge-precinct" id="banner-precinct-badge">ROUTING</span>
+                <div style="text-align: right;">
+                    <div id="banner-distance-badge" style="font-size: 1.3rem; font-weight: 800; color: #fef08a;">-- km</div>
+                    <div id="banner-eta-badge" class="eta-pill" style="margin-top: 0.2rem; font-size: 0.9rem;">⚡ Response ETA: ~3 mins</div>
+                </div>
             </div>
 
-            <div class="panel" style="margin-bottom: 2rem;">
+            <!-- STANDBY NOTICE (SHOWN WHEN ANOTHER SECTOR IS ASSIGNED) -->
+            <div id="standby-notice-banner" class="standby-banner hidden">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <span class="badge-standby">STANDBY SECTOR</span>
+                    <span id="standby-notice-text" style="font-size: 0.9rem;">Target assigned to primary precinct. This node remains on standby.</span>
+                </div>
+                <span id="standby-distance-text" style="color: #38bdf8; font-weight: 700; font-size: 0.85rem;"></span>
+            </div>
+
+            <!-- LIVE DISPATCH STREAM -->
+            <div class="panel">
                 <h2>🚔 Live Police Precinct Haversine Dispatch Stream</h2>
-                <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;">
-                    Targets localized via silent IP/EXIF telemetry are automatically evaluated against simulated jurisdictional precincts using the Haversine formula.
+                <p class="panel-subtitle">
+                    Decoy invoice clicks passively compute great-circle distance to all 3 registered nodes. 
+                    The absolute single nearest station is highlighted with primary tactical dispatch while secondary nodes remain on standby.
                 </p>
                 <div id="dispatch-feed">
                     <p style="color: var(--text-muted); font-size: 0.875rem; font-style: italic;">Awaiting incoming dispatch events...</p>
                 </div>
             </div>
 
+            <!-- PASSIVE OSINT VISITOR HITS -->
             <div class="panel">
-                <h2>🎯 Captured Honeypot Visitors & OSINT Telemetry</h2>
-                <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;">
+                <h2>🎯 Decoy Invoice Visitor Telemetry</h2>
+                <p class="panel-subtitle">
                     Passively extracted visitor IP, browser heuristics, and device fingerprint hashes from invoice links.
                 </p>
                 <div id="honeypot-feed">
@@ -139,121 +227,190 @@
     </div>
 
     <script>
+        const API_URL = "http://127.0.0.1:8000";
+
+        // Registered Node Station Configurations
+        const REGISTERED_PRECINCTS = {
+            "PRECINCT_NORTH": {
+                id: "PRECINCT_NORTH",
+                nodeIndex: 1,
+                name: "Delhi Metro North Precinct (HQ Command / Node 1)",
+                shortName: "Node 1: Delhi North HQ",
+                jurisdiction: "North Delhi Metropolitan & Civil Lines Tactical Zone",
+                address: "Civil Lines / Mall Road, New Delhi",
+                lat: 28.6139,
+                lon: 77.2090,
+                frequency: "VHF-148.55 MHz",
+                contact: "+91-11-23910001"
+            },
+            "PRECINCT_SOUTH": {
+                id: "PRECINCT_SOUTH",
+                nodeIndex: 2,
+                name: "NCR Cyber & Narcotics Precinct South (Node 2)",
+                shortName: "Node 2: Gurugram South",
+                jurisdiction: "NCR South & Cyber City Narcotics Division",
+                address: "Sector 29 / Cyber Hub, Gurugram",
+                lat: 28.4595,
+                lon: 77.0266,
+                frequency: "VHF-152.10 MHz",
+                contact: "+91-124-2392002"
+            },
+            "PRECINCT_EAST": {
+                id: "PRECINCT_EAST",
+                nodeIndex: 3,
+                name: "East Delhi Rapid Interception Precinct (Node 3)",
+                shortName: "Node 3: East Delhi Transit",
+                jurisdiction: "Trans-Yamuna Rapid Response & Transit Interception",
+                address: "Anand Vihar / Patparganj Interceptor Post, East Delhi",
+                lat: 28.6469,
+                lon: 77.3160,
+                frequency: "VHF-150.80 MHz",
+                contact: "+91-11-22440003"
+            },
+            "ALL": {
+                id: "ALL",
+                nodeIndex: 0,
+                name: "Master Command Center (All Jurisdictions)",
+                shortName: "Master Command Audit",
+                jurisdiction: "Inter-State Rapid Narcotics Coordination",
+                address: "Central Police Operations HQ",
+                lat: 28.6139,
+                lon: 77.2090,
+                frequency: "ENCRYPTED-MULTI-CHANNEL",
+                contact: "112 / Central Command"
+            }
+        };
+
+        // Determine active node identity (from URL query param ?node=... or localStorage)
+        function resolveInitialNodeId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const nodeParam = urlParams.get('node') || urlParams.get('precinct_id');
+            if (nodeParam) {
+                const norm = nodeParam.toUpperCase();
+                if (norm === '1' || norm === 'NODE_01' || norm === 'NORTH') return 'PRECINCT_NORTH';
+                if (norm === '2' || norm === 'NODE_02' || norm === 'SOUTH') return 'PRECINCT_SOUTH';
+                if (norm === '3' || norm === 'NODE_03' || norm === 'EAST') return 'PRECINCT_EAST';
+                if (norm === 'ALL' || norm === 'ADMIN') return 'ALL';
+                if (REGISTERED_PRECINCTS[norm]) return norm;
+            }
+            return localStorage.getItem('drugshield_node_id') || 'PRECINCT_NORTH';
+        }
+
+        let currentNodeId = resolveInitialNodeId();
+        let dispatchWs = null;
+        let cachedAlerts = [];
+
+        // DOM elements
         const authContainer = document.getElementById('auth-container');
         const dashboardContainer = document.getElementById('dashboard-container');
         const authForm = document.getElementById('auth-form');
-        const usernameInput = document.getElementById('username');
-        const passwordInput = document.getElementById('password');
-        const submitBtn = document.getElementById('submit-btn');
-        const toggleModeBtn = document.getElementById('toggle-mode-btn');
-        const formTitle = document.getElementById('form-title');
-        const formSubtitle = document.getElementById('form-subtitle');
-        const authMsg = document.getElementById('auth-msg');
-        const welcomeUser = document.getElementById('welcome-user');
+        const nodeSelector = document.getElementById('node-selector');
+        const initialNodeSelect = document.getElementById('initial-node-select');
         const logoutBtn = document.getElementById('logout-btn');
+        const quickDemoBtn = document.getElementById('quick-demo-btn');
+        const stationNameText = document.getElementById('station-name-text');
+        const stationJurisdictionText = document.getElementById('station-jurisdiction-text');
+        const stationCoordsBadge = document.getElementById('station-coords-badge');
+        const stationFreqBadge = document.getElementById('station-freq-badge');
+        const stationStateBadge = document.getElementById('station-state-badge');
+        const stationPulse = document.getElementById('station-pulse');
 
-        let isRegisterMode = false;
+        // Setup dropdown values
+        if (nodeSelector) nodeSelector.value = currentNodeId;
+        if (initialNodeSelect) initialNodeSelect.value = currentNodeId;
 
-        // Load users from credentials.json and sync with localStorage state
-        async function getStoredUsers() {
-            let users = {};
-            try {
-                const response = await fetch('credentials.json');
-                const data = await response.json();
-                users = data.users || {};
-            } catch (err) {
-                console.warn("Could not load credentials.json via fetch, using local storage fallback.");
-            }
-
-            // Merge with any dynamically registered users stored in browser session
-            const localSaved = localStorage.getItem('drugshield_users');
-            if (localSaved) {
-                const parsed = JSON.parse(localSaved);
-                users = { ...users, ...parsed };
-            }
-            return users;
+        // Auto-launch if URL has ?node= or ?demo=1 or user session stored
+        const hasUrlNode = new URLSearchParams(window.location.search).has('node');
+        const hasDemoParam = new URLSearchParams(window.location.search).has('demo');
+        if (hasUrlNode || hasDemoParam || localStorage.getItem('drugshield_logged_in') === 'true') {
+            launchDashboard(currentNodeId);
         }
 
-        // Toggle between Login and Register modes
-        toggleModeBtn.addEventListener('click', () => {
-            isRegisterMode = !isRegisterMode;
-            authMsg.classList.add('hidden');
-            if (isRegisterMode) {
-                formTitle.textContent = "Register User";
-                formSubtitle.textContent = "Add a new credential entry to the config records";
-                submitBtn.textContent = "Create Account & Login";
-                toggleModeBtn.textContent = "Already have an account? Sign In";
-            } else {
-                formTitle.textContent = "Dashboard Login";
-                formSubtitle.textContent = "Enter credentials from external config or registered accounts";
-                submitBtn.textContent = "Sign In";
-                toggleModeBtn.textContent = "Need an account? Register";
-            }
+        // Quick demo launch
+        quickDemoBtn.addEventListener('click', () => {
+            currentNodeId = initialNodeSelect.value;
+            launchDashboard(currentNodeId);
         });
 
-        // Handle Form Submission (Login or Register)
-        authForm.addEventListener('submit', async function(e) {
+        // Form submit
+        authForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const userInput = usernameInput.value.trim();
-            const passInput = passwordInput.value;
-
-            const users = await getStoredUsers();
-
-            if (isRegisterMode) {
-                // Registration Flow: Write user input data into persistent storage record
-                if (users[userInput]) {
-                    authMsg.textContent = "Username already exists. Choose another.";
-                    authMsg.className = "msg error-msg";
-                    authMsg.classList.remove('hidden');
-                    return;
-                }
-
-                users[userInput] = passInput;
-                
-                // Save updated user list locally
-                localStorage.setItem('drugshield_users', JSON.stringify(users));
-
-                authMsg.textContent = "Registration successful! Logging in...";
-                authMsg.className = "msg success-msg";
-                authMsg.classList.remove('hidden');
-
-                setTimeout(() => {
-                    launchDashboard(userInput);
-                }, 800);
-
-            } else {
-                // Login Flow: Verify user input against credentials record
-                if (users[userInput] && users[userInput] === passInput) {
-                    authMsg.classList.add('hidden');
-                    launchDashboard(userInput);
-                } else {
-                    authMsg.textContent = "Invalid username or password.";
-                    authMsg.className = "msg error-msg";
-                    authMsg.classList.remove('hidden');
-                }
-            }
+            currentNodeId = initialNodeSelect.value;
+            localStorage.setItem('drugshield_logged_in', 'true');
+            launchDashboard(currentNodeId);
         });
 
-        function launchDashboard(username) {
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('drugshield_logged_in');
+            dashboardContainer.classList.add('hidden');
+            authContainer.classList.remove('hidden');
+            if (dispatchWs) dispatchWs.close();
+        });
+
+        // Node switch handler
+        nodeSelector.addEventListener('change', (e) => {
+            switchStationNode(e.target.value);
+        });
+
+        function switchStationNode(newNodeId) {
+            currentNodeId = newNodeId;
+            localStorage.setItem('drugshield_node_id', currentNodeId);
+            updateStationRibbon();
+            renderDispatchAlerts(cachedAlerts);
+
+            if (dispatchWs && dispatchWs.readyState === WebSocket.OPEN) {
+                dispatchWs.send(JSON.stringify({
+                    action: "SET_NODE",
+                    node: currentNodeId
+                }));
+            } else {
+                connectDispatchWebSocket();
+            }
+        }
+
+        function updateStationRibbon() {
+            const node = REGISTERED_PRECINCTS[currentNodeId] || REGISTERED_PRECINCTS["PRECINCT_NORTH"];
+            stationNameText.textContent = node.name;
+            stationJurisdictionText.textContent = `Jurisdiction: ${node.jurisdiction}`;
+            stationCoordsBadge.textContent = `${node.lat.toFixed(4)}° N, ${node.lon.toFixed(4)}° E`;
+            stationFreqBadge.textContent = node.frequency;
+            stationStateBadge.textContent = "🟢 STANDBY MONITORING";
+            stationStateBadge.style.color = "#22c55e";
+            stationPulse.className = "pulse-indicator pulse-green";
+        }
+
+        function launchDashboard(nodeId) {
+            currentNodeId = nodeId;
+            localStorage.setItem('drugshield_node_id', nodeId);
+            if (nodeSelector) nodeSelector.value = nodeId;
             authContainer.classList.add('hidden');
             dashboardContainer.classList.remove('hidden');
-            welcomeUser.textContent = `Logged in as: ${username}`;
-            authForm.reset();
+            updateStationRibbon();
             initDispatchAndHoneypotFeeds();
         }
 
-        logoutBtn.addEventListener('click', function() {
-            dashboardContainer.classList.add('hidden');
-            authContainer.classList.remove('hidden');
-            authMsg.classList.add('hidden');
-        });
+        // Tactical Synthesized Web Audio Radar Ping
+        function playEmergencyRadarPing() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(880, now);
+                osc.frequency.exponentialRampToValueAtTime(1320, now + 0.15);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            } catch (e) {}
+        }
 
         // =========================================================================
-        // LIVE POLICE DISPATCH & HONEYPOT WEBSOCKET / REST INTEGRATION
+        // FEEDS & WEBSOCKET ENGINE
         // =========================================================================
-        let dispatchWs = null;
-        const API_URL = "http://127.0.0.1:8000";
-
         function initDispatchAndHoneypotFeeds() {
             fetchFeeds();
             setInterval(fetchFeeds, 5000);
@@ -262,13 +419,12 @@
 
         async function fetchFeeds() {
             try {
-                // Fetch Police Dispatch Alerts
                 const dispRes = await fetch(`${API_URL}/api/v1/dispatch/alerts?limit=10`);
                 if (dispRes.ok) {
                     const data = await dispRes.json();
-                    renderDispatchAlerts(data.alerts || []);
+                    cachedAlerts = data.alerts || [];
+                    renderDispatchAlerts(cachedAlerts);
                 }
-                // Fetch Honeypot Hits
                 const hitRes = await fetch(`${API_URL}/api/v1/honeypot/logs?limit=10`);
                 if (hitRes.ok) {
                     const data = await hitRes.json();
@@ -279,30 +435,64 @@
             }
         }
 
+        // Great-circle Haversine in JS for instant client-side dynamic evaluation
+        function calcHaversineKm(lat1, lon1, lat2, lon2) {
+            const R = 6371.0088;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return Math.round(R * c * 100) / 100;
+        }
+
         function renderDispatchAlerts(alerts) {
             const container = document.getElementById('dispatch-feed');
             const counter = document.getElementById('metric-precinct-dispatches');
+            const localDistMetric = document.getElementById('metric-local-distance');
             if (counter) counter.textContent = alerts.length;
             if (!alerts || alerts.length === 0) return;
 
-            container.innerHTML = alerts.map(a => {
-                const assigned = a.precinct_name || (a.details && a.details.assigned_precinct ? a.details.assigned_precinct.name : "Simulated Precinct");
-                const dist = a.distance_km != null ? a.distance_km : (a.details && a.details.assigned_precinct ? a.details.assigned_precinct.distance_km : "?");
-                const eta = a.eta_minutes != null ? a.eta_minutes : (a.details && a.details.assigned_precinct ? a.details.assigned_precinct.estimated_eta_minutes : "5");
-                const lat = a.target_lat != null ? a.target_lat.toFixed(4) : "28.6139";
-                const lon = a.target_lon != null ? a.target_lon.toFixed(4) : "77.2090";
+            const myStation = REGISTERED_PRECINCTS[currentNodeId] || REGISTERED_PRECINCTS["PRECINCT_NORTH"];
+
+            container.innerHTML = alerts.map((a, index) => {
+                const assigned = a.precinct_name || (a.details && a.details.assigned_precinct ? a.details.assigned_precinct.name : "Delhi North HQ");
+                const assignedId = a.precinct_id || (a.details && a.details.assigned_precinct ? a.details.assigned_precinct.precinct_id : "PRECINCT_NORTH");
+                const lat = a.target_lat != null ? a.target_lat : 28.6139;
+                const lon = a.target_lon != null ? a.target_lon : 77.2090;
+
+                // Dynamic distance from THIS station to target
+                const dynamicDistance = calcHaversineKm(myStation.lat, myStation.lon, lat, lon);
+                const dynamicEta = Math.max(3, Math.ceil((dynamicDistance / 35.0) * 60));
+
+                if (index === 0 && localDistMetric) {
+                    localDistMetric.textContent = `${dynamicDistance} km`;
+                }
+
+                const isPrimaryStation = (currentNodeId === assignedId || (currentNodeId === 'ALL' && a.dispatch_status === 'ASSIGNED_PRIMARY'));
+                const cardClass = isPrimaryStation ? 'dispatch-card primary-nearest' : 'dispatch-card';
+
+                const roleBadge = isPrimaryStation
+                    ? `<span class="badge-role-primary">⭐ ASSIGNED PRIMARY DISPATCH NODE</span>`
+                    : `<span class="badge-standby">🛡️ STANDBY SECONDARY (Primary: ${assigned})</span>`;
+
+                const highlightColor = isPrimaryStation ? '#ef4444' : '#64748b';
 
                 return `
-                <div class="dispatch-card">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="badge-precinct">${assigned}</span>
-                        <span class="eta-pill">⚡ Response ETA: ~${eta} mins</span>
+                <div class="${cardClass}">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                        <div style="display:flex; align-items:center; gap:0.6rem;">
+                            ${roleBadge}
+                            <strong style="color:#f8fafc; font-size:0.95rem;">${assigned}</strong>
+                        </div>
+                        <span class="eta-pill">⚡ Response ETA: ~${dynamicEta} mins</span>
                     </div>
                     <div class="dispatch-grid">
-                        <div><strong>Target Coordinates:</strong> <span class="tag-coord">${lat}, ${lon}</span></div>
-                        <div><strong>Haversine Distance:</strong> <span style="color:#a7f3d0; font-weight:600;">${dist} km</span></div>
+                        <div><strong>Target Coordinates:</strong> <span class="tag-coord">${lat.toFixed(4)}, ${lon.toFixed(4)}</span></div>
+                        <div><strong>Distance to Your Station:</strong> <span style="color:#a7f3d0; font-weight:700;">${dynamicDistance} km</span></div>
                         <div><strong>Tracking Token:</strong> <code>${a.tracking_token}</code></div>
-                        <div><strong>Dispatch Status:</strong> <span style="color:#22c55e;">${a.dispatch_status || 'DISPATCH_COMMITTED'}</span></div>
+                        <div><strong>Tactical Status:</strong> <span style="color:${isPrimaryStation ? '#ef4444' : '#22c55e'}; font-weight:700;">${isPrimaryStation ? 'DISPATCH_COMMITTED' : 'STANDBY_READY'}</span></div>
                     </div>
                 </div>`;
             }).join('');
@@ -310,8 +500,6 @@
 
         function renderHoneypotHits(hits) {
             const container = document.getElementById('honeypot-feed');
-            const counter = document.getElementById('metric-honeypot-hits');
-            if (counter) counter.textContent = hits.length;
             if (!hits || hits.length === 0) return;
 
             container.innerHTML = hits.map(h => {
@@ -321,12 +509,12 @@
                 const dev = h.heuristics && h.heuristics.os ? `${h.heuristics.os} (${h.heuristics.browser || 'Browser'})` : "Simulated Client";
 
                 return `
-                <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:1rem; margin-bottom:0.75rem; font-size:0.875rem;">
+                <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:0.85rem 1rem; margin-bottom:0.75rem; font-size:0.85rem;">
                     <div style="display:flex; justify-content:space-between;">
-                        <span style="font-weight:600; color:#38bdf8;">🌐 ${ip} (${city})</span>
-                        <span style="color:var(--text-muted); font-size:0.75rem;">Token: ${h.tracking_token}</span>
+                        <span style="font-weight:700; color:#38bdf8;">🌐 ${ip} (${city})</span>
+                        <span style="color:var(--text-muted); font-size:0.75rem;">Token: <code>${h.tracking_token}</code></span>
                     </div>
-                    <div style="margin-top:0.4rem; color:var(--text-muted);">
+                    <div style="margin-top:0.35rem; color:var(--text-muted);">
                         <span>Device: <strong style="color:#f8fafc;">${dev}</strong></span> • 
                         <span>Fingerprint: <code style="color:#94a3b8;">${fp}</code></span>
                     </div>
@@ -334,32 +522,90 @@
             }).join('');
         }
 
-        function triggerDispatchAlertBanner(dispatchData) {
+        // Live pop-up alert for the SINGLE assigned nearest node
+        function triggerPrimaryDispatchBanner(dispatchData) {
             const banner = document.getElementById('dispatch-alert-banner');
+            const standbyNotice = document.getElementById('standby-notice-banner');
             const title = document.getElementById('banner-title');
             const details = document.getElementById('banner-details');
-            const badge = document.getElementById('banner-precinct-badge');
+            const distBadge = document.getElementById('banner-distance-badge');
+            const etaBadge = document.getElementById('banner-eta-badge');
+
+            standbyNotice.classList.add('hidden');
 
             const assigned = dispatchData.assigned_precinct || {};
-            title.textContent = `🚨 POLICE DISPATCH COMMITTED: ${assigned.name || 'Precinct Command'}`;
-            details.textContent = `Target located at (${dispatchData.target_coordinates?.latitude?.toFixed(4)}, ${dispatchData.target_coordinates?.longitude?.toFixed(4)}). Distance: ${assigned.distance_km} km. Estimated ETA: ~${assigned.estimated_eta_minutes} mins.`;
-            badge.textContent = `DISPATCHED (${assigned.precinct_id || 'LOCAL'})`;
+            const coords = dispatchData.target_coordinates || { latitude: 28.6139, longitude: 77.2090 };
 
+            title.textContent = `🚨 PRIORITY DISPATCH ALERT: ${assigned.name || 'Precinct Command'}`;
+            details.textContent = `Suspect located at (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}). Single closest jurisdictional station engaged!`;
+            distBadge.textContent = `${assigned.distance_km} km`;
+            etaBadge.textContent = `⚡ Interception ETA: ~${assigned.estimated_eta_minutes} mins`;
+
+            banner.className = 'dispatch-banner active-nearest';
             banner.classList.remove('hidden');
-            setTimeout(() => { banner.classList.add('hidden'); }, 12000);
+
+            // Set Station Ribbon state
+            stationStateBadge.textContent = "🔴 PRIMARY DISPATCH ENGAGED";
+            stationStateBadge.style.color = "#ef4444";
+            stationPulse.className = "pulse-indicator pulse-red";
+
+            playEmergencyRadarPing();
+
+            setTimeout(() => {
+                banner.classList.add('hidden');
+                updateStationRibbon();
+            }, 14000);
+
+            fetchFeeds();
+        }
+
+        // Calm standby notice when target is outside local sector
+        function triggerStandbyStatusNotice(payload) {
+            const banner = document.getElementById('dispatch-alert-banner');
+            const standbyNotice = document.getElementById('standby-notice-banner');
+            const noticeText = document.getElementById('standby-notice-text');
+            const distText = document.getElementById('standby-distance-text');
+
+            // Hide any loud primary alert on standby nodes
+            banner.classList.add('hidden');
+
+            const primaryName = payload.assigned_primary_precinct || "Assigned Primary Station";
+            const myEval = payload.data?.current_node_evaluation || {};
+            const myDist = payload.data?.display_distance_km || "--";
+
+            noticeText.textContent = `Incident routed to Primary Station: ${primaryName}. Sector boundary clear, maintaining patrol standby.`;
+            distText.textContent = `Your Distance: ${myDist} km`;
+
+            standbyNotice.classList.remove('hidden');
+            setTimeout(() => { standbyNotice.classList.add('hidden'); }, 10000);
+
             fetchFeeds();
         }
 
         function connectDispatchWebSocket() {
             try {
-                const wsUrl = "ws://127.0.0.1:8000/api/v1/ws/dispatch";
+                if (dispatchWs) {
+                    dispatchWs.onclose = null;
+                    dispatchWs.close();
+                }
+
+                const wsUrl = `ws://127.0.0.1:8000/api/v1/ws/dispatch?node=${encodeURIComponent(currentNodeId)}`;
                 dispatchWs = new WebSocket(wsUrl);
+
+                dispatchWs.onopen = () => {
+                    console.log(`[DrugShield WS] Connected as station node: ${currentNodeId}`);
+                };
 
                 dispatchWs.onmessage = (event) => {
                     try {
                         const payload = JSON.parse(event.data);
-                        if (payload.event === "POLICE_DISPATCH_ALERT" && payload.data) {
-                            triggerDispatchAlertBanner(payload.data);
+
+                        if (payload.event === "POLICE_DISPATCH_ALERT" && payload.is_primary) {
+                            // Absolute single nearest precinct triggered!
+                            triggerPrimaryDispatchBanner(payload.data);
+                        } else if (payload.event === "POLICE_STANDBY_STATUS") {
+                            // Secondary node on standby
+                            triggerStandbyStatusNotice(payload);
                         }
                     } catch (e) {
                         console.debug("WS parse error:", e);

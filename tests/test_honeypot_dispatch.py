@@ -97,6 +97,95 @@ def test_haversine_distance_and_routing():
     assert routing_south["assigned_precinct"]["distance_km"] < 1.0
 
 
+def test_three_node_precinct_routing():
+    """Verify distinct 3-node demo configuration and single nearest allocation."""
+    assert len(POLICE_PRECINCTS) == 3
+    precinct_ids = [p["id"] for p in POLICE_PRECINCTS]
+    assert "PRECINCT_NORTH" in precinct_ids
+    assert "PRECINCT_SOUTH" in precinct_ids
+    assert "PRECINCT_EAST" in precinct_ids
+
+    # 1. Target near Node 1 (North)
+    r1 = route_to_nearest_precinct(28.6140, 77.2092)
+    assert r1["assigned_precinct"]["precinct_id"] == "PRECINCT_NORTH"
+    assert r1["assigned_precinct"]["is_primary"] is True
+    assert r1["assigned_precinct"]["dispatch_role"] == "ASSIGNED PRIMARY DISPATCH NODE"
+    # Secondary nodes must be standby
+    for other in r1["all_precinct_evaluations"][1:]:
+        assert other["is_primary"] is False
+        assert other["dispatch_role"] == "STANDBY SECONDARY NODE"
+
+    # 2. Target near Node 2 (Gurugram South)
+    r2 = route_to_nearest_precinct(28.4596, 77.0268)
+    assert r2["assigned_precinct"]["precinct_id"] == "PRECINCT_SOUTH"
+    assert r2["assigned_precinct"]["is_primary"] is True
+    assert r2["assigned_precinct"]["dispatch_role"] == "ASSIGNED PRIMARY DISPATCH NODE"
+
+    # 3. Target near Node 3 (East Delhi / Anand Vihar)
+    r3 = route_to_nearest_precinct(28.6470, 77.3162)
+    assert r3["assigned_precinct"]["precinct_id"] == "PRECINCT_EAST"
+    assert r3["assigned_precinct"]["is_primary"] is True
+    assert r3["assigned_precinct"]["dispatch_role"] == "ASSIGNED PRIMARY DISPATCH NODE"
+
+
+def test_websocket_targeted_dispatch_filtering():
+    """Verify WebSocket pushes live alert EXCLUSIVELY to closest node and standby to others."""
+    import asyncio
+    from src.api.routes_honeypot import DispatchConnectionManager
+
+    manager = DispatchConnectionManager()
+
+    class MockWebSocket:
+        def __init__(self, name):
+            self.name = name
+            self.received = []
+
+        async def accept(self):
+            pass
+
+        async def send_json(self, data):
+            self.received.append(data)
+
+    ws_north = MockWebSocket("ws_north")
+    ws_south = MockWebSocket("ws_south")
+    ws_east = MockWebSocket("ws_east")
+    ws_admin = MockWebSocket("ws_admin")
+
+    async def run_dispatch_test():
+        await manager.connect(ws_north, precinct_id="PRECINCT_NORTH")
+        await manager.connect(ws_south, precinct_id="PRECINCT_SOUTH")
+        await manager.connect(ws_east, precinct_id="PRECINCT_EAST")
+        await manager.connect(ws_admin, precinct_id="ALL")
+
+        # Simulate target near East Delhi Precinct (Node 3)
+        dispatch_info = route_to_nearest_precinct(28.6470, 77.3162)
+        assert dispatch_info["assigned_precinct"]["precinct_id"] == "PRECINCT_EAST"
+
+        await manager.dispatch_to_nearest(dispatch_info)
+
+        # Node 3 (East) MUST receive primary dispatch alert
+        assert len(ws_east.received) == 1
+        assert ws_east.received[0]["event"] == "POLICE_DISPATCH_ALERT"
+        assert ws_east.received[0]["is_primary"] is True
+        assert ws_east.received[0]["highlight_role"] == "ASSIGNED PRIMARY DISPATCH NODE"
+
+        # Node 1 (North) and Node 2 (South) MUST receive standby status (NO pop-up alert)
+        assert len(ws_north.received) == 1
+        assert ws_north.received[0]["event"] == "POLICE_STANDBY_STATUS"
+        assert ws_north.received[0]["is_primary"] is False
+        assert ws_north.received[0]["highlight_role"] == "STANDBY JURISDICTION"
+
+        assert len(ws_south.received) == 1
+        assert ws_south.received[0]["event"] == "POLICE_STANDBY_STATUS"
+        assert ws_south.received[0]["is_primary"] is False
+
+        # Admin receives overview
+        assert len(ws_admin.received) == 1
+        assert ws_admin.received[0]["is_primary"] is True
+
+    asyncio.run(run_dispatch_test())
+
+
 def test_state_machine_threshold_accumulation(tmp_path):
     test_db = tmp_path / "test_state.db"
     sm = ThreatStateMachine(db_path=test_db)
