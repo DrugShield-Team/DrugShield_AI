@@ -131,6 +131,10 @@ def get_current_user(request: Request) -> Principal:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Authentication required", headers={"WWW-Authenticate": "Bearer"})
     return _principal_from_token(token)
 
+def principal_from_token(token: str) -> Principal:
+    """Validate a session token supplied to a non-HTTP transport such as WebSocket."""
+    return _principal_from_token(token)
+
 def require_roles(*roles: str):
     def dependency(principal: Principal = Depends(get_current_user)) -> Principal:
         if not principal.roles.intersection(roles):

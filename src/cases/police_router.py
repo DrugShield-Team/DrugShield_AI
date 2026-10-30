@@ -16,50 +16,44 @@ from typing import Any, Dict, List, Optional
 EARTH_RADIUS_KM = 6371.0088
 
 # ---------------------------------------------------------------------------
-# Registered Police Precinct Nodes (Representing 3 Demo Laptops / Stations)
+# Fixed synthetic locations used only to demonstrate scenario routing.
 # ---------------------------------------------------------------------------
 POLICE_PRECINCTS: List[Dict[str, Any]] = [
     {
         "id": "PRECINCT_NORTH",
         "node_id": "NODE_01",
         "node_index": 1,
-        "name": "Delhi Metro North Precinct (HQ Command / Node 1)",
-        "short_name": "Node 1: Delhi North HQ",
-        "jurisdiction": "North Delhi Metropolitan & Civil Lines Tactical Zone",
-        "address": "Civil Lines / Mall Road, New Delhi",
+        "name": "Simulation Node 1 (North)",
+        "short_name": "Node 1: North",
+        "jurisdiction": "Synthetic scenario area",
+        "address": "Synthetic Node Area 1",
         "latitude": 28.6139,
         "longitude": 77.2090,
-        "contact": "+91-11-23910001",
-        "status": "ACTIVE_PATROL",
-        "frequency": "VHF-148.55 MHz",
+        "status": "SIMULATED",
     },
     {
         "id": "PRECINCT_SOUTH",
         "node_id": "NODE_02",
         "node_index": 2,
-        "name": "NCR Cyber & Narcotics Precinct South (Node 2)",
-        "short_name": "Node 2: Gurugram South",
-        "jurisdiction": "NCR South & Cyber City Narcotics Division",
-        "address": "Sector 29 / Cyber Hub, Gurugram",
+        "name": "Simulation Node 2 (South)",
+        "short_name": "Node 2: South",
+        "jurisdiction": "Synthetic scenario area",
+        "address": "Synthetic Node Area 2",
         "latitude": 28.4595,
         "longitude": 77.0266,
-        "contact": "+91-124-2392002",
-        "status": "ACTIVE_PATROL",
-        "frequency": "VHF-152.10 MHz",
+        "status": "SIMULATED",
     },
     {
         "id": "PRECINCT_EAST",
         "node_id": "NODE_03",
         "node_index": 3,
-        "name": "East Delhi Rapid Interception Precinct (Node 3)",
-        "short_name": "Node 3: East Delhi Transit",
-        "jurisdiction": "Trans-Yamuna Rapid Response & Transit Interception",
-        "address": "Anand Vihar / Patparganj Interceptor Post, East Delhi",
+        "name": "Simulation Node 3 (East)",
+        "short_name": "Node 3: East",
+        "jurisdiction": "Synthetic scenario area",
+        "address": "Synthetic Node Area 3",
         "latitude": 28.6469,
         "longitude": 77.3160,
-        "contact": "+91-11-22440003",
-        "status": "ACTIVE_PATROL",
-        "frequency": "VHF-150.80 MHz",
+        "status": "SIMULATED",
     },
 ]
 
@@ -147,11 +141,9 @@ def route_to_nearest_precinct(
     precincts: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """
-    Evaluate target coordinates against all active precincts and assign
-    the absolute single nearest precinct (minimum Haversine distance).
+    Evaluate fictional scenario coordinates against the fixed synthetic nodes.
     
-    The nearest precinct is designated 'ASSIGNED PRIMARY DISPATCH NODE'.
-    All other precincts are marked 'STANDBY SECONDARY NODE'.
+    The nearest node is selected for demonstration only; no real dispatch occurs.
     """
     candidates = precincts if precincts is not None else POLICE_PRECINCTS
     evaluated: List[Dict[str, Any]] = []
@@ -170,13 +162,12 @@ def route_to_nearest_precinct(
             "short_name": precinct.get("short_name", precinct["name"]),
             "jurisdiction": precinct.get("jurisdiction", ""),
             "address": precinct["address"],
-            "contact": precinct["contact"],
-            "frequency": precinct.get("frequency", "VHF"),
+            "is_simulated": True,
             "coordinates": {"latitude": p_lat, "longitude": p_lon},
             "distance_km": dist,
             "estimated_eta_minutes": eta,
             "is_primary": False,
-            "dispatch_role": "STANDBY SECONDARY NODE",
+            "dispatch_role": "SIMULATED_STANDBY_NODE",
         })
 
     # Sort strictly ascending by distance to find absolute single nearest node
@@ -185,7 +176,7 @@ def route_to_nearest_precinct(
     nearest = evaluated[0] if evaluated else None
     if nearest:
         nearest["is_primary"] = True
-        nearest["dispatch_role"] = "ASSIGNED PRIMARY DISPATCH NODE"
+        nearest["dispatch_role"] = "SIMULATED_PRIMARY_NODE"
 
     return {
         "target_coordinates": {
@@ -197,7 +188,7 @@ def route_to_nearest_precinct(
         "nearest_node_index": nearest.get("node_index", 1) if nearest else 1,
         "minimum_distance_km": nearest["distance_km"] if nearest else 0.0,
         "all_precinct_evaluations": evaluated,
-        "dispatch_status": "ASSIGNED_PRIMARY",
+        "dispatch_status": "SIMULATED_ROUTE_SELECTED",
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
