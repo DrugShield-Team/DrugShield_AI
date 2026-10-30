@@ -3,31 +3,77 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DrugShield-AI | Evidence Review</title>
-<link rel="stylesheet" href="/frontend/dashboard.css"><script defer src="/frontend/dashboard.js"></script>
+<link rel="stylesheet" href="/frontend/dashboard.css?v=20261030-nav-cleanup-1"><script defer src="/frontend/dashboard.js?v=20261030-nav-cleanup-1"></script>
 </head>
 <body>
-<section id="login-view" class="login"><form id="login-form" class="login-card">
-<div class="mark">DS</div><p class="eyebrow">SIMULATION EVIDENCE REVIEW</p><h1>DrugShield-AI</h1>
-<p class="muted">Sign in with an authorized reviewer account to open the command centre.</p>
+<section id="login-view" class="login">
+<div id="login-cursor-glow" class="login-cursor-glow" aria-hidden="true"><span></span></div>
+<header class="portal-header">
+<a class="portal-brand" href="/"><span class="mark">DS</span><b>DrugShield-AI</b></a>
+<span class="portal-access">SECURE REVIEWER PORTAL</span>
+</header>
+<aside class="login-intro">
+<div class="login-story"><p class="eyebrow">COMMAND CENTRE</p><h2>Evidence in context.<br>Decisions with care.</h2><p>Review model-flagged conversations, supporting media, and connected entities in one place.</p>
+<p class="login-context">A single workspace for case reports, supporting evidence, and reviewer decisions.</p></div>
+</aside>
+<form id="login-form" class="login-card">
+<p class="eyebrow">SECURE REVIEWER ACCESS</p><h1>Welcome back</h1>
+<p class="muted">Sign in to access case reports, evidence, and review tools.</p>
 <label for="username">Username</label><input id="username" autocomplete="username" required>
 <label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required>
 <button class="primary wide">Sign in</button><p id="login-error" class="error" role="alert"></p>
 <small>Authorized reviewers only. This dashboard displays fictional simulation evidence.</small>
 </form></section>
 <div id="app-view" class="shell hidden">
-<aside class="sidebar"><a class="brand" href="/"><span class="mark">DS</span><span><b>DrugShield-AI</b><small>Evidence Review</small></span></a>
-<nav><a class="active" href="#overview">Overview</a><a href="#case-queue">Case queue</a><a href="#network-analysis">Network analysis</a><a href="#scenario-activity">Scenario activity</a></nav>
-<div class="side-note"><i></i>Simulation environment<small>No live collection</small></div>
-<div class="reviewer"><span id="user-initials" class="avatar">R</span><span><b id="user-name">Reviewer</b><small>Authorized reviewer</small></span></div></aside>
-<main><header><div><p class="eyebrow">DRUGSHIELD-AI / COMMAND CENTRE</p><h1>Evidence review</h1></div><div class="actions"><span class="pill"><i></i>Simulation mode</span><button id="refresh-button">Refresh</button><button id="logout-button">Sign out</button></div></header>
-<div id="global-alert" class="alert hidden" role="status"></div>
-<section id="overview"><div class="section-title"><div><p class="eyebrow">CURRENT WORKLOAD</p><h2>Review overview</h2></div><small id="last-updated">Waiting for data</small></div>
-<div class="metrics"><article><span>Open for review</span><b id="metric-open">—</b><small>Cases awaiting a decision</small></article><article><span>Further review</span><b id="metric-escalated">—</b><small>Cases kept in the queue</small></article><article><span>Accepted</span><b id="metric-accepted">—</b><small>Reviewer-confirmed cases</small></article><article><span>Dismissed</span><b id="metric-dismissed">—</b><small>Cases dismissed by a reviewer</small></article></div></section>
-<section id="case-queue"><div class="section-title"><div><p class="eyebrow">HUMAN REVIEW</p><h2>Case queue</h2><p>Model findings are evidence for review, not a finding of wrongdoing.</p></div><div class="filters"><select id="status-filter"><option value="">All statuses</option><option value="pending_review">Pending review</option><option value="further_review">Further review</option><option value="accepted">Accepted</option><option value="dismissed">Dismissed</option></select><input id="case-search" type="search" placeholder="Search cases" aria-label="Search cases"></div></div>
-<div class="columns"><article class="panel"><div class="panel-head"><h3>Evidence cases</h3><span id="case-count" class="count">0</span></div><div class="table-scroll"><table><thead><tr><th>Case</th><th>Channel</th><th>Participant</th><th>Created</th><th>Status</th></tr></thead><tbody id="case-table-body"><tr><td colspan="5" class="empty">Sign in to load cases.</td></tr></tbody></table></div></article>
-<article class="panel" id="case-detail"><div class="empty">Select a case to inspect its report and evidence.</div></article></div></section>
-<section id="network-analysis"><div class="section-title"><div><p class="eyebrow">ENTITY RELATIONSHIPS</p><h2>Network analysis</h2><p>Connections are derived from evidence cases in the simulation dataset.</p></div></div><article class="panel"><div class="panel-head"><h3>Evidence graph</h3><small id="graph-meta">Loading graph data</small></div><div id="graph-container" class="graph"><p class="empty">No graph data available.</p></div><div class="legend">Nodes: participants and extracted entities · Lines: relationships found in case evidence</div></article></section>
-<section id="scenario-activity"><div class="section-title"><div><p class="eyebrow">SIMULATED EVENTS</p><h2>Scenario activity</h2><p>Fictional scenario coordinates and routing estimates. No person, device, or real location is tracked.</p></div></div>
-<div class="columns activity"><article class="panel"><div class="panel-head"><h3>Scenario routing</h3><span class="synthetic">Synthetic</span></div><div id="dispatch-list" class="activity-list"><p class="empty">No scenario routing events.</p></div></article><article class="panel"><div class="panel-head"><h3>Scenario access events</h3><span class="synthetic">Synthetic</span></div><div id="hit-list" class="activity-list"><p class="empty">No scenario access events.</p></div></article></div></section>
-<footer>DrugShield-AI is a simulation and human-review decision-support prototype. It does not perform live monitoring or law-enforcement dispatch.</footer></main></div><div id="toast" class="toast hidden" role="status"></div>
+<aside class="sidebar">
+  <a class="brand" href="/"><span class="mark">DS</span><span><b>DrugShield-AI</b><small>Evidence command centre</small></span></a>
+  <p class="nav-caption">WORKSPACE</p>
+  <nav aria-label="Dashboard sections">
+    <a class="active" href="#overview" data-view="overview"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>Overview</a>
+    <a href="#case-queue" data-view="case-queue"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5h16v13H4zM4 9h16M8 5.5V4m8 1.5V4M8 13h3m2 0h3m-8 3h3"/></svg></span>Case queue</a>
+    <a href="#scenario-activity" data-view="scenario-activity"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M7 15l4-4 3 2 5-6"/><circle cx="19" cy="7" r="1.3"/></svg></span>Scenario activity</a>
+  </nav>
+  <div class="sidebar-spacer"></div>
+  <div class="reviewer"><span id="user-initials" class="avatar">R</span><span class="reviewer-identity"><b id="user-name">Reviewer</b><small id="user-role">Authorized reviewer</small></span><button class="settings-trigger sidebar-settings" type="button" data-open-settings aria-label="Open dashboard settings" title="Settings"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Z"/><path d="m19.2 13.6 1.1.8-1.5 2.6-1.3-.5a7.7 7.7 0 0 1-1.7 1l-.2 1.4h-3l-.3-1.4a7.7 7.7 0 0 1-1.7-1l-1.3.5-1.5-2.6 1.1-.8a7.2 7.2 0 0 1 0-2l-1.1-.8 1.5-2.6 1.3.5a7.7 7.7 0 0 1 1.7-1l.3-1.4h3l.2 1.4a7.7 7.7 0 0 1 1.7 1l1.3-.5 1.5 2.6-1.1.8a7.2 7.2 0 0 1 0 2Z" transform="translate(-1 -1)"/></svg></button></div>
+</aside>
+<main>
+  <header class="topbar">
+    <div class="topbar-title"><p class="eyebrow"><span>DrugShield-AI</span><span class="crumb-slash">/</span><span>Command centre</span></p><h1 id="topbar-page-title">Evidence review</h1></div>
+    <div class="topbar-tools">
+      <div class="dashboard-search"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m16 16 4.2 4.2"/></svg><input id="case-search" type="search" placeholder="Search cases..." aria-label="Search cases"><button id="paste-search" class="paste-search" type="button" aria-label="Paste from clipboard into case search" title="Paste from clipboard"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 4.5h6a1.5 1.5 0 0 1 1.5 1.5v1H7.5V6A1.5 1.5 0 0 1 9 4.5Z"/><path d="M7.5 6.5H6A2 2 0 0 0 4 8.5v10A2 2 0 0 0 6 20.5h12a2 2 0 0 0 2-2v-10a2 2 0 0 0-2-2h-1.5M8 11h8M8 14.5h8M8 18h5"/></svg></button></div>
+      <span class="pill"><i></i>Simulation mode</span><button class="icon-button settings-trigger" type="button" data-open-settings aria-label="Open dashboard settings" title="Settings"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Z"/><path d="m19.2 13.6 1.1.8-1.5 2.6-1.3-.5a7.7 7.7 0 0 1-1.7 1l-.2 1.4h-3l-.3-1.4a7.7 7.7 0 0 1-1.7-1l-1.3.5-1.5-2.6 1.1-.8a7.2 7.2 0 0 1 0-2l-1.1-.8 1.5-2.6 1.3.5a7.7 7.7 0 0 1 1.7-1l.3-1.4h3l.2 1.4a7.7 7.7 0 0 1 1.7 1l1.3-.5 1.5 2.6-1.1.8a7.2 7.2 0 0 1 0 2Z" transform="translate(-1 -1)"/></svg></button>
+    </div>
+    <small id="last-updated">Updated —</small>
+  </header>
+  <div id="global-alert" class="alert hidden" role="status"></div>
+  <section id="overview" class="overview-section">
+    <div class="section-title"><div><p class="eyebrow">LIVE WORKLOAD</p><h2>General statistics</h2><p>Current Case Decisions</p></div></div>
+    <div class="metrics"><article><span>Open for review</span><b id="metric-open">—</b><small>Awaiting a reviewer decision</small></article><article><span>Further review</span><b id="metric-escalated">—</b><small>Kept in the review queue</small></article><article><span>Accepted</span><b id="metric-accepted">—</b><small>Confirmed by human review</small></article><article><span>Dismissed</span><b id="metric-dismissed">—</b><small>Closed by a reviewer</small></article></div>
+  </section>
+  <section id="network-analysis" class="network-section">
+    <div class="section-title"><div><p class="eyebrow">ENTITY RELATIONSHIPS</p><h2>Network analysis</h2><p>Relationships found in case evidence.</p></div></div>
+    <article class="panel network-panel"><div class="panel-head"><div><h3>Evidence network</h3><small>Participants and extracted entities</small></div><span id="graph-meta" class="graph-meta">Loading</span></div><div id="graph-container" class="graph"><p class="empty">No graph data available.</p></div><div class="legend"><span><i class="legend-node"></i>Evidence entity</span><span><i class="legend-link"></i>Case relationship</span></div></article>
+  </section>
+  <section id="case-analytics" class="analytics-section">
+    <article class="panel chart-panel"><div class="panel-head"><div><h3>Review status</h3><small>Counts in loaded case records</small></div></div><div id="status-chart" class="mini-chart"><p class="empty">Sign in to load case metrics.</p></div></article>
+    <article class="panel chart-panel"><div class="panel-head"><div><h3>Cases by channel</h3><small>Counts in loaded case records</small></div></div><div id="channel-chart" class="mini-chart"><p class="empty">Sign in to load case metrics.</p></div></article>
+  </section>
+  <section id="case-queue" class="case-section hidden">
+    <div class="section-title"><div><p class="eyebrow">HUMAN REVIEW</p><h2>Case queue</h2><p>Model findings support review; they are not a finding of wrongdoing.</p></div><div class="filters"><select id="status-filter" aria-label="Filter cases by status"><option value="">All statuses</option><option value="pending_review">Pending review</option><option value="further_review">Further review</option><option value="accepted">Accepted</option><option value="dismissed">Dismissed</option></select><select id="channel-filter" aria-label="Filter cases by channel"><option value="">All channels</option><option value="instagram">Instagram</option><option value="telegram">Telegram</option><option value="whatsapp">WhatsApp</option><option value="other">Other</option></select><button id="clear-chart-filters" class="clear-filters" type="button" hidden>Clear filters</button></div></div>
+    <div class="columns"><article class="panel case-table-panel"><div class="panel-head"><div><h3>Evidence cases</h3><small>Choose a case to open its report</small></div><span id="case-count" class="count">0</span></div><div class="table-scroll"><table><thead><tr><th>Case</th><th>Channel</th><th>Participant</th><th>Created</th><th>Status</th></tr></thead><tbody id="case-table-body"><tr><td colspan="5" class="empty">Sign in to load cases.</td></tr></tbody></table></div></article><article class="panel case-detail-panel" id="case-detail"><div class="empty">Select a case to inspect its report and evidence.</div></article></div>
+  </section>
+  <section id="scenario-activity" class="activity-section"><div class="section-title"><div><p class="eyebrow">SIMULATED EVENTS</p><h2>Scenario activity</h2><p>Fictional scenario routing and access events; no person, device, or real location is tracked.</p></div></div>
+    <div class="columns activity"><article class="panel"><div class="panel-head"><div><h3>Scenario routing</h3><small>Simulated response workflow</small></div><span class="synthetic">Synthetic</span></div><div id="dispatch-list" class="activity-list"><p class="empty">No scenario routing events.</p></div></article><article class="panel"><div class="panel-head"><div><h3>Scenario access events</h3><small>Fictional scenario locations</small></div><span class="synthetic">Synthetic</span></div><div id="hit-list" class="activity-list"><p class="empty">No scenario access events.</p></div></article></div>
+  </section>
+  <footer>DrugShield-AI is a simulation and human-review decision-support prototype. It does not perform live monitoring or law-enforcement dispatch.</footer>
+</main></div>
+<dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-title">
+  <form method="dialog" class="settings-header"><div><p class="eyebrow">REVIEWER PROFILE</p><h2 id="settings-title">Dashboard settings</h2></div><button class="settings-close" aria-label="Close settings">×</button></form>
+  <section class="settings-account"><h3>Account</h3><div class="settings-account-row"><span>Signed in as</span><strong id="settings-username">—</strong></div><div class="settings-account-row"><span>Role</span><strong id="settings-roles">—</strong></div><p>Password changes are not available in this build. Ask your administrator to update your account credentials.</p></section>
+  <section class="settings-section"><h3>Display</h3><label class="settings-control" for="settings-theme"><span><b>Colour theme</b><small>Choose the dashboard palette on this browser.</small></span><select id="settings-theme"><option value="midnight">Midnight</option><option value="ocean">Ocean</option></select></label><label class="settings-control" for="settings-text-size"><span><b>Text size</b><small>Adjust dashboard text for readability.</small></span><select id="settings-text-size"><option value="standard">Standard</option><option value="large">Large</option><option value="larger">Extra large</option></select></label></section>
+  <section class="settings-section"><h3>Dashboard behavior</h3><label class="settings-control" for="settings-refresh"><span><b>Automatic refresh</b><small>How often dashboard data is refreshed.</small></span><select id="settings-refresh"><option value="7">Every 7 seconds</option><option value="15">Every 15 seconds</option><option value="30">Every 30 seconds</option><option value="60">Every 60 seconds</option><option value="0">Off</option></select></label><label class="settings-toggle" for="settings-animate"><span><b>Animate network graph</b><small>Respect your operating system's reduced-motion preference.</small></span><input id="settings-animate" type="checkbox" checked></label></section>
+  <section class="settings-section"><h3>Accessibility</h3><label class="settings-toggle" for="settings-contrast"><span><b>High contrast</b><small>Strengthen text and panel boundaries.</small></span><input id="settings-contrast" type="checkbox"></label></section>
+  <div class="settings-footer"><small>Preferences are saved in this browser only.</small><button id="settings-signout" type="button">Sign out</button></div>
+</dialog>
+<div id="toast" class="toast hidden" role="status"></div>
 </body></html>
