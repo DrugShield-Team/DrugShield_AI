@@ -8,7 +8,7 @@ import json
 import secrets
 import time
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from config.settings import (
@@ -24,6 +24,27 @@ _attempts: Dict[str, list[float]] = {}
 class Principal:
     username: str
     roles: frozenset[str]
+    station: Optional[str] = None
+
+_user_store = None
+
+def set_user_store(user_store) -> None:
+    """Attach persistent account storage after the application initializes its database."""
+    global _user_store
+    _user_store = user_store
+
+def _configured_or_dynamic_user(username: str) -> dict | None:
+    user = configured_users().get(username)
+    if user is not None:
+        return user
+    return _user_store.get_dynamic_user(username) if _user_store else None
+
+def _station_for(username: str, user: dict) -> Optional[str]:
+    if _user_store:
+        station = _user_store.station_for(username)
+        if station:
+            return station
+    return user.get("station")
 
 def configured_users() -> dict[str, dict]:
     try:
@@ -91,13 +112,13 @@ def check_login(username: str, password: str, remote: str) -> Principal:
     attempts = [when for when in _attempts.get(remote, []) if now - when < 300]
     if len(attempts) >= 10:
         raise HTTPException(429, "Too many login attempts; wait five minutes")
-    user = configured_users().get(username)
-    if not user or not verify_password(password, user["password_hash"]):
+    user = _configured_or_dynamic_user(username)
+    if not user or user.get("active", True) is False or not verify_password(password, user["password_hash"]):
         attempts.append(now)
         _attempts[remote] = attempts
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid username or password")
     _attempts.pop(remote, None)
-    return Principal(username, frozenset(user["roles"]))
+    return Principal(username, frozenset(user["roles"]), _station_for(username, user))
 
 def _b64(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
@@ -117,10 +138,12 @@ def _principal_from_token(token: str) -> Principal:
         payload = json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)))
         if int(payload["exp"]) < int(time.time()):
             raise ValueError("Expired token")
-        user = configured_users().get(payload["sub"])
+        user = _configured_or_dynamic_user(payload["sub"])
         if not user or sorted(user["roles"]) != sorted(payload["roles"]):
             raise ValueError("Revoked user")
-        return Principal(payload["sub"], frozenset(user["roles"]))
+        if user.get("active", True) is False:
+            raise ValueError("Disabled user")
+        return Principal(payload["sub"], frozenset(user["roles"]), _station_for(payload["sub"], user))
     except Exception as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Authentication required") from exc
 

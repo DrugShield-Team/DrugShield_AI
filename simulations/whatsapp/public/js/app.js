@@ -18,6 +18,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   let attachedDoc = null;
   let presetMediaPath = null;
   let chatHistories = {};
+  const simulatedLocalities = { chat_group: "Koramangala", chat_aryan: "Jayanagar", chat_priya: "Indiranagar", chat_vikram: "Whitefield", chat_rohan: "Rajajinagar", chat_sneha: "Banashankari" };
+  const currentSimulatedLocality = () => currentContact?.simulated_locality || simulatedLocalities[currentContact?.id] || null;
 
   // Voice Note Recording State
   let mediaRecorder = null;
@@ -787,6 +789,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         is_analyst: isYouMode,
         timestamp: new Date().toISOString(),
         message_body: "",
+        simulated_locality: currentSimulatedLocality(),
         file: new File([audioBlob], `voice-note-${messageId}.webm`, { type: audioBlob.type || "audio/webm" })
       });
     } catch (error) {
@@ -910,6 +913,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       id: newGroupId,
       chat_id: `${newGroupId}@g.us`,
       name: subject,
+      simulated_locality: document.getElementById("groupSimulatedLocality").value,
       isGroup: true,
       sender_id: "+91 99999 00000",
       sender_name: "You",
@@ -970,6 +974,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       phone: phone,
       avatar: "assets/avatars/user1.svg",
       status: "Hey there! I am using WhatsApp.",
+      simulated_locality: document.getElementById("newChatLocality").value,
       unread: 0,
       lastSeen: "online",
       defaultMessages: []
@@ -1072,6 +1077,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         is_analyst: isOutgoing,
         timestamp: new Date().toISOString(),
         message_body: text,
+        simulated_locality: currentSimulatedLocality(),
         file: fileToUpload,
         preset_media_path: presetToUpload
       });

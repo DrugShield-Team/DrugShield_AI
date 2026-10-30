@@ -21,7 +21,8 @@ window.SimulatorAPI = (function () {
       recipient_id: recipientId,
       recipient_display_name: recipientName,
       timestamp: data.timestamp || new Date().toISOString(),
-      text: String(data.message_body || data.text || "")
+      text: String(data.message_body || data.text || ""),
+      simulated_locality: data.simulated_locality || null
     };
     const form = new FormData();
     form.append("event_json", JSON.stringify(event));

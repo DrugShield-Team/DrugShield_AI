@@ -117,6 +117,7 @@ export default function InstagramSimulation() {
   const [modalOpen, setModalOpen] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [secondName, setSecondName] = useState('');
+  const [simulatedLocality, setSimulatedLocality] = useState('Jayanagar');
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const [openConversationMenu, setOpenConversationMenu] = useState<string | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<Conversation | null>(null);
@@ -169,7 +170,7 @@ export default function InstagramSimulation() {
     event.preventDefault();
     const people: [string, string] = [firstName.trim(), secondName.trim()];
     if (!people[0] || !people[1]) return;
-    const conversation = createLocalConversation(people);
+    const conversation = createLocalConversation(people, simulatedLocality);
     setConversations((current) => [conversation, ...current]);
     setActiveId(conversation.id);
     setSpeaker(0);
@@ -177,6 +178,7 @@ export default function InstagramSimulation() {
     setModalOpen(false);
     setFirstName('');
     setSecondName('');
+    setSimulatedLocality('Jayanagar');
     setNotice(`Conversation with ${people[0]} and ${people[1]} created.`);
   }
 
@@ -427,6 +429,8 @@ export default function InstagramSimulation() {
             <p>Create a local conversation with two fictional participants.</p>
             <label htmlFor="participant-one">First participant</label><input id="participant-one" autoFocus autoComplete="off" maxLength={32} value={firstName} onChange={(event) => setFirstName(event.target.value)} placeholder="e.g. Alex Rivera" required />
             <label htmlFor="participant-two">Second participant</label><input id="participant-two" autoComplete="off" maxLength={32} value={secondName} onChange={(event) => setSecondName(event.target.value)} placeholder="e.g. Jordan Lee" required />
+            <label htmlFor="simulated-locality">Simulated locality</label><select id="simulated-locality" value={simulatedLocality} onChange={(event) => setSimulatedLocality(event.target.value)}><option>Jayanagar</option><option>Indiranagar</option><option>Whitefield</option><option>Rajajinagar</option><option>Yelahanka</option><option>Vijayanagar</option></select>
+            <p className="location-disclosure">Fictional case-routing location only. No IP or device location is collected.</p>
             <button className="primary-button modal-submit" type="submit">Create conversation</button>
           </form>
         </section>

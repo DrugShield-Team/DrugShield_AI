@@ -32,22 +32,34 @@ accounts are missing. It does not ship with a default account.
    Use the first value for DRUGSHIELD_AUTH_SECRET and the second for
    DRUGSHIELD_DATA_ENCRYPTION_KEY. Keep both outside Git and store a protected
    copy of the encryption key separately from backups.
-3. Create a password hash:
+3. Create the first administrator account and password hash:
 
-   python -m src.security.manage_users reviewer1 reviewer
+   python -m src.security.manage_users admin1 admin
 
    Copy the printed JSON object into DRUGSHIELD_USERS_JSON as a JSON array. In
    .env, use single quotes around this whole JSON value so Compose does not treat
    the password-hash dollar signs as variable references.
-   Create separate simulator, reviewer, and admin accounts as needed. Never put
-   a plain-text password in .env.
+   Never put a plain-text password in .env. The first administrator must be
+   configured this way; there is no public registration or default admin.
 4. Run python main.py. Authenticate with username and password at
    /api/v1/auth/token. The API sets an HttpOnly cookie. Browser clients must send
    credentialed requests and must not store credentials or tokens in localStorage.
 
 Roles: simulator can submit messages; reviewer can read cases and evidence and
-record decisions; admin can do those actions plus read model status and metrics.
-Set exact browser origins in DRUGSHIELD_CORS_ORIGINS.
+record decisions; admin can do those actions plus read model status and metrics
+and manage reviewers. After signing in as admin, open **User management** in the
+dashboard to create reviewers, set initial passwords, assign one of Bangalore
+North, East, South, or West, reassign stations, reset dashboard-managed reviewer
+passwords, or enable/disable those accounts. Existing environment-configured
+reviewers can be assigned a station there; their credentials remain managed in
+`.env` and changes to those accounts require restarting the API.
+
+Each simulation chat has a **Simulated locality** field. The backend maps the
+fictional locality to a station and filters cases, reports, attachments, and graph
+data for reviewer accounts assigned to that station. Unmapped or missing localities
+remain unassigned and are visible to admins. These are fictional routing values;
+the system does not use IP, GPS, or device location. Set exact browser origins in
+DRUGSHIELD_CORS_ORIGINS.
 
 ### Run the hardened local container
 

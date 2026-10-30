@@ -15,6 +15,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       id: "tg_blr_supplies",
       type: "channel",
       title: "BLR Party Supplies",
+      simulated_locality: "Indiranagar",
       username: "@blr_supplies_bot",
       phone: "+91 98765 43210",
       avatarText: "BP",
@@ -59,6 +60,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       id: "tg_ncr_drops",
       type: "group",
       title: "NCR Secret Drops & Stash",
+      simulated_locality: "Whitefield",
       username: "@ncr_drops_chat",
       phone: "+91 91234 56789",
       avatarText: "NCR",
@@ -94,6 +96,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       id: "tg_dealer_direct",
       type: "private",
       title: "Aryan (Suspect Plug)",
+      simulated_locality: "Jayanagar",
       username: "@aryan_plug",
       phone: "+91 98765 43210",
       avatarText: "AK",
@@ -363,6 +366,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       title: title,
       username: createChatUsername.value.trim() || "@custom_channel",
       phone: createChatPhone.value.trim() || "+91 99999 88888",
+      simulated_locality: document.getElementById("createChatLocality").value,
       avatarText: title.slice(0, 2).toUpperCase(),
       avatarColor: "#2AABEE",
       verified: createChatType.value === "channel",
@@ -634,6 +638,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         is_analyst: isAnalystMode,
         timestamp: new Date().toISOString(),
         message_body: text,
+        simulated_locality: currentChat.simulated_locality || ({ tg_blr_supplies: "Indiranagar", tg_ncr_drops: "Whitefield", tg_dealer_direct: "Jayanagar" }[currentChat.id]) || null,
         file: attachedFile
       });
     } catch (error) {

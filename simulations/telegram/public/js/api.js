@@ -19,7 +19,8 @@ window.SimulatorAPI = (function () {
       recipient_id: isAnalyst ? participantId : `analyst:${conversationId}`,
       recipient_display_name: isAnalyst ? String(data.recipient_name || data.chat_title || "Fictional participant") : "You",
       timestamp: data.timestamp || new Date().toISOString(),
-      text: String(data.message_body || data.text || "")
+      text: String(data.message_body || data.text || ""),
+      simulated_locality: data.simulated_locality || null
     };
     const form = new FormData();
     form.append("event_json", JSON.stringify(event));

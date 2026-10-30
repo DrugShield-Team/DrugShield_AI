@@ -13,6 +13,7 @@ import json
 import logging
 import mimetypes
 import os
+import re
 import shutil
 import sqlite3
 import tempfile
@@ -49,8 +50,9 @@ from config.settings import (
 )
 from src.database.case_store import CaseStore
 from src.reporting.hasher import sha256_json
-from src.security.auth import Principal, check_login, get_current_user, issue_token, require_roles, validate_configuration, optional_simulation_user
+from src.security.auth import Principal, check_login, get_current_user, issue_token, require_roles, validate_configuration, optional_simulation_user, hash_password, configured_users, set_user_store
 from src.security.crypto import DataCipher
+from src.security.user_store import UserStore
 from src.cases.state_machine import (
     state_machine,
     STATE_ACTIVE_HONEYPOT_READY,
@@ -73,6 +75,8 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 validate_configuration()
 data_cipher = DataCipher.from_environment(DATA_ENCRYPTION_KEY)
 store = CaseStore(DATABASE_PATH, cipher=data_cipher)
+user_store = UserStore(DATABASE_PATH)
+set_user_store(user_store)
 METRICS = {"requests": 0, "errors": 0, "client_errors": 0,
            "analysis_failures": 0, "analysis_seconds_total": 0.0}
 for directory in (RAW_ROOT, REPORTS_ROOT, RUNTIME_ROOT / "tmp"):
@@ -91,6 +95,7 @@ class SimulationEvent(BaseModel):
     recipient_display_name: str = Field(min_length=1, max_length=120)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     text: str = Field(default="", max_length=20000)
+    simulated_locality: Optional[str] = Field(default=None, max_length=100)
 
 
 class ReviewRequest(BaseModel):
@@ -101,6 +106,40 @@ class ReviewRequest(BaseModel):
 class LoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=120)
     password: str = Field(min_length=1, max_length=256)
+
+
+STATIONS = ("Bangalore North", "Bangalore East", "Bangalore South", "Bangalore West")
+SIMULATED_LOCALITY_STATIONS = {
+    "bangalore north": "Bangalore North", "yelahanka": "Bangalore North", "hebbal": "Bangalore North",
+    "malleshwaram": "Bangalore North", "peenya": "Bangalore North", "jakkur": "Bangalore North",
+    "bangalore east": "Bangalore East", "whitefield": "Bangalore East", "indiranagar": "Bangalore East",
+    "marathahalli": "Bangalore East", "kr puram": "Bangalore East", "brookefield": "Bangalore East",
+    "bangalore south": "Bangalore South", "jayanagar": "Bangalore South", "jp nagar": "Bangalore South",
+    "koramangala": "Bangalore South",
+    "banashankari": "Bangalore South", "basavanagudi": "Bangalore South", "electronic city": "Bangalore South",
+    "bangalore west": "Bangalore West", "vijayanagar": "Bangalore West", "rajajinagar": "Bangalore West",
+    "kengeri": "Bangalore West", "nagarbhavi": "Bangalore West", "magadi road": "Bangalore West",
+}
+
+
+def _resolve_simulated_station(locality: Optional[str]) -> Optional[str]:
+    if not locality:
+        return None
+    return SIMULATED_LOCALITY_STATIONS.get(" ".join(locality.casefold().split()))
+
+
+def _case_visible_to_user(case: Dict[str, Any], principal: Principal) -> bool:
+    if "admin" in principal.roles:
+        return True
+    if not principal.station:
+        raise HTTPException(status_code=403, detail="An administrator must assign your account to a station before accessing cases")
+    summary = case.get("summary") or case.get("report", {}).get("summary", {})
+    return summary.get("jurisdiction") == principal.station
+
+
+def _require_station_assignment(principal: Principal) -> None:
+    if "reviewer" in principal.roles and "admin" not in principal.roles and not principal.station:
+        raise HTTPException(status_code=403, detail="An administrator must assign your account to a station before accessing cases")
 
 
 app = FastAPI(
@@ -118,7 +157,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Content-Type", "Authorization"],
 )
 if APP_ENV == "production":
@@ -197,7 +236,105 @@ def logout(response: Response) -> Dict[str, str]:
 
 @app.get("/api/v1/auth/me")
 def who_am_i(principal: Principal = Depends(get_current_user)) -> Dict[str, Any]:
-    return {"username": principal.username, "roles": sorted(principal.roles)}
+    return {"username": principal.username, "roles": sorted(principal.roles),
+            "station": principal.station, "location_mode": "simulated"}
+
+
+@app.get("/api/v1/admin/users")
+def admin_list_users(_: Principal = Depends(require_roles("admin"))) -> Dict[str, Any]:
+    configured = configured_users()
+    users = []
+    for username, user in configured.items():
+        if "reviewer" not in user["roles"]:
+            continue
+        users.append({
+            "username": username,
+            "roles": user["roles"],
+            "station": user_store.station_for(username) or user.get("station"),
+            "active": user.get("active", True),
+            "source": "environment",
+            "created_at": None,
+        })
+    users.extend(user for user in user_store.list_reviewers() if user["username"].casefold() not in {u["username"].casefold() for u in users})
+    return {"users": users, "stations": list(STATIONS)}
+
+
+class ReviewerCreateRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=64)
+    password: str = Field(min_length=12, max_length=256)
+    station: str
+
+
+class StationAssignmentRequest(BaseModel):
+    station: str
+
+
+class ReviewerStatusRequest(BaseModel):
+    active: bool
+
+
+class ReviewerPasswordRequest(BaseModel):
+    password: str = Field(min_length=12, max_length=256)
+
+
+@app.post("/api/v1/admin/users", status_code=201)
+def admin_create_reviewer(payload: ReviewerCreateRequest,
+                          _: Principal = Depends(require_roles("admin"))) -> Dict[str, Any]:
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", payload.username):
+        raise HTTPException(status_code=422, detail="Username may use letters, numbers, dots, underscores, and hyphens")
+    if payload.station not in STATIONS:
+        raise HTTPException(status_code=422, detail="Choose one of the configured Bangalore stations")
+    if payload.username.casefold() in {name.casefold() for name in configured_users()}:
+        raise HTTPException(status_code=409, detail="That username already exists in the configured accounts")
+    try:
+        user_store.create_reviewer(payload.username, hash_password(payload.password), payload.station)
+    except sqlite3.IntegrityError as exc:
+        raise HTTPException(status_code=409, detail="That username already exists") from exc
+    return {"username": payload.username, "roles": ["reviewer"], "station": payload.station,
+            "active": True, "source": "dashboard"}
+
+
+@app.put("/api/v1/admin/users/{username}/station")
+def admin_assign_station(username: str, payload: StationAssignmentRequest,
+                         _: Principal = Depends(require_roles("admin"))) -> Dict[str, Any]:
+    if payload.station not in STATIONS:
+        raise HTTPException(status_code=422, detail="Choose one of the configured Bangalore stations")
+    configured = configured_users()
+    account = next((user for name, user in configured.items() if name.casefold() == username.casefold()), None)
+    account = account or user_store.get_dynamic_user(username)
+    if not account or "reviewer" not in account["roles"]:
+        raise HTTPException(status_code=404, detail="Reviewer account not found")
+    user_store.assign_station(username, payload.station)
+    return {"username": username, "station": payload.station}
+
+
+@app.delete("/api/v1/admin/users/{username}")
+def admin_disable_reviewer(username: str, _: Principal = Depends(require_roles("admin"))) -> Dict[str, Any]:
+    if username.casefold() in {name.casefold() for name in configured_users()}:
+        raise HTTPException(status_code=409, detail="Environment-configured accounts cannot be disabled here")
+    if not user_store.set_active(username, False):
+        raise HTTPException(status_code=404, detail="Dashboard-managed reviewer account not found")
+    return {"username": username, "active": False}
+
+
+@app.put("/api/v1/admin/users/{username}/status")
+def admin_set_reviewer_status(username: str, payload: ReviewerStatusRequest,
+                              _: Principal = Depends(require_roles("admin"))) -> Dict[str, Any]:
+    if username.casefold() in {name.casefold() for name in configured_users()}:
+        raise HTTPException(status_code=409, detail="Environment-configured accounts cannot be changed here")
+    if not user_store.set_active(username, payload.active):
+        raise HTTPException(status_code=404, detail="Dashboard-managed reviewer account not found")
+    return {"username": username, "active": payload.active}
+
+
+@app.put("/api/v1/admin/users/{username}/password")
+def admin_reset_reviewer_password(username: str, payload: ReviewerPasswordRequest,
+                                  _: Principal = Depends(require_roles("admin"))) -> Dict[str, Any]:
+    if username.casefold() in {name.casefold() for name in configured_users()}:
+        raise HTTPException(status_code=409, detail="Environment-configured accounts cannot be changed here")
+    if not user_store.set_password(username, hash_password(payload.password)):
+        raise HTTPException(status_code=404, detail="Dashboard-managed reviewer account not found")
+    return {"username": username, "password_reset": True}
 
 
 @app.get("/api/v1/metrics")
@@ -348,6 +485,7 @@ async def receive_simulation_event(
     for item in attachment_records:
         item.pop("analysis_path", None)
     graph = _build_evidence_graph(event, attachment_public, public_analysis)
+    jurisdiction = _resolve_simulated_station(event.simulated_locality)
     report: Dict[str, Any] = {
         "schema_version": 1,
         "event_id": event_id,
@@ -364,6 +502,9 @@ async def receive_simulation_event(
             "recipient_id": event.recipient_id,
             "recipient_display_name": event.recipient_display_name,
             "message_text": event.text,
+            "simulated_locality": event.simulated_locality,
+            "jurisdiction": jurisdiction,
+            "location_basis": "fictional_simulation_input" if event.simulated_locality else None,
             "review_required": bool(policy["review_required"]),
             "reason_count": len(policy["reasons"]),
         },
@@ -465,34 +606,40 @@ async def receive_simulation_event(
 
 @app.get("/api/v1/cases")
 def list_cases(status: Optional[str] = None, limit: int = 100,
-               _: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
+               principal: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
+    _require_station_assignment(principal)
     allowed = {"pending_review", "further_review", "accepted", "dismissed"}
     if status is not None and status not in allowed:
         raise HTTPException(status_code=422, detail="Unsupported case status")
     if not 1 <= limit <= 500:
         raise HTTPException(status_code=422, detail="limit must be between 1 and 500")
-    cases = store.list_cases(status=status, limit=limit)
+    cases = store.list_cases(status=status, limit=500)
+    cases = [case for case in cases if _case_visible_to_user(case, principal)][:limit]
     return {"cases": cases, "count": len(cases)}
 
 
 @app.get("/api/v1/cases/{case_id}")
-def get_case(case_id: str, _: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
+def get_case(case_id: str, principal: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
     case = store.get_case(case_id)
     if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if not _case_visible_to_user(case, principal):
         raise HTTPException(status_code=404, detail="Case not found")
     return case
 
 
 @app.get("/api/v1/graph")
 def evidence_graph(status: Optional[str] = None, limit: int = 500,
-                   _: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
+                   principal: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
     """Aggregate the fictional participants and candidate links in evidence cases."""
     allowed = {"pending_review", "further_review", "accepted", "dismissed"}
     if status is not None and status not in allowed:
         raise HTTPException(status_code=422, detail="Unsupported case status")
     if not 1 <= limit <= 500:
         raise HTTPException(status_code=422, detail="limit must be between 1 and 500")
-    cases = store.list_cases(status=status, limit=limit)
+    _require_station_assignment(principal)
+    cases = [case for case in store.list_cases(status=status, limit=500)
+             if _case_visible_to_user(case, principal)][:limit]
     nodes: Dict[str, Dict[str, Any]] = {}
     edges: Dict[tuple, Dict[str, Any]] = {}
     for item in cases:
@@ -510,7 +657,10 @@ def evidence_graph(status: Optional[str] = None, limit: int = 500,
 
 @app.get("/api/v1/cases/{case_id}/attachments/{attachment_id}")
 def get_case_attachment(case_id: str, attachment_id: str,
-                        _: Principal = Depends(require_roles("reviewer", "admin"))) -> Response:
+                        principal: Principal = Depends(require_roles("reviewer", "admin"))) -> Response:
+    case = store.get_case(case_id)
+    if not case or not _case_visible_to_user(case, principal):
+        raise HTTPException(status_code=404, detail="Case not found")
     attachment = store.get_attachment(case_id, attachment_id)
     if not attachment:
         raise HTTPException(status_code=404, detail="Attachment not found for this case")
@@ -533,6 +683,9 @@ def get_case_attachment(case_id: str, attachment_id: str,
 @app.post("/api/v1/cases/{case_id}/review")
 def review_case(case_id: str, request: ReviewRequest,
                 principal: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
+    current = store.get_case(case_id)
+    if not current or not _case_visible_to_user(current, principal):
+        raise HTTPException(status_code=404, detail="Case not found")
     try:
         case = store.add_review(case_id, principal.username, request.action, request.note)
     except ValueError as exc:
