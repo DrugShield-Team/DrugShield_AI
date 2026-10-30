@@ -212,11 +212,8 @@ export default function InstagramSimulation() {
     setDraft('');
     setPendingAttachments([]);
 
-    // 1. Auto-shift sender:
-    // If dealer (0) sent a message, automatically toggle to Undercover Buyer (1) for next turn
-    // If buyer (1) sent a message, automatically toggle back to dealer (0)
-    const nextSpeaker: 0 | 1 = currentSpeaker === 0 ? 1 : 0;
-    setSpeaker(nextSpeaker);
+    // Maintain dealer persona until bot engages or threshold is reached
+    // Dealer messages strictly accumulate toward 4-5 consecutive threat threshold
 
     // 2. Check if Smart Buyer Bot triggered an automated honeypot or follow-up response
     const botText = result?.bot_response || result?.smart_bot?.dispatched_message;

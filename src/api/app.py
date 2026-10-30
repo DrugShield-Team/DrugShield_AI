@@ -53,6 +53,8 @@ from src.reporting.hasher import sha256_json
 from src.security.auth import Principal, check_login, get_current_user, issue_token, require_roles, validate_configuration, optional_simulation_user, hash_password, configured_users, set_user_store
 from src.security.crypto import DataCipher
 from src.security.user_store import UserStore
+from src.osint_triangulation.suspect_correlator import suspect_correlator
+from src.database.postgres_client import postgres_client
 from src.cases.state_machine import (
     state_machine,
     STATE_ACTIVE_HONEYPOT_READY,
@@ -549,18 +551,52 @@ async def receive_simulation_event(
 
     smart_bot_data = None
     state_res = None
+    correlation_res = {"cross_platform_correlated": False, "match_count": 0, "matched_platforms": []}
 
     if not is_analyst_sender:
+        # Cross-platform suspect intelligence correlation
+        try:
+            correlation_res = suspect_correlator.correlate_event(event_dict, analysis)
+        except Exception as e:
+            logger.debug(f"Correlation check notice: {e}")
+
+        # Record threat intelligence event into central registry for multi-channel cross-referencing
+        threat_score = float(analysis.get("text_analysis", {}).get("risk_score") or (0.4 if policy.get("review_required") else 0.0))
+        if correlation_res.get("cross_platform_correlated"):
+            threat_score = min(1.0, threat_score + 0.35)
+
+        detected_slangs = analysis.get("text_analysis", {}).get("detected_slangs", [])
+        is_threat_flag = bool(policy.get("review_required") or len(detected_slangs) > 0 or correlation_res.get("cross_platform_correlated"))
+
+        try:
+            postgres_client.push_threat_record({
+                "id": event_id,
+                "platform": event.channel,
+                "timestamp": event.timestamp,
+                "sender_id": target_entity_id,
+                "message_text": event.text,
+                "threat_score": threat_score,
+                "flagged_status": is_threat_flag,
+                "extracted_entities": {
+                    "upi_ids": analysis.get("financial_entities", {}).get("upi_ids", []),
+                    "bank_accounts": analysis.get("financial_entities", {}).get("bank_accounts", []),
+                },
+                "detected_drugs": detected_slangs,
+                "media_path": str(image_paths[0]) if image_paths else None,
+            })
+        except Exception as e:
+            logger.debug(f"Threat record persistence notice: {e}")
+
         threat_record = {
             "id": event_id,
             "sender_id": target_entity_id,
             "chat_id": event.conversation_id,
-            "threat_score": float(analysis.get("text_analysis", {}).get("risk_score") or (0.4 if policy.get("review_required") else 0.0)),
-            "flagged_status": bool(policy.get("review_required")),
+            "threat_score": threat_score,
+            "flagged_status": is_threat_flag,
             "extracted_entities": {
-                "narcotics_detected": analysis.get("text_analysis", {}).get("detected_slangs", []),
+                "narcotics_detected": detected_slangs,
             },
-            "nlp_analysis": {"solicitation_intent": bool(policy.get("review_required"))}
+            "nlp_analysis": {"solicitation_intent": is_threat_flag}
         }
         state_res = state_machine.evaluate_threat_event(threat_record)
         current_state = state_res.get("current_state")
@@ -601,6 +637,7 @@ async def receive_simulation_event(
         "smart_bot": smart_bot_data,
         "bot_response": bot_response,
         "honeypot_link": honeypot_link,
+        "cross_platform_correlation": correlation_res,
     }
 
 
@@ -823,3 +860,11 @@ def command_center_page():
 from fastapi.staticfiles import StaticFiles
 if FRONTEND_DIR.is_dir():
     app.mount("/frontend", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend")
+
+@app.get("/api/v1/suspects/correlations")
+def get_suspect_correlations(limit: int = 50) -> Dict[str, Any]:
+    """Retrieve cross-platform suspect correlation intelligence audits."""
+    return {
+        "status": "success",
+        "correlations": suspect_correlator.get_all_correlations(limit=limit),
+    }

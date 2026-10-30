@@ -2,9 +2,14 @@
 DrugShield AI - Module 1 Extension: Smart Buyer Persona Honeypot Bot
 ===================================================================
 Simulates a credible buyer persona to engage suspect vendors once
-a thread transitions to ACTIVE_HONEYPOT_READY. Solicits pricing and
-delivery pins, and dispatches an authentic-looking payment verification /
-invoice link embedded with passive OSINT tracking hooks.
+a thread transitions to ACTIVE_HONEYPOT_READY.
+
+Multi-Stage Conversational Flow:
+1. Stage 1 (Initial Engagement on 4-5 flags): Shows interest in buying and EXPLICITLY asks
+   for the payment link / UPI QR code.
+2. Stage 2 (Suspect sends link / payment details): Bot confirms payment, dispatches the
+   decoy transaction invoice link, and asks for the GPS drop coordinates.
+3. Stage 3 (Subsequent replies): Maintains two-way conversational loop.
 """
 
 from __future__ import annotations
@@ -24,19 +29,19 @@ from src.cases.state_machine import (
 
 logger = logging.getLogger("DrugShield.SmartBuyerBot")
 
-# Natural buyer inquiry templates in Hinglish & English (undercover customer persona)
-BUYER_ENGAGEMENT_TEMPLATES = [
-    "Hey bro, interested in buying. What's the rate for 2g? Where will you drop the location pin?",
-    "Bro, need fresh stock. Can pay advance token immediately via UPI. Send payment link or details.",
-    "Bhai quality pure hai na? Send me payment details or invoice link, I'll clear the advance right away.",
-    "Hey bro, saw your drop menu. Ready to lock the order. Send payment link or receipt so I can verify and get the drop pin.",
+# Stage 1: Explicitly state interest in buying AND ask for payment link / UPI QR code
+BUYER_PAYMENT_REQUEST_TEMPLATES = [
+    "Hey bro, interested in buying. What's the rate for 2g? Send me your payment link or UPI QR code so I can clear the advance.",
+    "Bro, I need fresh stock. Ready to pay advance immediately. Please send your UPI ID or payment link.",
+    "Bhai quality pure hai na? I am ready to order right now. Send your payment QR or UPI link to transfer advance.",
+    "Hey bro, saw your drop menu. I'm interested in buying. Send me the payment link or UPI details so I can transfer the token amount.",
 ]
 
-# Invoice receipt presentation templates (natural customer confirming a transaction)
-INVOICE_DISPATCH_TEMPLATES = [
-    "Bro, I've transferred the advance to your UPI ID. Here is the transaction receipt link: {invoice_url} - send me the drop pin once verified.",
+# Stage 2: After suspect shares payment link/details -> send confirmation with decoy invoice link
+INVOICE_CONFIRMATION_TEMPLATES = [
+    "Bro, I've transferred the advance to your payment link. Here is the transaction receipt link: {invoice_url} - send me the drop pin once verified.",
     "Bhai advance token transfer done via UPI! Check the transaction receipt here: {invoice_url} - send the dead drop pin after verifying.",
-    "Hey bro, advance payment sent. View the transaction receipt link: {invoice_url}. Share the location drop pin once confirmed.",
+    "Hey bro, advance payment sent on your link. View the transaction receipt: {invoice_url}. Share the location drop pin once confirmed.",
     "Payment complete bro! UPI transaction receipt link: {invoice_url} - please check and send the GPS drop coordinates.",
 ]
 
@@ -90,6 +95,7 @@ class SmartBuyerBot:
                 "invoice_url": invoice_url,
                 "platform": platform,
                 "turn_count": 0,
+                "stage": "REQUEST_PAYMENT_LINK",  # Initial stage: ask for payment link
             }
         return self.sessions[entity_id]
 
@@ -102,12 +108,12 @@ class SmartBuyerBot:
         return f"{self.api_base_url}/api/v1/invoice/{tracking_token}"
 
     def generate_opening_inquiry(self, target_entity: str) -> str:
-        """Pick a natural buyer persona opener."""
-        return random.choice(BUYER_ENGAGEMENT_TEMPLATES)
+        """Pick a natural buyer persona opener asking for payment link/QR."""
+        return random.choice(BUYER_PAYMENT_REQUEST_TEMPLATES)
 
     def generate_invoice_dispatch_message(self, invoice_url: str) -> str:
         """Pick an invoice delivery message format."""
-        template = random.choice(INVOICE_DISPATCH_TEMPLATES)
+        template = random.choice(INVOICE_CONFIRMATION_TEMPLATES)
         return template.format(invoice_url=invoice_url)
 
     def engage_target(
@@ -118,61 +124,29 @@ class SmartBuyerBot:
         simulation_post_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Executes the initial honeypot handoff:
+        Executes the initial honeypot handoff upon reaching 4-5 message threshold:
         1. Transitions entity state to HONEYPOT_ENGAGED.
-        2. Generates tracking token and invoice link.
-        3. Constructs buyer persona message.
-        4. Transitions entity state to INVOICE_SENT.
-        5. Attempts to dispatch to the local simulation endpoint if available.
+        2. Dispatches opening buyer message: INTERESTED IN BUYING + ASKS FOR PAYMENT LINK/QR.
         """
         now = datetime.now(timezone.utc).isoformat()
         session = self.get_or_create_session(entity_id, platform)
         session["turn_count"] = 1
+        session["stage"] = "REQUEST_PAYMENT_LINK"
         token = session["token"]
         invoice_url = session["invoice_url"]
-        dispatch_message = self.generate_invoice_dispatch_message(invoice_url)
 
-        # 1. Transition to HONEYPOT_ENGAGED
+        # Stage 1 message: Interested in buying + explicitly ask for payment link / UPI QR code
+        dispatch_message = self.generate_opening_inquiry(entity_id)
+
+        # Transition to HONEYPOT_ENGAGED
         state_machine.transition_state(
             entity_id=entity_id,
             new_state=STATE_HONEYPOT_ENGAGED,
-            reason="Smart Buyer Bot initiated automated engagement sequence",
+            reason="Smart Buyer Bot engaged suspect: Inquired buying intent and requested payment link/QR",
             details={"chat_id": chat_id, "platform": platform, "token": token},
         )
 
-        # 2. Advance to INVOICE_SENT
-        state_machine.transition_state(
-            entity_id=entity_id,
-            new_state=STATE_INVOICE_SENT,
-            reason=f"Tracking invoice link dispatched: {invoice_url}",
-            details={"tracking_token": token, "invoice_url": invoice_url},
-        )
-
-        dispatched_to_network = False
-        target_endpoint = simulation_post_url
-        if not target_endpoint:
-            if platform == "telegram":
-                target_endpoint = "http://localhost:8000/api/send"
-            elif platform == "whatsapp":
-                target_endpoint = "http://localhost:8090/api/send"
-
-        if target_endpoint:
-            try:
-                payload = {
-                    "chat_id": chat_id,
-                    "sender_id": "buyer_persona",
-                    "sender_name": "Rohan",
-                    "message": dispatch_message,
-                    "timestamp": now,
-                }
-                resp = requests.post(target_endpoint, json=payload, timeout=1.0)
-                if resp.status_code in (200, 201):
-                    dispatched_to_network = True
-            except Exception:
-                # Simulation server might be offline during headless testing
-                pass
-
-        logger.info(f"[Honeypot Bot] Engaged target '{entity_id}' on {platform}. Invoice: {invoice_url}")
+        logger.info(f"[Honeypot Bot] Engaged target '{entity_id}' on {platform}. Asked for payment link.")
 
         return {
             "entity_id": entity_id,
@@ -183,9 +157,9 @@ class SmartBuyerBot:
             "tracking_token": token,
             "invoice_url": invoice_url,
             "dispatched_message": dispatch_message,
-            "dispatched_to_network": dispatched_to_network,
             "timestamp": now,
             "turn_count": session["turn_count"],
+            "stage": session["stage"],
         }
 
     def handle_target_reply(
@@ -198,7 +172,7 @@ class SmartBuyerBot:
     ) -> Dict[str, Any]:
         """
         Maintains two-way conversational loop once honeypot is engaged.
-        Analyzes the target/seller's message and returns contextual follow-up.
+        If suspect provides payment link / QR / UPI details -> send confirmation invoice receipt!
         """
         now = datetime.now(timezone.utc).isoformat()
         session = self.get_or_create_session(entity_id, platform)
@@ -208,45 +182,37 @@ class SmartBuyerBot:
 
         text_lower = (message_text or "").lower()
 
-        # Keyword-based contextual intent routing
-        if any(w in text_lower for w in ["screenshot", "ss", "proof", "receipt", "slip", "payment", "aaya", "bheja", "paytm", "upi", "check"]):
+        # If we were waiting for the payment link/QR, or the dealer sent payment info / qr / upi
+        is_payment_info = any(w in text_lower for w in [
+            "upi", "paytm", "gpay", "phonepe", "@", "link", "qr", "qr code", "advance", "token", "scan", "send here", "pay"
+        ])
+
+        if session.get("stage") == "REQUEST_PAYMENT_LINK" or is_payment_info:
+            # Advance to Stage 2: Send payment confirmation receipt link!
+            session["stage"] = "INVOICE_SENT"
+            reply_text = self.generate_invoice_dispatch_message(invoice_url)
+
+            state_machine.transition_state(
+                entity_id=entity_id,
+                new_state=STATE_INVOICE_SENT,
+                reason=f"Tracking invoice link dispatched following dealer payment reply: {invoice_url}",
+                details={"tracking_token": token, "invoice_url": invoice_url},
+            )
+        elif any(w in text_lower for w in ["screenshot", "ss", "proof", "receipt", "slip", "payment", "aaya", "bheja", "check"]):
             template = random.choice(REPLY_TEMPLATES_PROOF)
+            reply_text = template.format(invoice_url=invoice_url)
         elif any(w in text_lower for w in ["drop", "pin", "location", "address", "kaha", "where", "gps", "coordinates", "pickup", "point"]):
-            template = random.choice(REPLY_TEMPLATES_LOCATION)
-        elif any(w in text_lower for w in ["rate", "price", "cash", "more", "extra", "balance", "paise", "rupaye", "discount"]):
+            reply_text = random.choice(REPLY_TEMPLATES_LOCATION)
+        elif any(w in text_lower for w in ["rate", "price", "cash", "more", "extra", "balance", "paise", "rupaye"]):
             template = random.choice(REPLY_TEMPLATES_PAYMENT)
-        elif any(w in text_lower for w in ["ok", "okay", "wait", "hold", "1 min", "dekhta", "checking", "haan", "bol"]):
-            template = random.choice(REPLY_TEMPLATES_CONFIRMATION)
+            reply_text = template.format(invoice_url=invoice_url)
+        elif any(w in text_lower for w in ["ok", "okay", "wait", "hold", "1 min", "dekhta", "checking", "haan"]):
+            reply_text = random.choice(REPLY_TEMPLATES_CONFIRMATION)
         else:
             template = random.choice(REPLY_TEMPLATES_DEFAULT)
+            reply_text = template.format(invoice_url=invoice_url)
 
-        reply_message = template.format(invoice_url=invoice_url)
-
-        # Dispatch via simulation server webhook if online
-        dispatched_to_network = False
-        target_endpoint = simulation_post_url
-        if not target_endpoint:
-            if platform == "telegram":
-                target_endpoint = "http://localhost:8000/api/send"
-            elif platform == "whatsapp":
-                target_endpoint = "http://localhost:8090/api/send"
-
-        if target_endpoint:
-            try:
-                payload = {
-                    "chat_id": chat_id,
-                    "sender_id": "buyer_persona",
-                    "sender_name": "Rohan",
-                    "message": reply_message,
-                    "timestamp": now,
-                }
-                resp = requests.post(target_endpoint, json=payload, timeout=1.0)
-                if resp.status_code in (200, 201):
-                    dispatched_to_network = True
-            except Exception:
-                pass
-
-        logger.info(f"[Honeypot Bot Conversational Loop] Entity: {entity_id} (Turn {session['turn_count']}) | Reply: {reply_message}")
+        logger.info(f"[Honeypot Bot Reply] To '{entity_id}' on {platform}: {reply_text}")
 
         return {
             "entity_id": entity_id,
@@ -256,13 +222,11 @@ class SmartBuyerBot:
             "sender_name": "Rohan",
             "tracking_token": token,
             "invoice_url": invoice_url,
-            "dispatched_message": reply_message,
-            "dispatched_to_network": dispatched_to_network,
+            "dispatched_message": reply_text,
             "timestamp": now,
-            "is_followup": True,
             "turn_count": session["turn_count"],
+            "stage": session.get("stage", "ACTIVE"),
         }
 
 
-# Global singleton
 buyer_bot = SmartBuyerBot()
