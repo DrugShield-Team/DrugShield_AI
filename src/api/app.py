@@ -261,7 +261,7 @@ def admin_list_users(_: Principal = Depends(require_roles("admin"))) -> Dict[str
 
 class ReviewerCreateRequest(BaseModel):
     username: str = Field(min_length=3, max_length=64)
-    password: str = Field(min_length=12, max_length=256)
+    password: str = Field(min_length=4, max_length=256)
     station: str
 
 
@@ -274,7 +274,7 @@ class ReviewerStatusRequest(BaseModel):
 
 
 class ReviewerPasswordRequest(BaseModel):
-    password: str = Field(min_length=12, max_length=256)
+    password: str = Field(min_length=4, max_length=256)
 
 
 @app.post("/api/v1/admin/users", status_code=201)

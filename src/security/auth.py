@@ -86,8 +86,8 @@ def validate_configuration() -> None:
         raise RuntimeError("DRUGSHIELD_MAX_REQUEST_BYTES must be at least 1024")
 
 def hash_password(password: str) -> str:
-    if len(password) < 12:
-        raise ValueError("Password must be at least 12 characters")
+    if len(password) < 4:
+        raise ValueError("Password must be at least 4 characters")
     salt = secrets.token_bytes(16)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, ITERATIONS)
     return "pbkdf2_sha256$" + str(ITERATIONS) + "$" + salt.hex() + "$" + digest.hex()

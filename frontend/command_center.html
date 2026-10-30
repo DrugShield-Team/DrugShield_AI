@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DrugShield-AI | Evidence Review</title>
-<link rel="stylesheet" href="/frontend/dashboard.css?v=20261030-station-admin-2"><script defer src="/frontend/dashboard.js?v=20261030-station-admin-2"></script>
+<link rel="stylesheet" href="/frontend/dashboard.css?v=20261031-admin-station-label-1"><script defer src="/frontend/dashboard.js?v=20261031-admin-station-label-1"></script>
 </head>
 <body>
 <section id="login-view" class="login">
@@ -26,7 +26,7 @@
 </form></section>
 <div id="app-view" class="shell hidden">
 <aside class="sidebar">
-  <a class="brand" href="/"><span class="mark">DS</span><span><b>DrugShield-AI</b><small>Evidence command centre</small><small id="user-station" class="station-label">Station: unassigned</small></span></a>
+  <a class="brand" href="/"><span class="mark">DS</span><span><b>DrugShield-AI</b><small>Evidence command centre</small><small id="user-station" class="station-label" hidden></small></span></a>
   <p class="nav-caption">WORKSPACE</p>
   <nav aria-label="Dashboard sections">
     <a class="active" href="#overview" data-view="overview"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>Overview</a>
@@ -69,8 +69,8 @@
   <section id="admin-users" class="admin-users-section hidden">
     <div class="section-title"><div><p class="eyebrow">ADMINISTRATION</p><h2>Reviewer accounts</h2><p>Create reviewer access and assign each account to a simulated station jurisdiction.</p></div></div>
     <div class="columns admin-columns">
-      <article class="panel admin-create-panel"><div class="panel-head"><div><h3>Create reviewer</h3><small>New accounts require a password of at least 12 characters.</small></div></div>
-        <form id="reviewer-create-form" class="admin-form"><label for="new-reviewer-username">Username</label><input id="new-reviewer-username" minlength="3" maxlength="64" autocomplete="off" required><label for="new-reviewer-password">Initial password</label><input id="new-reviewer-password" type="password" minlength="12" maxlength="256" autocomplete="new-password" required><label for="new-reviewer-station">Assigned station</label><select id="new-reviewer-station" required><option value="">Choose a station</option></select><button class="primary" type="submit">Create reviewer</button><p id="admin-form-message" class="admin-message" role="status"></p></form>
+      <article class="panel admin-create-panel"><div class="panel-head"><div><h3>Create reviewer</h3><small>New accounts require a password of at least 4 characters.</small></div></div>
+        <form id="reviewer-create-form" class="admin-form"><label for="new-reviewer-username">Username</label><input id="new-reviewer-username" minlength="3" maxlength="64" autocomplete="off" required><label for="new-reviewer-password">Initial password</label><input id="new-reviewer-password" type="password" minlength="4" maxlength="256" autocomplete="new-password" required><label for="new-reviewer-station">Assigned station</label><select id="new-reviewer-station" required><option value="">Choose a station</option></select><button class="primary" type="submit">Create reviewer</button><p id="admin-form-message" class="admin-message" role="status"></p></form>
       </article>
       <article class="panel admin-list-panel"><div class="panel-head"><div><h3>Accounts and jurisdictions</h3><small>Environment-configured accounts can be assigned, but not disabled here.</small></div><button id="refresh-reviewers" class="clear-filters" type="button">Refresh</button></div><div class="table-scroll"><table><thead><tr><th>Username</th><th>Station</th><th>Status</th><th>Action</th></tr></thead><tbody id="reviewer-table-body"><tr><td colspan="4" class="empty">Loading accounts…</td></tr></tbody></table></div></article>
     </div>

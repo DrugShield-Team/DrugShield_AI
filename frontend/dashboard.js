@@ -45,7 +45,19 @@
     const r=await fetch(path,{credentials:'include',...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});
     if(r.status===401){lock();throw Error('Your session expired. Sign in again.');}
     const data=await r.json().catch(()=>({}));
-    if(!r.ok)throw Error(data.detail||'Request failed.');return data;
+    if(!r.ok){
+      const detail=data.detail;
+      const message=typeof detail==='string'?detail:
+        Array.isArray(detail)?detail.map(item=>{
+          if(typeof item==='string')return item;
+          const field=Array.isArray(item?.loc)?item.loc.filter(part=>part!=='body').join('.'):'';
+          const reason=typeof item?.msg==='string'?item.msg:typeof item?.message==='string'?item.message:'';
+          return field&&reason?field+': '+reason:reason||'Invalid request.';
+        }).filter(Boolean).join(' '):
+        detail&&typeof detail==='object'?(detail.message||detail.msg||'Request failed.'):'Request failed.';
+      throw Error(message||'Request failed.');
+    }
+    return data;
   }
   function lock(){clearInterval(state.timer);state.timer=null;state.user=null;if($('#settings-dialog').open)$('#settings-dialog').close();$('#app-view').classList.add('hidden');$('#login-view').classList.remove('hidden');}
   async function enter(user){
@@ -53,7 +65,9 @@
     state.user=user;state.caseSeen=new Set();state.hasLoadedCases=false;$('#user-name').textContent=user.username;$('#user-initials').textContent=(user.username[0]||'R').toUpperCase();
     $('#user-role').textContent=user.roles.map(role=>role.charAt(0).toUpperCase()+role.slice(1)).join(' · ');
     $('#settings-username').textContent=user.username;$('#settings-roles').textContent=user.roles.join(', ');
-    $('#user-station').textContent='Station: '+(user.station||'unassigned');
+    const stationLabel=$('#user-station');
+    stationLabel.hidden=!user.station;
+    stationLabel.textContent=user.station?'Station: '+user.station:'';
     $('#admin-users-link').classList.toggle('hidden',!user.roles.includes('admin'));
     $('#login-view').classList.add('hidden');$('#app-view').classList.remove('hidden');applyPreferences();await refresh();scheduleRefresh();
     if(user.roles.includes('admin'))loadAdminUsers();
@@ -83,11 +97,11 @@
     }catch(error){body.innerHTML='<tr><td colspan="4" class="empty">'+esc(error.message)+'</td></tr>';}
   }
   $('#reviewer-create-form').addEventListener('submit',async event=>{
-    event.preventDefault();const message=$('#admin-form-message'),button=event.currentTarget.querySelector('button[type="submit"]');
+    event.preventDefault();const form=event.currentTarget,message=$('#admin-form-message'),button=form.querySelector('button[type="submit"]');
     message.textContent='';button.disabled=true;
     try{
       await api('/api/v1/admin/users',{method:'POST',body:JSON.stringify({username:$('#new-reviewer-username').value.trim(),password:$('#new-reviewer-password').value,station:$('#new-reviewer-station').value})});
-      event.currentTarget.reset();message.textContent='Reviewer account created and assigned.';await loadAdminUsers();
+      form.reset();message.textContent='Reviewer account created and assigned.';await loadAdminUsers();
     }catch(error){message.textContent=error.message;}
     finally{button.disabled=false;}
   });
@@ -105,7 +119,7 @@
       catch(error){toast(error.message);}return;
     }
     const resetButton=event.target.closest('[data-reset-password]');if(!resetButton)return;
-    const password=window.prompt('Enter a new password of at least 12 characters for '+resetButton.dataset.resetPassword+'.');
+    const password=window.prompt('Enter a new password of at least 4 characters for '+resetButton.dataset.resetPassword+'.');
     if(password===null)return;
     try{await api('/api/v1/admin/users/'+encodeURIComponent(resetButton.dataset.resetPassword)+'/password',{method:'PUT',body:JSON.stringify({password})});toast('Reviewer password updated.');}
     catch(error){toast(error.message);}
