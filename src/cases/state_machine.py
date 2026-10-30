@@ -2,9 +2,9 @@
 DrugShield AI - Threat Accumulator & Threshold State Machine
 ============================================================
 Tracks threat accumulation per chat entity / thread across Hinglish slang,
-OCR pill detection, and QR payloads. When 4-5 flag events accumulate,
-transitions status from PASSIVE_MONITOR to ACTIVE_HONEYPOT_READY and triggers
-handoff to the Smart Buyer Bot persona while pausing crawler loops for that thread.
+OCR pill detection, and QR payloads. When 4-5 consecutive flag events accumulate,
+transitions status from PASSIVE_MONITOR to BOT_ENGAGED / ACTIVE_HONEYPOT_READY
+and triggers handoff to the Smart Buyer Bot persona while pausing crawler loops.
 """
 
 from __future__ import annotations
@@ -25,11 +25,13 @@ logger = logging.getLogger("DrugShield.StateMachine")
 # State constants
 STATE_PASSIVE_MONITOR = "PASSIVE_MONITOR"
 STATE_ACTIVE_HONEYPOT_READY = "ACTIVE_HONEYPOT_READY"
+STATE_BOT_ENGAGED = "BOT_ENGAGED"
 STATE_HONEYPOT_ENGAGED = "HONEYPOT_ENGAGED"
 STATE_INVOICE_SENT = "INVOICE_SENT"
 STATE_TARGET_GEO_LOCATED = "TARGET_GEO_LOCATED"
 STATE_DISPATCH_INITIATED = "DISPATCH_INITIATED"
 
+# Strict 4-5 message consecutive threat threshold
 THRESHOLD_FLAG_COUNT = 4
 
 # In-memory paused crawler thread registry
@@ -82,9 +84,9 @@ class ThreatStateMachine:
 
     def evaluate_threat_event(self, record: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Evaluate an incoming threat record. If flagged, increments the entity's
-        flag accumulator. If flag count reaches THRESHOLD_FLAG_COUNT (4-5),
-        automatically transitions state to ACTIVE_HONEYPOT_READY and pauses the thread.
+        Evaluate an incoming threat record from a suspect.
+        Strictly requires 4 to 5 consecutive flagged messages from the dealer
+        before transitioning to BOT_ENGAGED / ACTIVE_HONEYPOT_READY.
         """
         entity_id = (
             record.get("sender_id")
@@ -149,27 +151,31 @@ class ThreatStateMachine:
                 current_state = state
             else:
                 prev_state = row["current_state"]
-                current_count = row["flag_count"] + (1 if is_flagged else 0)
+                existing_count = row["flag_count"] or 0
+
+                # Consecutive tracking: increment if flagged, else reset if innocent non-flagged message
+                if is_flagged:
+                    current_count = existing_count + 1
+                else:
+                    # Non-threat message in monitor state resets consecutive count
+                    current_count = existing_count if prev_state != STATE_PASSIVE_MONITOR else 0
+
                 highest_score = max(float(row["highest_threat_score"] or 0.0), score)
 
-                # Parse existing reasons and merge
                 try:
                     existing_reasons = json.loads(row["flag_reasons"] or "[]")
                 except Exception:
                     existing_reasons = []
                 merged_reasons = list(dict.fromkeys(existing_reasons + reasons))
 
-                # Check threshold transition
-                # Trigger when flag count hits threshold (either reaching 4 from monitor, or every threshold cycle)
-                if current_count >= THRESHOLD_FLAG_COUNT:
+                # Strictly wait until 4 to 5 consecutive flagged messages accumulate
+                if current_count >= THRESHOLD_FLAG_COUNT and prev_state in (STATE_PASSIVE_MONITOR, "IDLE"):
                     current_state = STATE_ACTIVE_HONEYPOT_READY
                     crawler_paused = 1
-                    # Reset count cycle for subsequent honeypot re-engagements
-                    current_count = 0
                     self.pause_thread(chat_id)
                     self.pause_thread(entity_id)
                 else:
-                    current_state = prev_state if prev_state != STATE_ACTIVE_HONEYPOT_READY else STATE_PASSIVE_MONITOR
+                    current_state = prev_state
                     crawler_paused = row["crawler_paused"]
 
                 cur.execute(
@@ -190,8 +196,8 @@ class ThreatStateMachine:
                     ),
                 )
 
-            # Record transition if state changed
-            if prev_state != current_state:
+            # Record transition history if state advanced
+            if current_state != prev_state:
                 cur.execute(
                     """
                     INSERT INTO state_transition_history
@@ -202,46 +208,55 @@ class ThreatStateMachine:
                         entity_id,
                         prev_state,
                         current_state,
-                        f"Accumulated {current_count} flags (Threshold: {THRESHOLD_FLAG_COUNT})",
-                        json.dumps({"reasons": reasons, "score": score, "chat_id": chat_id}),
+                        f"Threshold reached ({current_count} consecutive flagged messages)",
+                        json.dumps(reasons),
                         now,
                     ),
                 )
 
+            conn.commit()
+
+        threshold_reached = bool(current_count >= THRESHOLD_FLAG_COUNT and current_state == STATE_ACTIVE_HONEYPOT_READY)
+
         return {
             "entity_id": entity_id,
-            "chat_id": chat_id,
             "previous_state": prev_state,
             "current_state": current_state,
             "flag_count": current_count,
-            "threshold_reached": current_count >= THRESHOLD_FLAG_COUNT,
-            "crawler_paused": self.is_thread_paused(chat_id),
-            "state_changed": prev_state != current_state,
+            "threshold_required": THRESHOLD_FLAG_COUNT,
+            "threshold_reached": threshold_reached,
+            "is_flagged": is_flagged,
+            "crawler_paused": bool(self.is_thread_paused(chat_id)),
+            "reasons": reasons,
+            "updated_at": now,
         }
 
     def transition_state(
         self,
         entity_id: str,
         new_state: str,
-        reason: str = "",
+        reason: str,
         details: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        """Manually or programmatically advance state for an entity."""
+    ) -> bool:
+        """Explicitly transition an entity to a new operational state."""
         now = datetime.now(timezone.utc).isoformat()
         with self._get_connection() as conn:
             cur = conn.cursor()
             cur.execute("SELECT current_state FROM entity_state_machine WHERE entity_id = ?", (entity_id,))
             row = cur.fetchone()
-            prev_state = row["current_state"] if row else STATE_PASSIVE_MONITOR
+            prev_state = row["current_state"] if row else "UNINITIALIZED"
 
             cur.execute(
                 """
-                INSERT INTO entity_state_machine (entity_id, current_state, flag_count, created_at, updated_at)
-                VALUES (?, ?, 0, ?, ?)
-                ON CONFLICT(entity_id) DO UPDATE SET current_state = ?, updated_at = ?
+                INSERT INTO entity_state_machine (entity_id, current_state, flag_count, highest_threat_score, flag_reasons, crawler_paused, created_at, updated_at)
+                VALUES (?, ?, 0, 0.0, '[]', 0, ?, ?)
+                ON CONFLICT(entity_id) DO UPDATE SET
+                    current_state = excluded.current_state,
+                    updated_at = excluded.updated_at
                 """,
-                (entity_id, new_state, now, now, new_state, now),
+                (entity_id, new_state, now, now),
             )
+
             cur.execute(
                 """
                 INSERT INTO state_transition_history
@@ -250,16 +265,13 @@ class ThreatStateMachine:
                 """,
                 (entity_id, prev_state, new_state, reason, json.dumps(details or {}), now),
             )
+            conn.commit()
 
-        return {
-            "entity_id": entity_id,
-            "previous_state": prev_state,
-            "new_state": new_state,
-            "timestamp": now,
-        }
+        logger.info(f"[State Transition] Entity: '{entity_id}' -> {new_state} (Reason: {reason})")
+        return True
 
     def get_entity_state(self, entity_id: str) -> Dict[str, Any]:
-        """Retrieve current state and flag telemetry for an entity."""
+        """Fetch current state machine position for an entity."""
         with self._get_connection() as conn:
             cur = conn.cursor()
             cur.execute("SELECT * FROM entity_state_machine WHERE entity_id = ?", (entity_id,))
@@ -269,6 +281,7 @@ class ThreatStateMachine:
                     "entity_id": entity_id,
                     "current_state": STATE_PASSIVE_MONITOR,
                     "flag_count": 0,
+                    "highest_threat_score": 0.0,
                     "crawler_paused": False,
                 }
             return {
@@ -276,44 +289,23 @@ class ThreatStateMachine:
                 "current_state": row["current_state"],
                 "flag_count": row["flag_count"],
                 "highest_threat_score": row["highest_threat_score"],
-                "reasons": json.loads(row["flag_reasons"] or "[]"),
+                "flag_reasons": json.loads(row["flag_reasons"] or "[]"),
                 "crawler_paused": bool(row["crawler_paused"]),
                 "updated_at": row["updated_at"],
             }
 
+    def pause_thread(self, thread_id: str) -> None:
+        """Pause automated scraping/ingestion for this thread."""
+        _PAUSED_THREADS.add(str(thread_id))
+        logger.info(f"[Crawler Engine] Thread {thread_id} paused due to honeypot transition.")
 
-    def reset_entity(self, entity_id: str) -> None:
-        """Reset flag count and state back to PASSIVE_MONITOR for testing/demo runs."""
-        now = datetime.now(timezone.utc).isoformat()
-        with self._get_connection() as conn:
-            cur = conn.cursor()
-            cur.execute(
-                """
-                UPDATE entity_state_machine
-                SET current_state = ?, flag_count = 0, highest_threat_score = 0.0, crawler_paused = 0, updated_at = ?
-                WHERE entity_id = ?
-                """,
-                (STATE_PASSIVE_MONITOR, now, entity_id),
-            )
-        self.resume_thread(entity_id)
+    def resume_thread(self, thread_id: str) -> None:
+        """Resume thread scraping."""
+        _PAUSED_THREADS.discard(str(thread_id))
 
-    @staticmethod
-    def pause_thread(thread_id: str):
-        """Register a thread or entity as paused in memory."""
-        if thread_id:
-            _PAUSED_THREADS.add(str(thread_id).strip())
-
-    @staticmethod
-    def resume_thread(thread_id: str):
-        """Unpause a thread in memory."""
-        if thread_id:
-            _PAUSED_THREADS.discard(str(thread_id).strip())
-
-    @staticmethod
-    def is_thread_paused(thread_id: str) -> bool:
-        """Check if ingestion is currently paused for this thread."""
-        return str(thread_id).strip() in _PAUSED_THREADS
+    def is_thread_paused(self, thread_id: str) -> bool:
+        """Check if an ingestion thread is currently locked for honeypot operation."""
+        return str(thread_id) in _PAUSED_THREADS
 
 
-# Global singleton
 state_machine = ThreatStateMachine()

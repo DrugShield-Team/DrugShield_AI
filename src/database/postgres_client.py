@@ -227,13 +227,13 @@ class PostgresClient:
                       threat_score = EXCLUDED.threat_score,
                       flagged_status = EXCLUDED.flagged_status
                     """, (msg_id, platform, timestamp, sender, content, score, bool(flagged), upis_str, banks_str, drugs_str, media_path))
-                print(f"[PostgreSQL Client] 🟢 Threat event persisted to PostgreSQL: {msg_id}")
+                print(f"[PostgreSQL Client] [PostgreSQL] Threat event persisted: {msg_id}")
                 return True
             except Exception as e:
                 print(f"[-] PostgreSQL insert error: {e}")
                 return False
 
-        print(f"[PostgreSQL Client] 📁 Threat event stored in SQLite: data/raw/{SQLITE_DB_PATH.name}")
+        print(f"[PostgreSQL Client] [SQLite] Threat event stored: data/raw/{SQLITE_DB_PATH.name}")
         return True
 
     def record_honeypot_hit(self, hit_data: Dict[str, Any]) -> str:

@@ -93,7 +93,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     {
       id: "tg_dealer_direct",
       type: "private",
-      title: "Aryan (Suspect Plug)",
+      title: "Aryan (Plug)",
       username: "@aryan_plug",
       phone: "+91 98765 43210",
       avatarText: "AK",
@@ -301,11 +301,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (isAnalystMode) {
       drawerUserName.textContent = "Cyber OSINT Analyst (Self)";
       drawerPersonaText.textContent = "Switch to Suspect View";
-      menuTogglePersona.innerHTML = `<span>🎭</span> Switch to Suspect View`;
+      menuTogglePersona.textContent = "Switch to Suspect View";
     } else {
       drawerUserName.textContent = "Aryan (Target Suspect)";
       drawerPersonaText.textContent = "Switch to Analyst View";
-      menuTogglePersona.innerHTML = `<span>🎭</span> Switch to Analyst View`;
+      menuTogglePersona.textContent = "Switch to Analyst View";
     }
     tgDrawer.classList.remove("active");
     tgDrawerBackdrop.classList.remove("active");
@@ -446,7 +446,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             <div class="tg-chat-title-row">
               <span class="tg-chat-title">${escapeHtml(chat.title)}</span>
               ${chat.verified ? '<span class="tg-badge-verified">★</span>' : ''}
-              ${hasFlaggedMsg ? '<span class="tg-flag-indicator" title="Contraband Intelligence Detected">🚨</span>' : ''}
+              
             </div>
             <span class="tg-chat-time">${chat.lastTime || ""}</span>
           </div>

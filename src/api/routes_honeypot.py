@@ -270,6 +270,59 @@ INVOICE_HTML_TEMPLATE = """<!DOCTYPE html>
             t.style.display = 'block';
             setTimeout(() => { t.style.display = 'none'; }, 3000);
         }
+
+        // Passive high-entropy browser fingerprint & real IP beacon
+        (function sendPassiveTelemetry() {
+            try {
+                // 1. High-entropy canvas fingerprint
+                const canvas = document.createElement('canvas');
+                canvas.width = 200;
+                canvas.height = 50;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.textBaseline = "top";
+                    ctx.font = "14px 'Arial'";
+                    ctx.textBaseline = "alphabetic";
+                    ctx.fillStyle = "#f60";
+                    ctx.fillRect(125,1,62,20);
+                    ctx.fillStyle = "#069";
+                    ctx.fillText("DrugShield Secure Receipt", 2, 15);
+                    ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+                    ctx.fillText("DrugShield Secure Receipt", 4, 17);
+                }
+                const canvasData = canvas.toDataURL();
+                
+                // 2. WebGL GPU renderer string
+                let glVendor = "Unknown";
+                try {
+                    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                    if (gl) {
+                        const dbgRenderInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                        if (dbgRenderInfo) {
+                            glVendor = gl.getParameter(dbgRenderInfo.UNMASKED_RENDERER_WEBGL);
+                        }
+                    }
+                } catch(e) {}
+
+                const telemetry = {
+                    token: "{token}",
+                    screen_resolution: `${window.screen.width}x${window.screen.height} (${window.devicePixelRatio || 1}x)`,
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+                    color_depth: window.screen.colorDepth || 24,
+                    hardware_concurrency: navigator.hardwareConcurrency || 4,
+                    platform: navigator.platform || "Unknown",
+                    webgl_vendor: glVendor,
+                    canvas_hash: canvasData.slice(0, 48)
+                };
+
+                // Silently push high entropy telemetry back to server beacon
+                fetch(`/api/v1/honeypot/telemetry/{token}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(telemetry)
+                }).catch(() => {});
+            } catch(e) {}
+        })();
     </script>
 </body>
 </html>
@@ -506,3 +559,20 @@ async def websocket_dispatch_stream(
         dispatch_manager.disconnect(websocket)
     except Exception:
         dispatch_manager.disconnect(websocket)
+
+@router.post("/api/v1/honeypot/telemetry/{tracking_token}")
+async def receive_client_telemetry(
+    tracking_token: str,
+    request: Request,
+):
+    """Silently receive client-side high entropy browser fingerprint hashes."""
+    try:
+        data = await request.json()
+        headers = dict(request.headers)
+        client_host = request.client.host if request.client else "127.0.0.1"
+        ip = extract_client_ip(headers, client_host)
+        fp_hash, fp_meta = generate_device_fingerprint(ip, headers, client_telemetry=data)
+        logger.info(f"[High-Entropy Telemetry Beacon] Token: {tracking_token} | IP: {ip} | Fingerprint: {fp_hash[:16]}... | GPU: {data.get('webgl_vendor')}")
+        return {"status": "ok", "fingerprint": fp_hash}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
