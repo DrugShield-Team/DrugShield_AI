@@ -1,10 +1,9 @@
 """
-DrugShield AI - Module 1 & 4 API: Silent Honeypot Tracking & Police Dispatch
-===========================================================================
-Serves silent tracking invoice landing pages, records visitor telemetry (IP,
-browser heuristics, device fingerprint), calculates Haversine routing to
-the nearest police precinct, commits audit logs to PostgreSQL, and broadcasts
-real-time dispatch alerts to monitoring dashboards via WebSockets.
+DrugShield-AI simulation scenario routes
+========================================
+Records synthetic scenario-link events, routes fictional coordinates between
+fixed demo nodes, and sends authenticated dashboard alerts. No visitor/device
+telemetry or real-world dispatch is performed.
 """
 
 from __future__ import annotations
@@ -14,7 +13,7 @@ import logging
 from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Header, Query, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from src.cases.state_machine import (
@@ -29,15 +28,12 @@ from src.cases.police_router import (
     normalize_precinct_id,
     route_to_nearest_precinct,
 )
-from src.osint_triangulation.ip_geolocation import (
-    extract_client_ip,
-    generate_device_fingerprint,
-    resolve_ip_location,
-)
+from config.settings import SESSION_COOKIE_NAME
+from src.security.auth import Principal, principal_from_token, require_roles
 
 logger = logging.getLogger("DrugShield.HoneypotRoutes")
 
-router = APIRouter(tags=["Honeypot & Police Dispatch"])
+router = APIRouter(tags=["Simulation Scenarios"])
 
 
 class DispatchConnectionManager:
@@ -69,9 +65,8 @@ class DispatchConnectionManager:
 
     async def dispatch_to_nearest(self, dispatch_info: Dict[str, Any]):
         """
-        Dynamically identify the single nearest precinct and push the live
-        pop-up alert ONLY to that specific node's dashboard.
-        Standby nodes receive standby notifications without triggering the priority alert banner.
+        Select a synthetic nearest node and send a scenario alert to the
+        authenticated command-centre stream.
         """
         assigned = dispatch_info.get("assigned_precinct") or {}
         nearest_id = assigned.get("precinct_id", "")
@@ -161,7 +156,7 @@ INVOICE_HTML_TEMPLATE = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Checkout / DirectPay UPI Receipt</title>
+    <title>DrugShield-AI Simulation Scenario</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         body { background-color: #f1f5f9; color: #1e293b; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
@@ -204,20 +199,20 @@ INVOICE_HTML_TEMPLATE = """<!DOCTYPE html>
         <div class="checkout-header">
             <div class="brand-badge">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                <span>DirectPay UPI Checkout</span>
+                <span>DrugShield-AI Scenario Receipt</span>
             </div>
-            <span class="secure-pill">VERIFIED P2P</span>
+            <span class="secure-pill">SIMULATION ONLY</span>
         </div>
 
         <div class="hero-section">
             <div class="success-icon-wrap">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
-            <div class="hero-title">Payment Confirmation</div>
+            <div class="hero-title">Fictional Scenario Page</div>
             <div class="hero-amount">INR 3,500.00</div>
             <div class="status-badge">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-                Token Advance Released
+                Example Scenario Only
             </div>
         </div>
 
@@ -232,36 +227,36 @@ INVOICE_HTML_TEMPLATE = """<!DOCTYPE html>
             </div>
             <div class="summary-row">
                 <span class="summary-label">Payment Channel:</span>
-                <span class="summary-val">UPI Instant Clearing (P2P)</span>
+                <span class="summary-val">Example payment channel</span>
             </div>
             <div class="summary-row">
                 <span class="summary-label">Delivery Note:</span>
-                <span class="summary-val" style="color: #059669;">Awaiting GPS Drop Pin</span>
+                <span class="summary-val" style="color: #059669;">No location data is collected</span>
             </div>
             <div class="summary-row">
-                <span class="summary-label" style="font-weight: 700; color: #0f172a;">Total Amount Settled:</span>
+                <span class="summary-label" style="font-weight: 700; color: #0f172a;">Example Amount:</span>
                 <span class="summary-val" style="font-size: 14px; font-weight: 700; color: #059669;">INR 3,500.00</span>
             </div>
         </div>
 
         <div class="actions-section">
-            <button class="btn-primary" onclick="showToast('Official payment receipt downloaded successfully.')">
+            <button class="btn-primary" onclick="showToast('This is a fictional simulation receipt.')">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Download Receipt (PDF)
+                View Scenario Receipt
             </button>
-            <button class="btn-secondary" onclick="showToast('Payment verification link copied to clipboard.')">
-                Share Transaction Copy
+            <button class="btn-secondary" onclick="showToast('No transaction link is created in this simulation.')">
+                View Scenario Details
             </button>
         </div>
 
         <div class="checkout-footer">
             <div class="footer-secure">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <span>256-Bit Encrypted UPI Transaction</span>
+                <span>SIMULATION ONLY - NO REAL TRANSACTION</span>
             </div>
             <p class="footer-note" style="margin-top: 4px;">
-                Transaction Ref: {token}<br>
-                Official clearing confirmation. Please share the drop pin once verified.
+                Scenario Ref: {token}<br>
+                Fictional scenario content. No payment or location data is collected.
             </p>
         </div>
     </div>
@@ -291,53 +286,36 @@ async def track_honeypot_hit(
     lon: Optional[float] = Query(default=None),
     target_node: Optional[str] = Query(default=None),
 ):
-    """
-    Silent honeypot tracking route:
-    1. Extracts client IP & headers without browser permissions.
-    2. Resolves geolocation and generates device fingerprint.
-    3. Calculates nearest police precinct via Haversine formula across 3 demo nodes.
-    4. Records audit logs to PostgreSQL / SQLite fallback.
-    5. Advances state machine to TARGET_GEO_LOCATED and DISPATCH_INITIATED.
-    6. Dispatches real-time pop-up alert EXCLUSIVELY to the absolute single nearest precinct node.
-    7. Serves clean decoy invoice receipt to the target.
-    """
+    """Record a fictional scenario interaction; never collect visitor telemetry."""
     headers = dict(request.headers)
-    client_host = request.client.host if request.client else "127.0.0.1"
-    ip = extract_client_ip(headers, client_host)
-
-    # 1. Resolve Location & Fingerprint
-    geo = resolve_ip_location(ip)
-    fp_hash, fp_meta = generate_device_fingerprint(ip, headers)
-
-    hit_record = {
-        "tracking_token": tracking_token,
-        "ip": ip,
-        "is_simulated": geo.get("is_simulated", True),
-        "country": geo.get("country", "India"),
-        "region": geo.get("region", "Delhi"),
-        "city": geo.get("city", "New Delhi"),
-        "latitude": geo.get("latitude", 28.6139),
-        "longitude": geo.get("longitude", 77.2090),
-        "isp": geo.get("isp", "Broadband Local"),
-        "fingerprint_hash": fp_hash,
-        "user_agent": fp_meta.get("user_agent", ""),
-        "accept_language": fp_meta.get("accept_language", ""),
-        "heuristics": fp_meta.get("heuristics", {}),
-    }
-
-    # Proximity override for multi-PC presentation testing
+    default_lat, default_lon = 28.6139, 77.2090
+    scenario_city = "Fictional scenario location"
     if target_node:
         sim_precinct = get_precinct_by_id(target_node)
         if sim_precinct:
-            hit_record["latitude"] = sim_precinct["latitude"] + 0.0002
-            hit_record["longitude"] = sim_precinct["longitude"] + 0.0002
-            hit_record["city"] = f"{sim_precinct['address']} (Sector Test)"
-    elif lat is not None and lon is not None:
-        hit_record["latitude"] = lat
-        hit_record["longitude"] = lon
-        hit_record["city"] = f"Coordinates ({lat:.4f}, {lon:.4f})"
+            default_lat, default_lon = sim_precinct["latitude"] + 0.0002, sim_precinct["longitude"] + 0.0002
+            scenario_city = f"Synthetic scenario near node {sim_precinct['node_index']}"
+    if lat is not None and lon is not None and -90 <= lat <= 90 and -180 <= lon <= 180:
+        default_lat, default_lon = lat, lon
+        scenario_city = "Fictional scenario coordinates"
+    hit_record = {
+        "id": f"sim_{tracking_token}",
+        "tracking_token": tracking_token,
+        "ip": "SIMULATED",
+        "is_simulated": True,
+        "country": "Simulation",
+        "region": "Fictional scenario",
+        "city": scenario_city,
+        "latitude": default_lat,
+        "longitude": default_lon,
+        "isp": "Simulation",
+        "fingerprint_hash": "",
+        "user_agent": "",
+        "accept_language": "",
+        "heuristics": {"source": "fictional_simulation", "telemetry_collected": False},
+    }
 
-    # 2. Commit visitor hit to database
+    # 2. Commit synthetic scenario event to the database
     hit_id = postgres_client.record_honeypot_hit(hit_record)
 
     # 3. Haversine Police Routing - Calculate nearest among all 3 demo nodes
@@ -347,11 +325,11 @@ async def track_honeypot_hit(
     )
     dispatch_info["tracking_token"] = tracking_token
     dispatch_info["hit_id"] = hit_id
-    dispatch_info["visitor_ip"] = ip
     dispatch_info["city"] = hit_record["city"]
+    dispatch_info["is_simulated"] = True
     dispatch_info["timestamp"] = datetime.now(timezone.utc).isoformat()
 
-    # 4. Commit police dispatch alert to database
+    # 4. Commit synthetic routing event to the database
     dispatch_id = postgres_client.record_dispatch_alert(dispatch_info)
     dispatch_info["dispatch_id"] = dispatch_id
 
@@ -359,7 +337,7 @@ async def track_honeypot_hit(
     state_machine.transition_state(
         entity_id=tracking_token,
         new_state=STATE_TARGET_GEO_LOCATED,
-        reason=f"Target accessed honeypot invoice link. IP: {ip}, Locality: {hit_record['city']}",
+        reason=f"Fictional simulation link accessed. Scenario location: {hit_record['city']}",
         details=hit_record,
     )
     state_machine.transition_state(
@@ -369,12 +347,12 @@ async def track_honeypot_hit(
         details=dispatch_info,
     )
 
-    # 6. Targeted Dispatch - Pushes live pop-up alert ONLY to the single closest node
+    # 6. Send a simulated routing alert to the dashboard stream
     await dispatch_manager.dispatch_to_nearest(dispatch_info)
 
     logger.info(
-        f"[Honeypot Hit] Token: {tracking_token} | IP: {ip} | City: {hit_record['city']} | "
-        f"Assigned Primary Node: {dispatch_info['assigned_precinct']['name']} ({dispatch_info['assigned_precinct']['distance_km']} km)"
+        f"[Simulation Event] Token: {tracking_token} | Scenario: {hit_record['city']} | "
+        f"Selected Simulation Node: {dispatch_info['assigned_precinct']['name']} ({dispatch_info['assigned_precinct']['distance_km']} km)"
     )
 
     if format == "json" or "application/json" in headers.get("accept", ""):
@@ -391,25 +369,52 @@ async def track_honeypot_hit(
 
 
 @router.get("/api/v1/dispatch/alerts")
-def list_dispatch_alerts(limit: int = 50):
-    """Retrieve recent police dispatch alerts."""
+def list_dispatch_alerts(limit: int = Query(default=50, ge=1, le=100), _: Principal = Depends(require_roles("reviewer", "admin"))):
+    """Return allowlisted synthetic routing events to authenticated reviewers."""
+    alerts = []
+    for item in postgres_client.get_recent_dispatch_alerts(limit=limit):
+        try:
+            details = item.get("details") or {}
+            if isinstance(details, str):
+                details = json.loads(details)
+            if not details.get("is_simulated"):
+                continue
+            assigned = details.get("assigned_precinct") or {}
+            alerts.append({
+                "id": item.get("id"), "tracking_token": item.get("tracking_token"),
+                "created_at": item.get("created_at"), "precinct_name": item.get("precinct_name"),
+                "distance_km": item.get("distance_km"), "eta_minutes": item.get("eta_minutes"),
+                "dispatch_status": item.get("dispatch_status"),
+                "scenario_label": details.get("city", "Fictional scenario"),
+                "is_simulated": True,
+                "assigned_precinct": {"name": assigned.get("name"), "distance_km": assigned.get("distance_km"),
+                                      "estimated_eta_minutes": assigned.get("estimated_eta_minutes")},
+            })
+        except (TypeError, ValueError):
+            continue
     return {
         "status": "success",
-        "alerts": postgres_client.get_recent_dispatch_alerts(limit=limit),
+        "alerts": alerts,
     }
 
 
 @router.get("/api/v1/honeypot/logs")
-def list_honeypot_hits(limit: int = 50):
-    """Retrieve captured honeypot hits."""
+def list_honeypot_hits(limit: int = Query(default=50, ge=1, le=100), _: Principal = Depends(require_roles("reviewer", "admin"))):
+    """Return fictional scenario activity without visitor or device telemetry."""
+    hits = []
+    for item in postgres_client.get_recent_honeypot_hits(limit=limit):
+        if not item.get("is_simulated"):
+            continue
+        hits.append({key: item.get(key) for key in ("id", "tracking_token", "created_at", "city", "region", "country", "latitude", "longitude")})
+        hits[-1]["is_simulated"] = True
     return {
         "status": "success",
-        "hits": postgres_client.get_recent_honeypot_hits(limit=limit),
+        "hits": hits,
     }
 
 
 @router.get("/api/v1/state-machine/{entity_id}")
-def get_entity_state_machine(entity_id: str):
+def get_entity_state_machine(entity_id: str, _: Principal = Depends(require_roles("reviewer", "admin"))):
     """Query state machine status and flag count for an entity."""
     return state_machine.get_entity_state(entity_id)
 
@@ -421,11 +426,12 @@ def get_forensic_case_report(
     token_or_id: str,
     request: Request,
     format: Optional[str] = Query(default=None),
+    _: Principal = Depends(require_roles("reviewer", "admin")),
 ):
     """
     Law Enforcement Digital Evidence Docket Generator:
     Aggregates suspect metadata, chat escalation transcript, OSINT device telemetry,
-    and Haversine police precinct routing into a legal-grade forensic dossier.
+    and synthetic scenario routing into a legacy HTML report.
     """
     from src.reporting.case_docket_generator import compile_case_docket, render_docket_html
 
@@ -440,12 +446,14 @@ def get_forensic_case_report(
 
 
 @router.get("/api/v1/dispatch/precincts")
-def list_registered_precincts():
-    """Retrieve all configured police precinct dispatch nodes."""
+def list_registered_precincts(_: Principal = Depends(require_roles("reviewer", "admin"))):
+    """Return fictional routing nodes for the simulation UI."""
     return {
         "status": "success",
         "count": len(POLICE_PRECINCTS),
-        "precincts": POLICE_PRECINCTS,
+        "precincts": [{"id": item["id"], "node_id": item["node_id"], "name": f"Simulation Node {item['node_index']}",
+                        "latitude": item["latitude"], "longitude": item["longitude"], "is_simulated": True}
+                       for item in POLICE_PRECINCTS],
     }
 
 
@@ -456,18 +464,25 @@ async def websocket_dispatch_stream(
     node: Optional[str] = Query(default=None),
 ):
     """
-    WebSocket stream streaming live police precinct dispatch alerts.
+    Authenticated WebSocket stream for fictional scenario routing alerts.
     Supports node filtering via ?precinct_id=... or ?node=1/2/3.
-    Push alerts trigger exclusively on the single closest precinct node.
+    Alerts are generated only from the simulation's fixed synthetic locations.
     """
     selected_node = precinct_id or node or "ALL"
+    try:
+        principal = principal_from_token(websocket.cookies.get(SESSION_COOKIE_NAME, ""))
+        if not principal.roles.intersection({"reviewer", "admin"}):
+            raise ValueError("Reviewer access required")
+    except Exception:
+        await websocket.close(code=4401)
+        return
     await dispatch_manager.connect(websocket, precinct_id=selected_node)
     try:
         norm_id = normalize_precinct_id(selected_node)
         # Send initial confirmation with node binding
         await websocket.send_json({
             "event": "CONNECTED",
-            "message": "Connected to DrugShield AI Police Dispatch WebSocket Stream",
+            "message": "Connected to DrugShield-AI scenario alert stream",
             "assigned_client_node": norm_id,
             "registered_precincts": [p["id"] for p in POLICE_PRECINCTS],
         })

@@ -109,6 +109,7 @@ The response includes `event_id`, optional `case_id`, `review_required`, `analys
 - `GET /api/v1/cases/{case_id}` ? evidence report, model fingerprints, graph, and review history
 - `GET /api/v1/cases/{case_id}/attachments/{attachment_id}` ? retrieve an evidence image
 - `POST /api/v1/cases/{case_id}/review` ? submit `accept`, `further_review`, or `dismiss`
+- `GET /api/v1/dispatch/alerts` and `/api/v1/honeypot/logs` ? authenticated synthetic scenario activity for the command centre
 
 Review decisions are recorded in an append-only history table. They do not trigger immediate or automatic model retraining.
 
@@ -120,7 +121,7 @@ Review decisions are recorded in an append-only history table. They do not trigg
 - **QR decoder:** attempts to decode QR payloads. Decoded text is sent through text analysis; VPA candidates are extracted from message and QR text.
 - **OCR:** intentionally not wired. The supplied image datasets lack paired text transcriptions; provide an OCR dataset before training or implementing the agreed OCR component.
 - **Thresholds:** values in `.env.example` are provisional development settings, not calibrated suspiciousness probabilities. Triggered cases are sent for human review; untriggered messages are labeled `no_threshold_trigger`, not ?clean.?
-- **Frontend/dashboard:** the friend?s frontend is not in this checkout yet. This API provides the event and case endpoints for it to connect; pull the frontend here before implementing component-specific integration.
+- **Frontend/dashboard:** `frontend/command_center.html` is the authenticated DrugShield-AI command centre. It loads cases, evidence reports, attachments, review history, the relationship graph, and synthetic scenario activity from this API. Telegram and WhatsApp dashboard links redirect to the same command centre. No live visitor or device tracking is performed.
 
 ## Hinglish and simulation evaluation
 
