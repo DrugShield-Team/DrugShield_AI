@@ -2,7 +2,7 @@
 DrugShield AI - Module 1 Extension: Smart Buyer Persona Honeypot Bot
 ===================================================================
 Simulates a credible buyer persona to engage suspect vendors once
-a thread transitions to ACTIVE_HONEYPOT_READY. 
+a thread transitions to ACTIVE_HONEYPOT_READY.
 
 Multi-Stage Conversational Flow:
 1. Stage 1 (Initial Engagement on 4-5 flags): Shows interest in buying and EXPLICITLY asks

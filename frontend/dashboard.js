@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const $ = (s) => document.querySelector(s);
-  const state = { user:null, cases:[], selected:null, dispatches:[], hits:[], seen:new Set(), timer:null, prefs:loadPreferences(), setGraphMotion:null, view:'overview' };
+  const state = { user:null, cases:[], selected:null, dispatches:[], hits:[], caseSeen:new Set(), hasLoadedCases:false, timer:null, prefs:loadPreferences(), setGraphMotion:null, view:'overview' };
   const esc = v => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const when = v => { const d=new Date(v); return v && !Number.isNaN(d.valueOf()) ? d.toLocaleString() : '—'; };
   const channel = v => ({instagram:'Instagram',telegram:'Telegram',whatsapp:'WhatsApp'}[v] || v || 'Unknown');
@@ -45,15 +45,32 @@
     const r=await fetch(path,{credentials:'include',...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});
     if(r.status===401){lock();throw Error('Your session expired. Sign in again.');}
     const data=await r.json().catch(()=>({}));
-    if(!r.ok)throw Error(data.detail||'Request failed.');return data;
+    if(!r.ok){
+      const detail=data.detail;
+      const message=typeof detail==='string'?detail:
+        Array.isArray(detail)?detail.map(item=>{
+          if(typeof item==='string')return item;
+          const field=Array.isArray(item?.loc)?item.loc.filter(part=>part!=='body').join('.'):'';
+          const reason=typeof item?.msg==='string'?item.msg:typeof item?.message==='string'?item.message:'';
+          return field&&reason?field+': '+reason:reason||'Invalid request.';
+        }).filter(Boolean).join(' '):
+        detail&&typeof detail==='object'?(detail.message||detail.msg||'Request failed.'):'Request failed.';
+      throw Error(message||'Request failed.');
+    }
+    return data;
   }
   function lock(){clearInterval(state.timer);state.timer=null;state.user=null;if($('#settings-dialog').open)$('#settings-dialog').close();$('#app-view').classList.add('hidden');$('#login-view').classList.remove('hidden');}
   async function enter(user){
     if(!user.roles?.some(x=>['reviewer','admin'].includes(x))){$('#login-error').textContent='This account does not have reviewer access.';await fetch('/api/v1/auth/logout',{method:'POST',credentials:'include'});return;}
-    state.user=user;$('#user-name').textContent=user.username;$('#user-initials').textContent=(user.username[0]||'R').toUpperCase();
+    state.user=user;state.caseSeen=new Set();state.hasLoadedCases=false;$('#user-name').textContent=user.username;$('#user-initials').textContent=(user.username[0]||'R').toUpperCase();
     $('#user-role').textContent=user.roles.map(role=>role.charAt(0).toUpperCase()+role.slice(1)).join(' · ');
     $('#settings-username').textContent=user.username;$('#settings-roles').textContent=user.roles.join(', ');
+    const stationLabel=$('#user-station');
+    stationLabel.hidden=!user.station;
+    stationLabel.textContent=user.station?'Station: '+user.station:'';
+    $('#admin-users-link').classList.toggle('hidden',!user.roles.includes('admin'));
     $('#login-view').classList.add('hidden');$('#app-view').classList.remove('hidden');applyPreferences();await refresh();scheduleRefresh();
+    if(user.roles.includes('admin'))loadAdminUsers();
   }
   $('#login-form').addEventListener('submit',async e=>{
     e.preventDefault();const button=e.currentTarget.querySelector('button');button.disabled=true;$('#login-error').textContent='';
@@ -68,6 +85,46 @@
   $('#settings-refresh').addEventListener('change',event=>updatePreference('refreshSeconds',Number(event.target.value)));
   $('#settings-animate').addEventListener('change',event=>updatePreference('animateGraph',event.target.checked));
   $('#settings-contrast').addEventListener('change',event=>updatePreference('highContrast',event.target.checked));
+  async function loadAdminUsers(){
+    const body=$('#reviewer-table-body');if(!body)return;
+    body.innerHTML='<tr><td colspan="4" class="empty">Loading accounts…</td></tr>';
+    try{
+      const data=await api('/api/v1/admin/users');
+      const stationSelect=$('#new-reviewer-station');
+      stationSelect.innerHTML='<option value="">Choose a station</option>'+(data.stations||[]).map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
+      const users=data.users||[];
+      body.innerHTML=users.length?users.map(user=>'<tr data-reviewer="'+esc(user.username)+'"><td><strong>'+esc(user.username)+'</strong><small class="account-source">'+esc(user.source==='environment'?'Configured account':'Dashboard account')+'</small></td><td><select class="reviewer-station" aria-label="Station assigned to '+esc(user.username)+'" data-username="'+esc(user.username)+'"><option value="">Unassigned</option>'+(data.stations||[]).map(station=>'<option value="'+esc(station)+'" '+(user.station===station?'selected':'')+'>'+esc(station)+'</option>').join('')+'</select></td><td><span class="account-status '+(user.active?'is-active':'is-disabled')+'">'+(user.active?'Active':'Disabled')+'</span></td><td>'+(user.source==='dashboard'?'<div class="account-actions"><button class="account-disable" type="button" data-status="'+esc(user.username)+'" data-active="'+(!user.active)+'">'+(user.active?'Disable':'Enable')+'</button><button class="account-reset" type="button" data-reset-password="'+esc(user.username)+'">Reset password</button></div>':'—')+'</td></tr>').join(''):'<tr><td colspan="4" class="empty">No reviewer accounts found.</td></tr>';
+    }catch(error){body.innerHTML='<tr><td colspan="4" class="empty">'+esc(error.message)+'</td></tr>';}
+  }
+  $('#reviewer-create-form').addEventListener('submit',async event=>{
+    event.preventDefault();const form=event.currentTarget,message=$('#admin-form-message'),button=form.querySelector('button[type="submit"]');
+    message.textContent='';button.disabled=true;
+    try{
+      await api('/api/v1/admin/users',{method:'POST',body:JSON.stringify({username:$('#new-reviewer-username').value.trim(),password:$('#new-reviewer-password').value,station:$('#new-reviewer-station').value})});
+      form.reset();message.textContent='Reviewer account created and assigned.';await loadAdminUsers();
+    }catch(error){message.textContent=error.message;}
+    finally{button.disabled=false;}
+  });
+  $('#reviewer-table-body').addEventListener('change',async event=>{
+    const select=event.target.closest('.reviewer-station');if(!select)return;
+    try{await api('/api/v1/admin/users/'+encodeURIComponent(select.dataset.username)+'/station',{method:'PUT',body:JSON.stringify({station:select.value})});toast('Station assignment saved.');}
+    catch(error){toast(error.message);await loadAdminUsers();}
+  });
+  $('#reviewer-table-body').addEventListener('click',async event=>{
+    const statusButton=event.target.closest('[data-status]');
+    if(statusButton){
+      const username=statusButton.dataset.status,active=statusButton.dataset.active==='true';
+      if(!window.confirm((active?'Enable':'Disable')+' reviewer account '+username+'?'))return;
+      try{await api('/api/v1/admin/users/'+encodeURIComponent(username)+'/status',{method:'PUT',body:JSON.stringify({active})});toast(active?'Reviewer account enabled.':'Reviewer account disabled.');await loadAdminUsers();}
+      catch(error){toast(error.message);}return;
+    }
+    const resetButton=event.target.closest('[data-reset-password]');if(!resetButton)return;
+    const password=window.prompt('Enter a new password of at least 4 characters for '+resetButton.dataset.resetPassword+'.');
+    if(password===null)return;
+    try{await api('/api/v1/admin/users/'+encodeURIComponent(resetButton.dataset.resetPassword)+'/password',{method:'PUT',body:JSON.stringify({password})});toast('Reviewer password updated.');}
+    catch(error){toast(error.message);}
+  });
+  $('#refresh-reviewers').addEventListener('click',loadAdminUsers);
   applyPreferences();
   $('.sidebar nav').addEventListener('click',event=>{
     const link=event.target.closest('[data-view]');if(!link)return;
@@ -114,10 +171,18 @@
       api('/api/v1/dispatch/alerts?limit=30'),api('/api/v1/honeypot/logs?limit=30')
     ]);
     let failed=false;
-    if(results[0].status==='fulfilled'){state.cases=results[0].value.cases||[];renderCases();renderMetrics();renderAnalytics();}
+    if(results[0].status==='fulfilled'){
+      state.cases=results[0].value.cases||[];renderCases();renderMetrics();renderAnalytics();
+      const nextSeen=new Set(state.cases.map(item=>item.case_id));
+      if(state.hasLoadedCases){
+        const added=state.cases.find(item=>!state.caseSeen.has(item.case_id));
+        if(added){const summary=added.summary||{};toast('New simulated case for '+(summary.jurisdiction||state.user.station||'review')+' · '+channel(summary.channel)+'.');}
+      }
+      state.caseSeen=nextSeen;state.hasLoadedCases=true;
+    }
     else{failed=true;$('#case-table-body').innerHTML='<tr><td colspan="5" class="empty">Case data unavailable.</td></tr>';}
     if(results[1].status==='fulfilled')renderGraph(results[1].value);else{failed=true;$('#graph-container').innerHTML='<p class="empty">Graph data unavailable.</p>';}
-    if(results[2].status==='fulfilled'){state.dispatches=results[2].value.alerts||[];renderActivity();notify();}
+    if(results[2].status==='fulfilled'){state.dispatches=results[2].value.alerts||[];renderActivity();}
     else{failed=true;$('#dispatch-list').innerHTML='<p class="empty">Scenario routing data unavailable.</p>';}
     if(results[3].status==='fulfilled'){state.hits=results[3].value.hits||[];renderActivity();}
     else{failed=true;$('#hit-list').innerHTML='<p class="empty">Scenario access data unavailable.</p>';}
@@ -155,21 +220,25 @@
     renderCases();syncChartSelection();setDashboardView('case-queue',{push:true,scroll:true});
   }
   function setDashboardView(target,{push=false,scroll=false}={}){
-    const valid=['overview','case-queue','scenario-activity'];
+    const valid=['overview','case-queue','scenario-activity','admin-users'];
     if(!valid.includes(target))target='overview';
-    const casePage=target==='case-queue',scenarioPage=target==='scenario-activity',separatePage=casePage||scenarioPage,main=$('#app-view main');state.view=target;
+    if(target==='admin-users'&&!state.user?.roles.includes('admin'))target='overview';
+    const casePage=target==='case-queue',scenarioPage=target==='scenario-activity',adminPage=target==='admin-users',separatePage=casePage||scenarioPage||adminPage,main=$('#app-view main');state.view=target;
     main.classList.toggle('case-page',casePage);main.classList.toggle('scenario-page',scenarioPage);
+    main.classList.toggle('admin-page',adminPage);
     $('#overview').classList.toggle('hidden',separatePage);
     $('#network-analysis').classList.toggle('hidden',separatePage);
     $('#case-analytics').classList.toggle('hidden',separatePage);
     $('#scenario-activity').classList.toggle('hidden',!scenarioPage);
     $('#case-queue').classList.toggle('hidden',!casePage);
-    $('#topbar-page-title').textContent=casePage?'Case queue':scenarioPage?'Scenario activity':'Evidence review';
+    $('#admin-users').classList.toggle('hidden',!adminPage);
+    $('#topbar-page-title').textContent=casePage?'Case queue':scenarioPage?'Scenario activity':adminPage?'User management':'Evidence review';
     document.querySelectorAll('.sidebar nav [data-view]').forEach(link=>{
       const active=link.dataset.view===target;link.classList.toggle('active',active);
       if(active)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
     });
     if(push&&location.hash!=='#'+target)history.pushState({dashboardView:target},'','#'+target);
+    if(adminPage)loadAdminUsers();
     if(scroll){
       window.scrollTo({top:0,behavior:'auto'});
     }
@@ -189,7 +258,7 @@
   function renderCases(){
     const filter=$('#status-filter').value,channelFilter=$('#channel-filter').value,q=$('#case-search').value.trim().toLowerCase();
     const knownChannels=['instagram','telegram','whatsapp'];
-    const items=state.cases.filter(x=>{const s=x.summary||{};const all=[x.case_id,x.status,s.channel,s.sender_display_name,s.recipient_display_name,s.message_text].join(' ').toLowerCase();const channelMatches=!channelFilter||(channelFilter==='other'?!knownChannels.includes(s.channel):s.channel===channelFilter);return(!filter||x.status===filter)&&channelMatches&&(!q||all.includes(q));});
+    const items=state.cases.filter(x=>{const s=x.summary||{};const all=[x.case_id,x.status,s.channel,s.sender_display_name,s.recipient_display_name,s.message_text,s.simulated_locality,s.jurisdiction].join(' ').toLowerCase();const channelMatches=!channelFilter||(channelFilter==='other'?!knownChannels.includes(s.channel):s.channel===channelFilter);return(!filter||x.status===filter)&&channelMatches&&(!q||all.includes(q));});
     $('#case-count').textContent=items.length;
     $('#case-table-body').innerHTML=items.length?items.map(x=>{const s=x.summary||{};return '<tr data-case="'+esc(x.case_id)+'" class="'+(state.selected===x.case_id?'selected':'')+'"><td class="case-id">'+esc(String(x.case_id).slice(0,8))+'</td><td>'+esc(channel(s.channel))+'</td><td>'+esc(s.sender_display_name||s.sender_id||'—')+'</td><td>'+esc(when(x.created_at))+'</td><td><span class="status status-'+esc(x.status)+'">'+esc(statusName(x.status))+'</span></td></tr>';}).join(''):'<tr><td colspan="5" class="empty">No cases match this view.</td></tr>';
   }
@@ -207,7 +276,7 @@
     const qrLabel=Array.isArray(qr)?(qr.length?qr.map(x=>typeof x==='string'?x:(x.payload||x.text||x.status||'QR detected')).join('; '):'No findings'):JSON.stringify(qr||'No findings');
     $('#case-detail').dataset.case=c.case_id;$('#case-detail').dataset.report=JSON.stringify(c);
     $('#case-detail').innerHTML='<div class="detail-head"><div><h3>Case '+esc(String(c.case_id).slice(0,12))+'</h3><p>'+esc(channel(s.channel))+' · '+esc(when(c.created_at))+'</p></div><span class="status status-'+esc(c.status)+'">'+esc(statusName(c.status))+'</span></div>'+
-    '<div class="detail-block"><h4>Conversation context</h4><div class="facts"><div class="fact"><span>Sender</span><strong>'+esc(s.sender_display_name||s.sender_id||'—')+'</strong></div><div class="fact"><span>Recipient</span><strong>'+esc(s.recipient_display_name||s.recipient_id||'—')+'</strong></div><div class="fact"><span>Conversation</span><strong>'+esc(s.conversation_id||'—')+'</strong></div><div class="fact"><span>Message time</span><strong>'+esc(when(s.timestamp))+'</strong></div></div><div class="detail-copy">'+esc(s.message_text||'(No text content)')+'</div></div>'+
+    '<div class="detail-block"><h4>Conversation context</h4><div class="facts"><div class="fact"><span>Sender</span><strong>'+esc(s.sender_display_name||s.sender_id||'—')+'</strong></div><div class="fact"><span>Recipient</span><strong>'+esc(s.recipient_display_name||s.recipient_id||'—')+'</strong></div><div class="fact"><span>Conversation</span><strong>'+esc(s.conversation_id||'—')+'</strong></div><div class="fact"><span>Message time</span><strong>'+esc(when(s.timestamp))+'</strong></div><div class="fact"><span>Simulated locality</span><strong>'+esc(s.simulated_locality||'Not provided')+'</strong></div><div class="fact"><span>Assigned jurisdiction</span><strong>'+esc(s.jurisdiction||'Unassigned')+'</strong></div></div><div class="detail-copy">'+esc(s.message_text||'(No text content)')+'</div></div>'+
     '<div class="detail-block"><h4>Analysis evidence</h4><div class="facts"><div class="fact"><span>Text risk score</span><strong>'+esc(text.risk_score??'Not provided')+'</strong></div><div class="fact"><span>Text category</span><strong>'+esc(text.prediction||text.label||text.status||'Not provided')+'</strong></div><div class="fact"><span>Candidate VPA / UPI</span><strong>'+esc(vpas.length?vpas.map(x=>typeof x==='string'?x:(x.value||x.candidate||JSON.stringify(x))).join(', '):'None identified')+'</strong></div><div class="fact"><span>QR analysis</span><strong>'+esc(qrLabel)+'</strong></div></div><ul class="detail-list">'+list(reasons,'No review reason supplied.')+'</ul></div>'+
     '<div class="detail-block"><h4>Attachments</h4><ul class="detail-list">'+attach+'</ul></div><div class="detail-block"><h4>Review history</h4><ul class="detail-list">'+reviews+'</ul></div>'+
     '<div class="review-form">'+(open?'<textarea id="review-note" maxlength="4000" placeholder="Add a concise review note (optional)"></textarea><div class="review-actions"><button class="accept" data-action="accept">Accept</button><button class="escalate" data-action="further_review">Further review</button><button class="dismiss" data-action="dismiss">Dismiss</button><button class="print" data-print>Print report</button></div>':'<div class="review-actions"><button class="print" data-print>Print report</button></div>')+'</div>';
@@ -296,7 +365,6 @@
     $('#dispatch-list').innerHTML=state.dispatches.length?state.dispatches.map(x=>{const d=x.details||{},node=d.assigned_precinct||{};return '<article class="activity-item"><strong><span>Scenario '+esc(x.tracking_token||d.tracking_token||x.id||'event')+'</span><time>'+esc(when(x.created_at||d.timestamp))+'</time></strong><p>Nearest simulation node: '+esc(x.precinct_name||node.name||'Not assigned')+' · route '+esc(x.distance_km??node.distance_km??'—')+' km / '+esc(x.eta_minutes??node.estimated_eta_minutes??'—')+' min. Synthetic scenario only.</p></article>';}).join(''):'<p class="empty">No scenario routing events.</p>';
     $('#hit-list').innerHTML=state.hits.length?state.hits.map(x=>'<article class="activity-item"><strong><span>Scenario '+esc(x.tracking_token||x.id||'event')+'</span><time>'+esc(when(x.created_at))+'</time></strong><p>Fictional scenario location: '+esc([x.city,x.region].filter(Boolean).join(', ')||'not specified')+'. No visitor IP, device fingerprint, or GPS data is collected.</p></article>').join(''):'<p class="empty">No scenario access events.</p>';
   }
-  function notify(){state.dispatches.forEach(x=>{const id=x.id||x.tracking_token;if(!id||state.seen.has(id))return;state.seen.add(id);if(state.seen.size>1)toast('New simulated scenario routing event.');});}
   initLoginCursorGlow();
   setDashboardView(location.hash.slice(1)||'overview',{push:false,scroll:false});
   async function session(){try{await enter(await api('/api/v1/auth/me'));}catch{}}

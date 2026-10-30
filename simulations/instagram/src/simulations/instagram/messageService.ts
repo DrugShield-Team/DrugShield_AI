@@ -26,6 +26,7 @@ export type Conversation = {
   messages: Message[];
   updatedAt: number;
   origin?: 'starter' | 'user';
+  simulatedLocality?: string;
 };
 
 export type PendingAttachment = AttachmentReference & { blob: Blob; previewUrl: string };
@@ -73,6 +74,11 @@ export async function submitMessageForAnalysis(input: {
     recipient_display_name: recipientName,
     timestamp: new Date().toISOString(),
     text: input.text.trim(),
+    simulated_locality: input.conversation.simulatedLocality || ({
+      'starter-aarav-malik': 'Jayanagar',
+      'starter-sana-qureshi': 'Indiranagar',
+      'starter-kabir-sethi': 'Rajajinagar',
+    } as Record<string, string>)[input.conversation.id] || null,
   };
   const body = new FormData();
   body.append('event_json', JSON.stringify(event));
@@ -104,6 +110,7 @@ function createStarterConversations(): Conversation[] {
     {
       id: 'starter-aarav-malik',
       origin: 'starter',
+      simulatedLocality: 'Jayanagar',
       people: ['Aarav Malik', 'You'],
       messages: [
         starterMessage('starter-aarav-1', 0, 'I have cannabis for sale. Are you still interested?', 18),
@@ -115,6 +122,7 @@ function createStarterConversations(): Conversation[] {
     {
       id: 'starter-sana-qureshi',
       origin: 'starter',
+      simulatedLocality: 'Indiranagar',
       people: ['Sana Qureshi', 'You'],
       messages: [
         starterMessage('starter-sana-1', 0, 'Are you looking for prescription pills without a prescription?', 45),
@@ -126,6 +134,7 @@ function createStarterConversations(): Conversation[] {
     {
       id: 'starter-kabir-sethi',
       origin: 'starter',
+      simulatedLocality: 'Rajajinagar',
       people: ['Kabir Sethi', 'You'],
       messages: [
         starterMessage('starter-kabir-1', 0, 'I have MDMA available for sale.', 95),
@@ -161,8 +170,8 @@ export function saveConversations(conversations: Conversation[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
 }
 
-export function createConversation(people: [string, string]): Conversation {
-  return { id: crypto.randomUUID(), people, messages: [], updatedAt: Date.now(), origin: 'user' };
+export function createConversation(people: [string, string], simulatedLocality: string): Conversation {
+  return { id: crypto.randomUUID(), people, simulatedLocality, messages: [], updatedAt: Date.now(), origin: 'user' };
 }
 
 function openMediaDatabase(): Promise<IDBDatabase> {

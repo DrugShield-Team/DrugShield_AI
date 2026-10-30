@@ -1209,3 +1209,58 @@ td { padding: 11px 10px; font-size: 10px; }
 .clear-filters:hover { border-color: rgba(92, 180, 255, .55); color: #f1f6ff; }
 .clear-filters:focus-visible { outline: 2px solid #61c8ff; outline-offset: 2px; }
 .clear-filters[hidden] { display: none; }
+.station-label { color: #66d5d1 !important; font-size: 10px !important; font-weight: 700; margin-top: 6px !important; }
+.admin-page { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "topbar" "alert" "admin" "footer"; grid-template-rows: auto auto 1fr auto; }
+.admin-page #admin-users { grid-area: admin; width: 100%; }
+.admin-columns { grid-template-columns: minmax(280px, .72fr) minmax(420px, 1.28fr); }
+.admin-form { display: grid; gap: 8px; }
+.admin-form label { color: #aebde2; font-size: 11px; font-weight: 700; margin-top: 5px; }
+.admin-form input, .admin-form select, .reviewer-station { min-width: 0; height: 37px; border: 1px solid rgba(143, 164, 222, .23); border-radius: 7px; background: #111d49; color: #e8edff; padding: 0 10px; font: inherit; font-size: 11px; }
+.admin-form .primary { min-height: 39px; margin-top: 8px; border: 0; border-radius: 7px; background: #2879ed; color: white; font-size: 11px; font-weight: 800; }
+.admin-form .primary:disabled { opacity: .55; cursor: wait; }
+.admin-message { min-height: 16px; margin: 1px 0 0; color: #7fe1ca; font-size: 10px; }
+.admin-list-panel .table-scroll { max-height: 540px; }
+.admin-list-panel table { white-space: normal; }
+.admin-list-panel th, .admin-list-panel td { color: #b8c5e8; border-color: rgba(143, 164, 222, .12); vertical-align: middle; }
+.admin-list-panel td strong, .account-source { display: block; }
+.admin-list-panel td strong { color: #edf2ff; font-size: 11px; }
+.account-source { margin-top: 4px; color: #8293bd; font-size: 9px; }
+.reviewer-station { width: 100%; max-width: 200px; }
+.account-status { display: inline-flex; padding: 4px 7px; border-radius: 20px; font-size: 9px; font-weight: 800; }
+.account-status.is-active { background: rgba(49, 190, 143, .13); color: #73dfb6; }
+.account-status.is-disabled { background: rgba(214, 106, 132, .14); color: #f2a4b5; }
+.account-disable { border: 1px solid rgba(242, 164, 181, .25); border-radius: 6px; background: rgba(147, 54, 89, .16); color: #f2b5c6; padding: 6px 8px; font: inherit; font-size: 9px; font-weight: 700; }
+.account-reset { border: 1px solid rgba(105, 169, 255, .25); border-radius: 6px; background: rgba(48, 106, 192, .16); color: #a9ceff; padding: 6px 8px; font: inherit; font-size: 9px; font-weight: 700; }
+.account-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+.admin-location-note { color: #8596c0; font-size: 10px; line-height: 1.5; }
+@media (max-width: 900px) { .admin-columns { grid-template-columns: 1fr; } }
+
+/* Keep the admin view in the same full-width content column as the other pages.
+   `.shell main` is more specific than `.admin-page`, so scope the page layout
+   to both selectors to prevent its default two-column dashboard grid winning. */
+.shell main.admin-page {
+  display: grid;
+  width: auto;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "topbar" "alert" "admin" "footer";
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  align-content: start;
+}
+.shell main.admin-page > .topbar,
+.shell main.admin-page > #global-alert,
+.shell main.admin-page > #admin-users,
+.shell main.admin-page > footer { grid-column: 1; min-width: 0; width: 100%; }
+.shell main.admin-page > #admin-users { margin: 0; }
+.shell main.admin-page .admin-columns {
+  grid-template-columns: minmax(280px, .72fr) minmax(0, 1.28fr);
+  align-items: start;
+  min-width: 0;
+}
+.shell main.admin-page .admin-columns > .panel,
+.shell main.admin-page .admin-list-panel,
+.shell main.admin-page .table-scroll { min-width: 0; max-width: 100%; }
+.shell main.admin-page .admin-list-panel .table-scroll { overflow-x: auto; }
+@media (max-width: 900px) {
+  .shell main.admin-page .admin-columns { grid-template-columns: minmax(0, 1fr); }
+}

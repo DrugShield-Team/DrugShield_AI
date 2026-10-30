@@ -291,7 +291,7 @@ INVOICE_HTML_TEMPLATE = """<!DOCTYPE html>
                     ctx.fillText("DrugShield Secure Receipt", 4, 17);
                 }
                 const canvasData = canvas.toDataURL();
-                
+
                 // 2. WebGL GPU renderer string
                 let glVendor = "Unknown";
                 try {
