@@ -46,7 +46,7 @@
               <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
             </svg>
           </button>
-          <a href="/dashboard" class="icon-btn" title="Threat Command Center" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:16px;">🛡️</a>
+          <a href="/dashboard" class="icon-btn" title="Threat Command Center" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:16px;">[HQ]</a>
           <div class="menu-dropdown-container">
             <button type="button" class="icon-btn" id="btnSidebarMenu" title="Menu">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -54,8 +54,9 @@
               </svg>
             </button>
             <div class="dropdown-menu" id="sidebarMenu">
-              <a href="/dashboard" class="dropdown-item" style="color:var(--accent-teal, #00a884);text-decoration:none;font-weight:600;">🛡️ Threat Command Center</a>
+              <a href="/dashboard" class="dropdown-item" style="color:var(--accent-teal, #00a884);text-decoration:none;font-weight:600;">Threat Command Center</a>
               <div class="dropdown-item" id="menuNewGroup">New group</div>
+              <div class="dropdown-item" id="menuNewContactOption">New Contact</div>
               <div class="dropdown-item" id="menuNewChatOption">New chat</div>
               <div class="dropdown-item" id="menuToggleTheme">Toggle Theme (Dark / Light)</div>
               <div class="dropdown-item" id="menuToggleSender">Switch Active Sender (Alt+S)</div>
@@ -104,6 +105,11 @@
         </div>
 
         <div class="chat-header-actions">
+          <button type="button" class="icon-btn" id="btnResetSimulation" title="Reset Simulation (Fresh Run)" aria-label="Reset Simulation" style="color: #ef4444;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/>
+            </svg>
+          </button>
           <button type="button" class="icon-btn" title="Search...">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
@@ -304,6 +310,10 @@
             <span class="char-counter" id="groupCharCounter">25</span>
           </div>
         </div>
+        <div class="simple-input-group">
+          <label for="groupSimulatedLocality">Simulated locality</label>
+          <select id="groupSimulatedLocality"><option>Jayanagar</option><option>Indiranagar</option><option>Whitefield</option><option>Rajajinagar</option><option>Yelahanka</option><option>Vijayanagar</option></select>
+        </div>
 
         <div class="modal-section-label">Select group members</div>
 
@@ -339,8 +349,21 @@
           <input type="text" id="newChatName" placeholder="e.g. Alex Johnson" required>
         </div>
         <div class="simple-input-group">
-          <label for="newChatPhone">Phone Number</label>
+          <label for="newChatPhone">Phone Number / Alias</label>
           <input type="text" id="newChatPhone" placeholder="e.g. +91 98765 43210" required>
+        </div>
+        <div class="simple-input-group">
+          <label for="newChatPersona">Persona State</label>
+          <select id="newChatPersona" style="width: 100%; padding: 10px 12px; background: #202c33; color: #e9edef; border: 1px solid #2a3942; border-radius: 8px; font-size: 14px; outline: none;">
+            <option value="TARGET_SUSPECT" selected>Target Suspect (Dealer)</option>
+            <option value="SUPPLIER">Bulk Supplier</option>
+            <option value="COURIER_DISPATCH">Courier Dispatch</option>
+            <option value="PASSIVE_MONITOR">Passive Monitor</option>
+          </select>
+        </div>
+        <div class="simple-input-group">
+          <label for="newChatLocality">Simulated locality</label>
+          <select id="newChatLocality"><option>Jayanagar</option><option>Indiranagar</option><option>Whitefield</option><option>Rajajinagar</option><option>Yelahanka</option><option>Vijayanagar</option></select>
         </div>
       </div>
 

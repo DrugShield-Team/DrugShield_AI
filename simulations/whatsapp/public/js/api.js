@@ -21,7 +21,8 @@ window.SimulatorAPI = (function () {
       recipient_id: recipientId,
       recipient_display_name: recipientName,
       timestamp: data.timestamp || new Date().toISOString(),
-      text: String(data.message_body || data.text || "")
+      text: String(data.message_body || data.text || ""),
+      simulated_locality: data.simulated_locality || null
     };
     const form = new FormData();
     form.append("event_json", JSON.stringify(event));
@@ -50,22 +51,27 @@ window.SimulatorAPI = (function () {
   }
 
   function showAnalysisResult(result) {
-    let notice = document.getElementById("backend-analysis-notice");
-    if (!notice) {
-      notice = document.createElement("div");
-      notice.id = "backend-analysis-notice";
-      notice.className = "backend-analysis-notice";
-      notice.setAttribute("role", "status");
-      notice.setAttribute("aria-live", "polite");
-      document.body.appendChild(notice);
+    // Secret backend monitoring: log to debug console only, never display to the suspect
+    console.debug("[DrugShield Secret Backend Analysis]", result);
+    const existingNotice = document.getElementById("backend-analysis-notice");
+    if (existingNotice) {
+      existingNotice.style.display = "none";
     }
-    notice.textContent = result.review_required
-      ? `Backend analysis created a human-review case${result.case_id ? ` (${result.case_id.slice(0, 8)})` : ""}.`
-      : "Backend analysis complete; no review threshold was met.";
-    notice.classList.add("visible");
-    clearTimeout(notice._hideTimer);
-    notice._hideTimer = setTimeout(() => notice.classList.remove("visible"), 5000);
   }
 
-  return { ingestMessage, getEngineStatus, showAnalysisResult };
+    async function registerContact(contactData) {
+    try {
+      const response = await fetch(`${API_BASE}/api/v1/simulation/contacts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(contactData)
+      });
+      return response.ok ? await response.json() : null;
+    } catch (err) {
+      console.warn("[SimulatorAPI] Failed to register contact with backend:", err);
+      return null;
+    }
+  }
+
+  return { ingestMessage, getEngineStatus, showAnalysisResult, registerContact };
 })();

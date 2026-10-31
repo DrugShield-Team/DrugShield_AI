@@ -47,6 +47,8 @@ except ImportError:
 
 import requests
 from src.ai_pipeline.threat_pipeline import evaluate_live_message_threat
+from src.cases.state_machine import state_machine
+from src.ingestion.smart_buyer_bot import buyer_bot
 
 WHATSAPP_PORT = int(os.getenv("WHATSAPP_PORT", 8090))
 WHATSAPP_HOST = os.getenv("HOST", "localhost")
@@ -73,7 +75,7 @@ class WhatsAppPassiveCrawler:
         Intercepts every live message the millisecond it is dispatched in the UI.
         """
         print("==================================================================")
-        print(f" 💬 DRUGSHIELD AI - WHATSAPP PASSIVE CRAWLER (PORT {WHATSAPP_PORT})")
+        print(f"  DRUGSHIELD AI - WHATSAPP PASSIVE CRAWLER (PORT {WHATSAPP_PORT})")
         print("==================================================================")
         print(f"[*] Target Simulation URL : {self.base_url}")
         print(f"[*] Live Event Stream     : {self.stream_url}")
@@ -92,7 +94,7 @@ class WhatsAppPassiveCrawler:
                         time.sleep(3)
                         continue
 
-                    print(f"[+] 🟢 Successfully connected to live WhatsApp stream on Port {WHATSAPP_PORT}!")
+                    print(f"[+] [OK] Successfully connected to live WhatsApp stream on Port {WHATSAPP_PORT}!")
                     print("[+] Listening for live chat events from WhatsApp UI...\n")
 
                     for line in resp.iter_lines(decode_unicode=True):
@@ -110,8 +112,27 @@ class WhatsAppPassiveCrawler:
 
                                 if msg_id and msg_id not in self.processed_ids:
                                     self.processed_ids.add(msg_id)
+                                    target_chat = raw_rec.get("chat_id") or raw_rec.get("sender_id") or ""
+                                    target_sender = raw_rec.get("sender_id") or raw_rec.get("sender_username") or ""
+
+                                    # Check crawler pause status for thread
+                                    if state_machine.is_thread_paused(target_chat) or state_machine.is_thread_paused(target_sender):
+                                        print(f"[WhatsApp Crawler] [PAUSED] Thread '{target_chat}' is PAUSED (Active Honeypot engaged). Skipping duplicate crawl.")
+                                        continue
+
                                     # Route directly through Active NLP & Threat Flagging Pipeline
                                     enriched = evaluate_live_message_threat(raw_rec)
+
+                                    # Accumulate flags & check honeypot trigger threshold
+                                    state_res = state_machine.evaluate_threat_event(enriched)
+                                    if state_res.get("state_changed") and state_res.get("current_state") == "ACTIVE_HONEYPOT_READY":
+                                        print(f"[WhatsApp Crawler]  Threshold reached ({state_res['flag_count']} flags) for '{state_res['entity_id']}'. Launching Smart Buyer Bot...")
+                                        buyer_bot.engage_target(
+                                            entity_id=state_res["entity_id"],
+                                            chat_id=target_chat,
+                                            platform="whatsapp",
+                                        )
+
                                     if on_message_callback:
                                         on_message_callback(enriched)
                         except Exception as e:
@@ -174,7 +195,7 @@ class WhatsAppPassiveCrawler:
                         rec = data.get("record")
                         if rec and rec.get("id") not in self.processed_ids:
                             self.processed_ids.add(rec["id"])
-                            print(f"[Playwright] 🌐 Intercepted live network frame: {rec.get('id')}")
+                            print(f"[Playwright]  Intercepted live network frame: {rec.get('id')}")
                             evaluate_live_message_threat(rec)
                     except Exception as err:
                         pass

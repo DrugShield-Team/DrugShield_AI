@@ -6,6 +6,23 @@
  */
 
 document.addEventListener("DOMContentLoaded", async () => {
+  // Handle fresh session or server restart
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has("reset") || urlParams.has("fresh")) {
+    window.TelegramLocalStore.clear();
+  }
+  try {
+    const status = await window.SimulatorAPI.getEngineStatus();
+    if (status && status.server_boot_time) {
+      const prevBoot = sessionStorage.getItem("tg_server_boot");
+      if (prevBoot && prevBoot !== String(status.server_boot_time)) {
+        console.log("[Telegram] Server restart detected. Clearing stale browser session.");
+        window.TelegramLocalStore.clear();
+      }
+      sessionStorage.setItem("tg_server_boot", String(status.server_boot_time));
+    }
+  } catch(e) {}
+
   let isAnalystMode = false;
   let attachedFile = null;
 
@@ -15,6 +32,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       id: "tg_blr_supplies",
       type: "channel",
       title: "BLR Party Supplies",
+      simulated_locality: "Indiranagar",
       username: "@blr_supplies_bot",
       phone: "+91 98765 43210",
       avatarText: "BP",
@@ -59,6 +77,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       id: "tg_ncr_drops",
       type: "group",
       title: "NCR Secret Drops & Stash",
+      simulated_locality: "Whitefield",
       username: "@ncr_drops_chat",
       phone: "+91 91234 56789",
       avatarText: "NCR",
@@ -93,7 +112,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     {
       id: "tg_dealer_direct",
       type: "private",
-      title: "Aryan (Suspect Plug)",
+      title: "Aryan (Plug)",
+      simulated_locality: "Jayanagar",
       username: "@aryan_plug",
       phone: "+91 98765 43210",
       avatarText: "AK",
@@ -301,11 +321,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (isAnalystMode) {
       drawerUserName.textContent = "Cyber OSINT Analyst (Self)";
       drawerPersonaText.textContent = "Switch to Suspect View";
-      menuTogglePersona.innerHTML = `<span>🎭</span> Switch to Suspect View`;
+      menuTogglePersona.textContent = "Switch to Suspect View";
     } else {
       drawerUserName.textContent = "Aryan (Target Suspect)";
       drawerPersonaText.textContent = "Switch to Analyst View";
-      menuTogglePersona.innerHTML = `<span>🎭</span> Switch to Analyst View`;
+      menuTogglePersona.textContent = "Switch to Analyst View";
     }
     tgDrawer.classList.remove("active");
     tgDrawerBackdrop.classList.remove("active");
@@ -339,6 +359,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     openChatModal();
   });
 
+  const drawerNewContact = document.getElementById("drawerNewContact");
+  if (drawerNewContact) {
+    drawerNewContact.addEventListener("click", () => {
+      tgDrawer.classList.remove("active");
+      tgDrawerBackdrop.classList.remove("active");
+      createChatType.value = "private";
+      const modalTitle = document.querySelector("#modalCreateChat .modal-title");
+      if (modalTitle) modalTitle.textContent = "New Target Contact";
+      openChatModal();
+    });
+  }
+
   function openChatModal() {
     modalCreateChat.classList.add("active");
     modalCreateChatBackdrop.classList.add("active");
@@ -356,22 +388,37 @@ document.addEventListener("DOMContentLoaded", async () => {
   btnSubmitCreateChat.addEventListener("click", () => {
     const title = createChatTitle.value.trim();
     if (!title) return;
+    const persona = document.getElementById("createChatPersona")?.value || "TARGET_SUSPECT";
+    const phone = createChatPhone.value.trim() || "+91 99999 88888";
+    const username = createChatUsername.value.trim() || "@custom_channel";
 
     const newChat = {
       id: `tg_chat_${Date.now()}`,
       type: createChatType.value,
       title: title,
-      username: createChatUsername.value.trim() || "@custom_channel",
-      phone: createChatPhone.value.trim() || "+91 99999 88888",
+      username: username,
+      phone: phone,
+      simulated_locality: document.getElementById("createChatLocality") ? document.getElementById("createChatLocality").value : "Indiranagar",
       avatarText: title.slice(0, 2).toUpperCase(),
       avatarColor: "#2AABEE",
       verified: createChatType.value === "channel",
       subscribers: createChatType.value === "channel" ? "1 subscriber" : "online",
-      status: createChatType.value === "channel" ? "broadcast channel" : "group",
+      status: createChatType.value === "channel" ? "broadcast channel" : `persona: ${persona}`,
+      persona: persona,
       lastTime: "Just now",
       unreadCount: 0,
       messages: []
     };
+
+    // Dynamically register contact with backend
+    if (window.SimulatorAPI && window.SimulatorAPI.registerContact) {
+      window.SimulatorAPI.registerContact({
+        channel: "telegram",
+        name: title,
+        identifier: phone || username,
+        persona: persona
+      }).catch(() => {});
+    }
 
     channels.unshift(newChat);
     currentChat = newChat;
@@ -446,7 +493,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             <div class="tg-chat-title-row">
               <span class="tg-chat-title">${escapeHtml(chat.title)}</span>
               ${chat.verified ? '<span class="tg-badge-verified">★</span>' : ''}
-              ${hasFlaggedMsg ? '<span class="tg-flag-indicator" title="Contraband Intelligence Detected">🚨</span>' : ''}
             </div>
             <span class="tg-chat-time">${chat.lastTime || ""}</span>
           </div>
@@ -482,7 +528,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     messagesScrollEl.innerHTML = `<div class="tg-day-divider">Today</div>`;
 
     currentChat.messages.forEach((msg, mIdx) => {
-      const isOutgoing = msg.is_analyst;
+      const isOutgoing = Boolean(msg.is_analyst || msg.is_honeypot);
       const row = document.createElement("div");
       row.className = `tg-msg-row ${isOutgoing ? "outgoing" : "incoming"}`;
 
@@ -567,7 +613,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
           ${senderDisplay}
           ${mediaHtml}
-          <div class="tg-bubble-text">${escapeHtml(msg.text)}</div>
+          <div class="tg-bubble-text">${(() => {
+            let txt = escapeHtml(msg.text || "");
+            return txt.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color: #53bdeb; text-decoration: underline; font-weight: 500; word-break: break-all;">$1</a>');
+          })()}</div>
           ${reactionsHtml}
           <div class="tg-bubble-meta">
             ${viewsDisplay}
@@ -631,6 +680,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         is_analyst: isAnalystMode,
         timestamp: new Date().toISOString(),
         message_body: text,
+        simulated_locality: currentChat.simulated_locality || ({ tg_blr_supplies: "Indiranagar", tg_ncr_drops: "Whitefield", tg_dealer_direct: "Jayanagar" }[currentChat.id]) || null,
         file: attachedFile
       });
     } catch (error) {
@@ -661,6 +711,65 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     currentChat.messages.push(tempMsg);
     currentChat.lastTime = formattedTime;
+
+    // Check if Smart Bot honeypot was triggered on threshold reach
+    const botText = (analysisResult && (analysisResult.bot_response || (analysisResult.smart_bot && analysisResult.smart_bot.dispatched_message))) || null;
+    const smartBot = analysisResult && analysisResult.smart_bot;
+
+    if (smartBot && smartBot.initial_confirmation_prompt) {
+      const initMsg = {
+        id: `msg_buyer_init_${Date.now()}`,
+        sender_username: "You",
+        sender_phone: "+91 99999 00000",
+        is_analyst: true,
+        text: smartBot.initial_confirmation_prompt,
+        timestamp: getFormattedTime(),
+        has_media: false,
+        views: "1",
+        reactions: [],
+        is_honeypot: true
+      };
+      currentChat.messages.push(initMsg);
+      persistLocalState();
+      renderMessages();
+
+      setTimeout(() => {
+        const botMsg = {
+          id: `msg_buyer_${Date.now()}`,
+          sender_username: "You",
+          sender_phone: "+91 99999 00000",
+          is_analyst: true,
+          text: smartBot.dispatched_message,
+          timestamp: getFormattedTime(),
+          has_media: false,
+          views: "1",
+          reactions: [],
+          is_honeypot: true
+        };
+        currentChat.messages.push(botMsg);
+        persistLocalState();
+        renderMessages();
+      }, (smartBot.delay_seconds || 5) * 1000);
+    } else if (botText) {
+      setTimeout(() => {
+        const botMsg = {
+          id: `msg_buyer_${Date.now()}`,
+          sender_username: "You",
+          sender_phone: "+91 99999 00000",
+          is_analyst: true,
+          text: botText,
+          timestamp: getFormattedTime(),
+          has_media: false,
+          views: "1",
+          reactions: [],
+          is_honeypot: true
+        };
+        currentChat.messages.push(botMsg);
+        persistLocalState();
+        renderMessages();
+      }, 700);
+    }
+
     persistLocalState();
     renderMessages();
 
@@ -717,4 +826,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderChatList();
   renderMessages();
   renderEmojiGrid("smileys");
+
+  // Reset Simulation Action
+  document.getElementById("tgHeaderReset")?.addEventListener("click", async () => {
+    if (confirm("Reset Telegram chat history to a clean, fresh simulation?")) {
+      try { await fetch('/api/clear', { method: 'POST' }); } catch(e) {}
+      window.TelegramLocalStore.clear();
+      window.location.href = window.location.pathname;
+    }
+  });
 });

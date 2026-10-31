@@ -149,13 +149,121 @@ class Neo4jClient:
                         "banks": banks,
                         "drugs": drugs
                     })
-                print(f"[Neo4j Client] 🟢 Successfully mapped threat graph in Neo4j: {msg_id}")
+                print(f"[Neo4j Client] [OK] Successfully mapped threat graph in Neo4j: {msg_id}")
                 return True
             except Exception as e:
                 print(f"[-] Neo4j transaction error: {e}")
                 return False
 
-        print(f"[Neo4j Client] 📁 Graph Transaction ledgered to: data/raw/{GRAPH_EXPORT_FILE.name}")
+        print(f"[Neo4j Client]  Graph Transaction ledgered to: data/raw/{GRAPH_EXPORT_FILE.name}")
+        return True
+
+
+    def push_triangulation_telemetry(self, telemetry: Dict[str, Any]) -> bool:
+        """
+        Pushes a dual-layer OSINT triangulation event (Passive IP / Active GPS)
+        and associated network/spatial nodes into the Neo4j graph.
+        """
+        RAW_DIR.mkdir(parents=True, exist_ok=True)
+
+        token = telemetry.get("tracking_token", "unknown_token")
+        suspect = telemetry.get("suspect_id") or telemetry.get("entity_id") or "unknown_suspect"
+        ip = telemetry.get("ip", "127.0.0.1")
+        isp = telemetry.get("isp", "Unknown ISP")
+        ua = telemetry.get("user_agent", "")
+        city = telemetry.get("city", "Unknown City")
+        region = telemetry.get("region", "")
+        country = telemetry.get("country", "")
+        lat = float(telemetry.get("latitude") or 0.0)
+        lon = float(telemetry.get("longitude") or 0.0)
+        accuracy = telemetry.get("accuracy_meters")
+        layer = telemetry.get("triangulation_layer", "LAYER_1_PASSIVE_IP")
+        fp_hash = telemetry.get("fingerprint_hash", "")
+        timestamp = telemetry.get("timestamp", "")
+        precinct_info = telemetry.get("assigned_precinct") or {}
+        precinct_id = precinct_info.get("precinct_id") or precinct_info.get("id") or "DELHI-CENTRAL-HQ"
+        precinct_name = precinct_info.get("name") or "Central Command"
+        dist = float(precinct_info.get("distance_km") or 0.0)
+
+        graph_entry = {
+            "type": "TRIANGULATION_TELEMETRY",
+            "tracking_token": token,
+            "suspect_id": suspect,
+            "triangulation_layer": layer,
+            "timestamp": timestamp,
+            "nodes": {
+                "Suspect": {"id": suspect},
+                "HoneypotLink": {"token": token, "layer": layer, "timestamp": timestamp},
+                "NetworkProfile": {"ip": ip, "isp": isp, "fingerprint_hash": fp_hash, "user_agent": ua[:120] if ua else ""},
+                "GeoLocation": {"latitude": lat, "longitude": lon, "city": city, "region": region, "country": country, "accuracy_meters": accuracy, "layer": layer},
+                "Precinct": {"id": precinct_id, "name": precinct_name, "distance_km": dist}
+            },
+            "relationships": [
+                {"from": suspect, "to": token, "type": "TRIGGERED_HONEYPOT"},
+                {"from": token, "to": ip, "type": "RESOLVED_NETWORK"},
+                {"from": ip, "to": f"geo_{lat}_{lon}", "type": "LOCATED_AT"},
+                {"from": f"geo_{lat}_{lon}", "to": precinct_id, "type": "DISPATCHED_TO"}
+            ]
+        }
+
+        # 1. Append to local Graph Export ledger
+        try:
+            with open(GRAPH_EXPORT_FILE, "a", encoding="utf-8") as f:
+                f.write(json.dumps(graph_entry) + "\n")
+        except Exception as e:
+            logger.error(f"Failed to append triangulation telemetry to graph export: {e}")
+
+        # 2. Push to live Neo4j if active
+        if self._connected and self.driver:
+            try:
+                cypher = """
+                MERGE (s:Suspect {id: $suspect_id})
+                MERGE (h:HoneypotLink {token: $token})
+                  ON CREATE SET h.created_at = $timestamp, h.layer = $layer
+                  ON MATCH SET h.updated_at = $timestamp, h.layer = $layer
+
+                MERGE (net:NetworkProfile {ip: $ip})
+                  ON CREATE SET net.isp = $isp, net.fingerprint = $fp_hash, net.user_agent = $ua
+                  ON MATCH SET net.isp = $isp, net.fingerprint = $fp_hash
+
+                MERGE (geo:GeoLocation {latitude: $lat, longitude: $lon})
+                  ON CREATE SET geo.city = $city, geo.region = $region, geo.accuracy_meters = $accuracy, geo.layer = $layer
+                  ON MATCH SET geo.accuracy_meters = $accuracy, geo.layer = $layer
+
+                MERGE (p:Precinct {id: $precinct_id})
+                  ON CREATE SET p.name = $precinct_name
+
+                MERGE (s)-[:TRIGGERED_HONEYPOT]->(h)
+                MERGE (h)-[:RESOLVED_NETWORK]->(net)
+                MERGE (net)-[:LOCATED_AT]->(geo)
+                MERGE (geo)-[:DISPATCHED_TO {distance_km: $dist}]->(p)
+                """
+                with self.driver.session() as session:
+                    session.run(cypher, {
+                        "suspect_id": suspect,
+                        "token": token,
+                        "timestamp": timestamp,
+                        "layer": layer,
+                        "ip": ip,
+                        "isp": isp,
+                        "fp_hash": fp_hash,
+                        "ua": ua or "",
+                        "lat": lat,
+                        "lon": lon,
+                        "city": city,
+                        "region": region,
+                        "accuracy": accuracy,
+                        "precinct_id": precinct_id,
+                        "precinct_name": precinct_name,
+                        "dist": dist
+                    })
+                print(f"[Neo4j Client] Successfully mapped triangulation graph in Neo4j for token: {token} ({layer})")
+                return True
+            except Exception as e:
+                print(f"[-] Neo4j triangulation transaction error: {e}")
+                return False
+
+        print(f"[Neo4j Client] Triangulation ledgered to: data/raw/{GRAPH_EXPORT_FILE.name}")
         return True
 
     def close(self):

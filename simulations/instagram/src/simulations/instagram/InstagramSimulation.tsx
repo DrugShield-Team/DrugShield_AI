@@ -4,6 +4,8 @@ import './instagram-simulation.css';
 import {
   appendMessagesToConversation,
   createConversation as createLocalConversation,
+  clearLocalData,
+  createStarterConversations,
   deleteStoredAttachments,
   loadConversations,
   loadStoredAttachment,
@@ -55,6 +57,7 @@ function Icon({ name, size = 24 }: { name: string; size?: number }) {
     mic: <><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2m-7 9v3m-4 0h8"/></>,
     smile: <><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></>,
     send: <><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></>,
+    refresh: <><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></>,
     close: <><path d="m18 6-12 12M6 6l12 12"/></>,
   };
   return <svg {...common}>{paths[name] ?? paths.message}</svg>;
@@ -85,6 +88,28 @@ function formatFileSize(bytes: number) {
   return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function renderMessageText(text: string) {
+  if (!text) return '';
+  const urlPattern = /(https?:\/\/[^\s<]+)/g;
+  const parts = text.split(urlPattern);
+  return parts.map((part, i) => {
+    if (part.match(urlPattern)) {
+      return (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: '#53bdeb', textDecoration: 'underline', wordBreak: 'break-all', fontWeight: 500 }}
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+}
+
 export default function InstagramSimulation() {
   const [theme, setTheme] = useState<'light' | 'dark'>(readTheme);
   const [conversations, setConversations] = useState<Conversation[]>(loadConversations);
@@ -95,6 +120,7 @@ export default function InstagramSimulation() {
   const [modalOpen, setModalOpen] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [secondName, setSecondName] = useState('');
+  const [simulatedLocality, setSimulatedLocality] = useState('Jayanagar');
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const [openConversationMenu, setOpenConversationMenu] = useState<string | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<Conversation | null>(null);
@@ -115,6 +141,30 @@ export default function InstagramSimulation() {
   const active = conversations.find((conversation) => conversation.id === activeId) ?? null;
   const filteredConversations = useMemo(() => conversations.filter((conversation) =>
     conversation.people.some((name) => name.toLowerCase().includes(search.toLowerCase()))), [conversations, search]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('reset') || params.has('fresh')) {
+        clearLocalData();
+        const fresh = createStarterConversations();
+        setConversations(fresh);
+        setActiveId(fresh[0]?.id ?? '');
+      }
+    }
+  }, []);
+
+  function handleResetSimulation() {
+    if (window.confirm('Reset Instagram chat history to a clean, fresh simulation?')) {
+      clearLocalData();
+      const fresh = createStarterConversations();
+      setConversations(fresh);
+      setActiveId(fresh[0]?.id ?? '');
+      setDraft('');
+      setSpeaker(0);
+      setNotice('Instagram simulation reset to fresh state.');
+    }
+  }
 
   useEffect(() => {
     try { saveConversations(conversations); } catch { setNotice('Browser storage is unavailable; changes will not persist after closing this page.'); }
@@ -147,7 +197,7 @@ export default function InstagramSimulation() {
     event.preventDefault();
     const people: [string, string] = [firstName.trim(), secondName.trim()];
     if (!people[0] || !people[1]) return;
-    const conversation = createLocalConversation(people);
+    const conversation = createLocalConversation(people, simulatedLocality);
     setConversations((current) => [conversation, ...current]);
     setActiveId(conversation.id);
     setSpeaker(0);
@@ -155,17 +205,20 @@ export default function InstagramSimulation() {
     setModalOpen(false);
     setFirstName('');
     setSecondName('');
+    setSimulatedLocality('Jayanagar');
     setNotice(`Conversation with ${people[0]} and ${people[1]} created.`);
   }
 
   async function sendMessage(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     if (!active || (!draft.trim() && pendingAttachments.length === 0)) return;
+    const currentSpeaker = speaker;
+    const currentActiveId = active.id;
     let result: AnalysisSubmissionResult;
     try {
       result = await submitMessageForAnalysis({
         conversation: active,
-        sender: speaker,
+        sender: currentSpeaker,
         text: draft,
         attachments: pendingAttachments,
       });
@@ -174,17 +227,64 @@ export default function InstagramSimulation() {
       return;
     }
     try {
-      const messages = await sendLocalMessage({ conversationId: active.id, sender: speaker, text: draft, attachments: pendingAttachments });
+      const messages = await sendLocalMessage({ conversationId: active.id, sender: currentSpeaker, text: draft, attachments: pendingAttachments });
       setConversations((current) => appendMessagesToConversation(current, active.id, messages));
       setAttachmentSources((current) => ({ ...current, ...Object.fromEntries(pendingAttachments.map((attachment) => [attachment.id, attachment.previewUrl])) }));
-      if (result.review_required) setNotice(`Message analyzed and sent for human review${result.case_id ? ` (case ${result.case_id.slice(0, 8)})` : ''}.`);
-      else setNotice('Message analyzed by the backend.');
+      // Secret backend monitoring: do not display alert toasts to the suspect in simulation
+      console.debug('[DrugShield Secret Backend Analysis]', result);
     } catch {
       setNotice('Could not save the attachment in this browser. Check available storage and try a smaller file.');
       return;
     }
     setDraft('');
     setPendingAttachments([]);
+
+    // Maintain dealer persona until bot engages or threshold is reached
+    // Dealer messages strictly accumulate toward 4-5 consecutive threat threshold
+
+    // 2. Check if Smart Buyer Bot triggered an automated honeypot or follow-up response
+    const smartBot = result?.smart_bot;
+    if (smartBot?.initial_confirmation_prompt && currentSpeaker === 0) {
+      setTimeout(() => {
+        const initMessage: Message = {
+          id: 'bot-init-' + Date.now(),
+          sender: 1,
+          text: smartBot.initial_confirmation_prompt!,
+          time: Date.now(),
+          origin: 'user',
+        };
+        setConversations((current) => appendMessagesToConversation(current, currentActiveId, [initMessage]));
+        setSpeaker(0);
+
+        const delayMs = (smartBot.delay_seconds || 5) * 1000;
+        setTimeout(() => {
+          const followMessage: Message = {
+            id: 'bot-link-' + Date.now(),
+            sender: 1,
+            text: smartBot.dispatched_message || '',
+            time: Date.now(),
+            origin: 'user',
+          };
+          setConversations((current) => appendMessagesToConversation(current, currentActiveId, [followMessage]));
+          setSpeaker(0);
+        }, delayMs);
+      }, 700);
+    } else {
+      const botText = result?.bot_response || smartBot?.dispatched_message;
+      if (botText && currentSpeaker === 0) {
+        setTimeout(() => {
+          const botMessage: Message = {
+            id: 'bot-' + Date.now(),
+            sender: 1,
+            text: botText,
+            time: Date.now(),
+            origin: 'user',
+          };
+          setConversations((current) => appendMessagesToConversation(current, currentActiveId, [botMessage]));
+          setSpeaker(0);
+        }, 700);
+      }
+    }
   }
 
   function handleComposerKey(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -322,7 +422,7 @@ export default function InstagramSimulation() {
             <button className="mobile-back" onClick={() => setMobileShowChat(false)} aria-label="Back to inbox">‹</button>
             <span className="avatar-pair header-avatars"><Avatar name={active.people[0]} /><Avatar name={active.people[1]} size="small" /></span>
             <div className="header-names"><strong>{active.people.join(' · ')}</strong><span>Active now</span></div>
-            <div className="header-actions"><button aria-label="Audio call" title="Audio call" onClick={() => setNotice('Calling is not part of this local simulation.')}><Icon name="phone" /></button><button aria-label="Video call" title="Video call" onClick={() => setNotice('Video calling is not part of this local simulation.')}><Icon name="video" /></button><button aria-label="Conversation information" title="Conversation information" onClick={() => setNotice(`A private local conversation between ${active.people.join(' and ')}.`)}><Icon name="info" /></button></div>
+            <div className="header-actions"><button aria-label="Reset simulation" title="Reset Simulation (Fresh Run)" onClick={handleResetSimulation} style={{ color: '#ef4444' }}><Icon name="refresh" /></button><button aria-label="Audio call" title="Audio call" onClick={() => setNotice('Calling is not part of this local simulation.')}><Icon name="phone" /></button><button aria-label="Video call" title="Video call" onClick={() => setNotice('Video calling is not part of this local simulation.')}><Icon name="video" /></button><button aria-label="Conversation information" title="Conversation information" onClick={() => setNotice(`A private local conversation between ${active.people.join(' and ')}.`)}><Icon name="info" /></button></div>
           </header>
           <div className="chat-body" aria-label="Message history" aria-live="polite">
             <div className="conversation-intro"><span className="avatar-pair intro-avatars"><Avatar name={active.people[0]} size="large" /><Avatar name={active.people[1]} size="large" /></span><h2>{active.people.join(' · ')}</h2><p>Instagram · Local conversation</p><span>Only you can see these messages in this browser.</span></div>
@@ -343,14 +443,14 @@ export default function InstagramSimulation() {
                     : attachment?.kind === 'document' ? attachmentUrl
                       ? <div className={`message-bubble message-bubble--attachment ${message.sender === 1 ? 'message-bubble--sent' : ''}`} title={`${active.people[message.sender]} · ${formatTime(message.time)}`}><a className="message-document" href={attachmentUrl} download={attachment.name}><span className="document-icon"><Icon name="attachment" size={20} /></span><span className="document-copy"><strong>{attachment.name}</strong><small>{formatFileSize(attachment.sizeBytes)} · {attachment.mimeType}</small></span></a></div>
                       : <div className="image-loading" role="status">Loading {attachment.name}…</div>
-                      : <div className={`message-bubble ${message.sender === 1 ? 'message-bubble--sent' : ''}`} title={`${active.people[message.sender]} · ${formatTime(message.time)}`}>{message.text}</div>}
+                      : <div className={`message-bubble ${message.sender === 1 ? 'message-bubble--sent' : ''}`} title={`${active.people[message.sender]} · ${formatTime(message.time)}`}>{renderMessageText(message.text)}</div>}
                 {message.sender === 1 && (grouped ? <span className="message-spacer" aria-hidden="true" /> : <Avatar name={active.people[1]} size="small" />)}
               </div>;
             })}
             <div ref={messageEnd} />
           </div>
           <div className="composer-wrap">
-            <div className="speaker-row"><label htmlFor="speaker-select">Sending as</label><select id="speaker-select" value={speaker} onChange={(event) => setSpeaker(Number(event.target.value) as 0 | 1)}><option value={0}>{active.people[0]}</option><option value={1}>{active.people[1]}</option></select><span>· Messages stay in this browser</span></div>
+            <div className="speaker-row"><label htmlFor="speaker-select">Sending as</label><select id="speaker-select" value={speaker} onChange={(event) => setSpeaker(Number(event.target.value) as 0 | 1)}><option value={0}>{active.people[0]} (Target/Dealer)</option><option value={1}>{active.people[1] === 'You' ? 'Undercover Buyer (You)' : `${active.people[1]} (Undercover Buyer)`}</option></select><span>· Auto-shifts turn after each message</span></div>
             {emojiPickerOpen && <div className="emoji-picker-popover"><EmojiPicker className="emoji-picker-widget" width="100%" height={390} colorScheme={theme} previewConfig={{ showPreview: false }} onEmojiClick={({ emoji }) => addEmoji(emoji)} /></div>}
             {pendingAttachments.length > 0 && <div className="attachment-previews" aria-label="Attachments ready to send">{pendingAttachments.map((attachment) => <div className={`attachment-preview attachment-preview--${attachment.kind}`} key={attachment.id}><div className="attachment-preview-media">{attachment.kind === 'image' ? <img src={attachment.previewUrl} alt={`Preview of ${attachment.name}`} /> : <><Icon name={attachment.kind === 'audio' ? 'mic' : 'attachment'} size={22} /><small>{attachment.kind === 'audio' ? 'Audio' : 'Document'}</small></>}</div><span title={attachment.name}>{attachment.name}</span><button type="button" aria-label={`Remove ${attachment.name}`} onClick={() => removePendingAttachment(attachment.id)}><Icon name="close" size={15} /></button></div>)}</div>}
             <input ref={imageInput} className="sr-only" type="file" accept="image/*" multiple aria-label="Choose images from your device" onChange={(event) => handleAttachmentSelection(event, 'images')} />
@@ -378,6 +478,8 @@ export default function InstagramSimulation() {
             <p>Create a local conversation with two fictional participants.</p>
             <label htmlFor="participant-one">First participant</label><input id="participant-one" autoFocus autoComplete="off" maxLength={32} value={firstName} onChange={(event) => setFirstName(event.target.value)} placeholder="e.g. Alex Rivera" required />
             <label htmlFor="participant-two">Second participant</label><input id="participant-two" autoComplete="off" maxLength={32} value={secondName} onChange={(event) => setSecondName(event.target.value)} placeholder="e.g. Jordan Lee" required />
+            <label htmlFor="simulated-locality">Simulated locality</label><select id="simulated-locality" value={simulatedLocality} onChange={(event) => setSimulatedLocality(event.target.value)}><option>Jayanagar</option><option>Indiranagar</option><option>Whitefield</option><option>Rajajinagar</option><option>Yelahanka</option><option>Vijayanagar</option></select>
+            <p className="location-disclosure">Fictional case-routing location only. No IP or device location is collected.</p>
             <button className="primary-button modal-submit" type="submit">Create conversation</button>
           </form>
         </section>

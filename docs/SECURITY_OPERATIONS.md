@@ -14,6 +14,13 @@ or a substitute for a security review.
   Secure; production mode redirects HTTP to HTTPS.
 - User records contain PBKDF2-SHA256 password hashes, not passwords. Login
   attempts are throttled per source address in the API process.
+- The first administrator is configured during setup; there is no public
+  registration or default administrator. Admin-created reviewer hashes and
+  station assignments persist in the SQLite runtime database. Station access
+  checks are enforced by the API for cases, reports, attachments, and graph data.
+- Jurisdiction derives only from the explicit simulated-locality field. Unknown
+  or missing values remain unassigned and are hidden from station reviewers;
+  no IP, GPS, or real-world location is collected.
 - Configure exact browser origins in DRUGSHIELD_CORS_ORIGINS; do not use a wildcard.
 
 ## Evidence privacy

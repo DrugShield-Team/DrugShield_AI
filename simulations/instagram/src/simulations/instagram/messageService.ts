@@ -26,6 +26,7 @@ export type Conversation = {
   messages: Message[];
   updatedAt: number;
   origin?: 'starter' | 'user';
+  simulatedLocality?: string;
 };
 
 export type PendingAttachment = AttachmentReference & { blob: Blob; previewUrl: string };
@@ -39,7 +40,20 @@ const viteEnvironment = (import.meta as ImportMeta & {
 }).env;
 const ANALYSIS_API = viteEnvironment?.VITE_DRUGSHIELD_API_URL ?? 'http://127.0.0.1:8000';
 
-export type AnalysisSubmissionResult = { review_required: boolean; case_id: string | null };
+export type AnalysisSubmissionResult = {
+  review_required: boolean;
+  case_id: string | null;
+  bot_response?: string | null;
+  honeypot_link?: string | null;
+  smart_bot?: {
+    dispatched_message?: string;
+    invoice_url?: string;
+    tracking_token?: string;
+    turn_count?: number;
+    initial_confirmation_prompt?: string;
+    delay_seconds?: number;
+  } | null;
+};
 
 export async function submitMessageForAnalysis(input: {
   conversation: Conversation;
@@ -50,17 +64,23 @@ export async function submitMessageForAnalysis(input: {
   const [senderName, recipientName] = input.sender === 0
     ? [input.conversation.people[0], input.conversation.people[1]]
     : [input.conversation.people[1], input.conversation.people[0]];
+  const isAnalyst = input.sender === 1;
   const event = {
     schema_version: 1,
     channel: 'instagram',
     message_id: crypto.randomUUID(),
     conversation_id: input.conversation.id,
-    sender_id: `${input.conversation.id}:participant:${input.sender}`,
+    sender_id: isAnalyst ? `analyst:${input.conversation.id}` : `participant:${input.conversation.id}`,
     sender_display_name: senderName,
-    recipient_id: `${input.conversation.id}:participant:${input.sender === 0 ? 1 : 0}`,
+    recipient_id: isAnalyst ? `participant:${input.conversation.id}` : `analyst:${input.conversation.id}`,
     recipient_display_name: recipientName,
     timestamp: new Date().toISOString(),
     text: input.text.trim(),
+    simulated_locality: input.conversation.simulatedLocality || ({
+      'starter-aarav-malik': 'Jayanagar',
+      'starter-sana-qureshi': 'Indiranagar',
+      'starter-kabir-sethi': 'Rajajinagar',
+    } as Record<string, string>)[input.conversation.id] || null,
   };
   const body = new FormData();
   body.append('event_json', JSON.stringify(event));
@@ -78,7 +98,7 @@ export async function submitMessageForAnalysis(input: {
   return response.json();
 }
 
-function createStarterConversations(): Conversation[] {
+export function createStarterConversations(): Conversation[] {
   const now = Date.now();
   const starterMessage = (id: string, sender: number, text: string, minutesAgo: number): Message => ({
     id,
@@ -92,6 +112,7 @@ function createStarterConversations(): Conversation[] {
     {
       id: 'starter-aarav-malik',
       origin: 'starter',
+      simulatedLocality: 'Jayanagar',
       people: ['Aarav Malik', 'You'],
       messages: [
         starterMessage('starter-aarav-1', 0, 'I have cannabis for sale. Are you still interested?', 18),
@@ -103,6 +124,7 @@ function createStarterConversations(): Conversation[] {
     {
       id: 'starter-sana-qureshi',
       origin: 'starter',
+      simulatedLocality: 'Indiranagar',
       people: ['Sana Qureshi', 'You'],
       messages: [
         starterMessage('starter-sana-1', 0, 'Are you looking for prescription pills without a prescription?', 45),
@@ -114,6 +136,7 @@ function createStarterConversations(): Conversation[] {
     {
       id: 'starter-kabir-sethi',
       origin: 'starter',
+      simulatedLocality: 'Rajajinagar',
       people: ['Kabir Sethi', 'You'],
       messages: [
         starterMessage('starter-kabir-1', 0, 'I have MDMA available for sale.', 95),
@@ -123,6 +146,16 @@ function createStarterConversations(): Conversation[] {
       updatedAt: now - 88 * 60_000,
     },
   ];
+}
+
+
+export function clearLocalData(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STARTER_SEED_KEY);
+    localStorage.removeItem('drugshield-instagram-simulation-theme');
+    indexedDB.deleteDatabase(MEDIA_DB);
+  } catch {}
 }
 
 export function loadConversations(): Conversation[] {
@@ -149,8 +182,8 @@ export function saveConversations(conversations: Conversation[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
 }
 
-export function createConversation(people: [string, string]): Conversation {
-  return { id: crypto.randomUUID(), people, messages: [], updatedAt: Date.now(), origin: 'user' };
+export function createConversation(people: [string, string], simulatedLocality: string): Conversation {
+  return { id: crypto.randomUUID(), people, simulatedLocality, messages: [], updatedAt: Date.now(), origin: 'user' };
 }
 
 function openMediaDatabase(): Promise<IDBDatabase> {

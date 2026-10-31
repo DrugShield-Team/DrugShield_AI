@@ -315,5 +315,48 @@
     });
     loadDashboard();
     window.setInterval(loadDashboard, 5000);
+    connectDispatchWS();
   });
+
+  function connectDispatchWS() {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const nodeParam = urlParams.get("node") || urlParams.get("precinct_id") || "ALL";
+      const wsUrl = `${API_BASE.replace(/^http/, "ws")}/api/v1/ws/dispatch?node=${encodeURIComponent(nodeParam)}`;
+      const ws = new WebSocket(wsUrl);
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.event === "POLICE_DISPATCH_ALERT" && payload.is_primary && payload.data) {
+            showDispatchToast(payload.data);
+          }
+        } catch (e) {}
+      };
+      ws.onclose = () => { setTimeout(connectDispatchWS, 5000); };
+    } catch (e) {}
+  }
+
+  function showDispatchToast(data) {
+    const assigned = data.assigned_precinct || {};
+    const coords = data.target_coordinates || {};
+    const msg = `🚨 POLICE DISPATCH: ${assigned.name || 'Precinct'}\n` +
+      `Target Coords: ${coords.latitude?.toFixed(4)}, ${coords.longitude?.toFixed(4)}\n` +
+      `Distance: ${assigned.distance_km} km | ETA: ~${assigned.estimated_eta_minutes} mins`;
+    console.warn("[DRUGSHIELD DISPATCH ALERT]", msg);
+    
+    let toast = document.getElementById("drugshield-dispatch-toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "drugshield-dispatch-toast";
+      toast.style.cssText = "position:fixed;bottom:20px;right:20px;background:#7f1d1d;color:#fff;padding:16px 20px;border-radius:10px;border:2px solid #ef4444;box-shadow:0 8px 30px rgba(0,0,0,0.5);z-index:99999;font-family:sans-serif;max-width:400px;font-size:13px;line-height:1.4;";
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML = `<strong style="font-size:14px;color:#fca5a5;">🚨 POLICE DISPATCH ALERT</strong><br>` +
+      `<strong>Precinct:</strong> ${assigned.name || 'Precinct North'}<br>` +
+      `<strong>Target:</strong> ${coords.latitude?.toFixed(4)}, ${coords.longitude?.toFixed(4)} (${data.city || 'NCR'})<br>` +
+      `<strong>Distance:</strong> <span style="color:#86efac;font-weight:700;">${assigned.distance_km} km</span> • ` +
+      `<strong>ETA:</strong> <span style="color:#fde047;font-weight:700;">~${assigned.estimated_eta_minutes}m</span>`;
+    toast.style.display = "block";
+    setTimeout(() => { if (toast) toast.style.display = "none"; }, 10000);
+  }
 })();

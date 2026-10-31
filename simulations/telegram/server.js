@@ -20,6 +20,7 @@ const fs = require('fs');
 const os = require('os');
 
 const app = express();
+const SERVER_BOOT_TIME = Date.now();
 
 // ------------------------------------------------------------------------------
 // 1. Resolve Data Paths Robustly
@@ -467,7 +468,8 @@ app.get('/api/live-messages', (req, res) => {
 
 app.post('/api/clear', (req, res) => {
   sessionMessages = [];
-  return res.json({ success: true, message: "Telegram session memory cleared." });
+  dynamicChats = [];
+  return res.json({ success: true, server_boot_time: SERVER_BOOT_TIME, message: "Telegram session memory cleared." });
 });
 
 // ------------------------------------------------------------------------------
@@ -475,20 +477,9 @@ app.post('/api/clear', (req, res) => {
 // ------------------------------------------------------------------------------
 app.use('/api/images', express.static(IMAGES_DIR));
 app.use('/data/raw/images', express.static(IMAGES_DIR));
-app.get('/dashboard.js', (req, res) => res.sendFile(path.join(__dirname, '..', 'shared', 'dashboard.js')));
+const commandCenterUrl = process.env.DRUGSHIELD_DASHBOARD_URL || process.env.DRUGSHIELD_API_URL || 'http://127.0.0.1:8000/';
+app.get(['/dashboard', '/dashboard.html', '/command-center'], (req, res) => res.redirect(302, commandCenterUrl));
 app.use(express.static(path.join(__dirname, 'public')));
-
-app.get('/dashboard', (req, res) => {
-  const dashPath = path.join(__dirname, 'public', 'dashboard.html');
-  if (fs.existsSync(dashPath)) {
-    return res.sendFile(dashPath);
-  }
-  return res.redirect('/');
-});
-
-app.get('/command-center', (req, res) => {
-  res.redirect('/dashboard');
-});
 
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
