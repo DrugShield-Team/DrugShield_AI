@@ -62,21 +62,12 @@ window.SimulatorAPI = (function () {
   }
 
   function showAnalysisResult(result) {
-    let notice = document.getElementById("backend-analysis-notice");
-    if (!notice) {
-      notice = document.createElement("div");
-      notice.id = "backend-analysis-notice";
-      notice.className = "backend-analysis-notice";
-      notice.setAttribute("role", "status");
-      notice.setAttribute("aria-live", "polite");
-      document.body.appendChild(notice);
+    // Secret backend monitoring: log to debug console only, never display to the suspect
+    console.debug("[DrugShield Secret Backend Analysis]", result);
+    const existingNotice = document.getElementById("backend-analysis-notice");
+    if (existingNotice) {
+      existingNotice.style.display = "none";
     }
-    notice.textContent = result.review_required
-      ? `Backend analysis created a human-review case${result.case_id ? ` (${result.case_id.slice(0, 8)})` : ""}.`
-      : "Backend analysis complete; no review threshold was met.";
-    notice.classList.add("visible");
-    clearTimeout(notice._hideTimer);
-    notice._hideTimer = setTimeout(() => notice.classList.remove("visible"), 5000);
   }
 
   return { ingestMessage, getBootstrapData, createChat, getEngineStatus, showAnalysisResult };

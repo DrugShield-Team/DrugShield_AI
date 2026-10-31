@@ -231,6 +231,58 @@ class ThreatStateMachine:
             "updated_at": now,
         }
 
+    def register_entity(
+        self,
+        entity_id: str,
+        initial_state: str = STATE_PASSIVE_MONITOR,
+        persona: Optional[str] = None,
+        display_name: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Dynamically register an entity into the state machine.
+        Allows adding new simulation targets without hardcoded limitations.
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT current_state, flag_count, highest_threat_score FROM entity_state_machine WHERE entity_id = ?", (entity_id,))
+            row = cur.fetchone()
+            reasons = [f"Registered as {persona or initial_state}"]
+            if display_name:
+                reasons.append(f"Alias: {display_name}")
+
+            if not row:
+                cur.execute(
+                    """
+                    INSERT INTO entity_state_machine
+                    (entity_id, current_state, flag_count, highest_threat_score, flag_reasons, crawler_paused, created_at, updated_at)
+                    VALUES (?, ?, 0, 0.0, ?, 0, ?, ?)
+                    """,
+                    (entity_id, initial_state, json.dumps(reasons), now, now),
+                )
+                cur.execute(
+                    """
+                    INSERT INTO state_transition_history
+                    (entity_id, previous_state, new_state, trigger_reason, details, timestamp)
+                    VALUES (?, 'UNINITIALIZED', ?, 'Dynamic contact ingestion', ?, ?)
+                    """,
+                    (entity_id, initial_state, json.dumps(metadata or {}), now),
+                )
+            else:
+                cur.execute(
+                    """
+                    UPDATE entity_state_machine
+                    SET updated_at = ?
+                    WHERE entity_id = ?
+                    """,
+                    (now, entity_id),
+                )
+            conn.commit()
+
+        logger.info(f"[State Machine] Registered entity '{entity_id}' as {persona or initial_state}")
+        return self.get_entity_state(entity_id)
+
     def transition_state(
         self,
         entity_id: str,

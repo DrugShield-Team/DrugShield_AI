@@ -232,7 +232,7 @@ def evaluate_live_message_threat(record: Dict[str, Any]) -> Dict[str, Any]:
 
     # 7. Action On Flagged Threat (Score >= 0.60)
     if is_flagged:
-        print(f"\n[Threat Pipeline] 🚨 THREAT FLAGGED (Score: {final_threat_score:.2f} >= 0.60)")
+        print(f"\n[Threat Pipeline] [ALERT] THREAT FLAGGED (Score: {final_threat_score:.2f} >= 0.60)")
         print(f"    Platform   : {platform}")
         print(f"    Author     : {sender_id}")
         print(f"    Substances : {', '.join(detected_drugs) or 'Illicit Solicitation'}")

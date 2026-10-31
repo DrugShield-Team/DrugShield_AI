@@ -6,6 +6,23 @@
  */
 
 document.addEventListener("DOMContentLoaded", async () => {
+  // Handle fresh session or server restart
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has("reset") || urlParams.has("fresh")) {
+    window.TelegramLocalStore.clear();
+  }
+  try {
+    const status = await window.SimulatorAPI.getEngineStatus();
+    if (status && status.server_boot_time) {
+      const prevBoot = sessionStorage.getItem("tg_server_boot");
+      if (prevBoot && prevBoot !== String(status.server_boot_time)) {
+        console.log("[Telegram] Server restart detected. Clearing stale browser session.");
+        window.TelegramLocalStore.clear();
+      }
+      sessionStorage.setItem("tg_server_boot", String(status.server_boot_time));
+    }
+  } catch(e) {}
+
   let isAnalystMode = false;
   let attachedFile = null;
 
@@ -339,6 +356,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     openChatModal();
   });
 
+  const drawerNewContact = document.getElementById("drawerNewContact");
+  if (drawerNewContact) {
+    drawerNewContact.addEventListener("click", () => {
+      tgDrawer.classList.remove("active");
+      tgDrawerBackdrop.classList.remove("active");
+      createChatType.value = "private";
+      const modalTitle = document.querySelector("#modalCreateChat .modal-title");
+      if (modalTitle) modalTitle.textContent = "New Target Contact";
+      openChatModal();
+    });
+  }
+
   function openChatModal() {
     modalCreateChat.classList.add("active");
     modalCreateChatBackdrop.classList.add("active");
@@ -356,22 +385,36 @@ document.addEventListener("DOMContentLoaded", async () => {
   btnSubmitCreateChat.addEventListener("click", () => {
     const title = createChatTitle.value.trim();
     if (!title) return;
+    const persona = document.getElementById("createChatPersona")?.value || "TARGET_SUSPECT";
+    const phone = createChatPhone.value.trim() || "+91 99999 88888";
+    const username = createChatUsername.value.trim() || "@custom_channel";
 
     const newChat = {
       id: `tg_chat_${Date.now()}`,
       type: createChatType.value,
       title: title,
-      username: createChatUsername.value.trim() || "@custom_channel",
-      phone: createChatPhone.value.trim() || "+91 99999 88888",
+      username: username,
+      phone: phone,
       avatarText: title.slice(0, 2).toUpperCase(),
       avatarColor: "#2AABEE",
       verified: createChatType.value === "channel",
       subscribers: createChatType.value === "channel" ? "1 subscriber" : "online",
-      status: createChatType.value === "channel" ? "broadcast channel" : "group",
+      status: createChatType.value === "channel" ? "broadcast channel" : `persona: ${persona}`,
+      persona: persona,
       lastTime: "Just now",
       unreadCount: 0,
       messages: []
     };
+
+    // Dynamically register contact with backend
+    if (window.SimulatorAPI && window.SimulatorAPI.registerContact) {
+      window.SimulatorAPI.registerContact({
+        channel: "telegram",
+        name: title,
+        identifier: phone || username,
+        persona: persona
+      }).catch(() => {});
+    }
 
     channels.unshift(newChat);
     currentChat = newChat;
@@ -667,13 +710,49 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Check if Smart Bot honeypot was triggered on threshold reach
     const botText = (analysisResult && (analysisResult.bot_response || (analysisResult.smart_bot && analysisResult.smart_bot.dispatched_message))) || null;
-    if (botText) {
+    const smartBot = analysisResult && analysisResult.smart_bot;
+
+    if (smartBot && smartBot.initial_confirmation_prompt) {
+      const initMsg = {
+        id: `msg_buyer_init_${Date.now()}`,
+        sender_username: "You",
+        sender_phone: "+91 99999 00000",
+        is_analyst: true,
+        text: smartBot.initial_confirmation_prompt,
+        timestamp: getFormattedTime(),
+        has_media: false,
+        views: "1",
+        reactions: [],
+        is_honeypot: true
+      };
+      currentChat.messages.push(initMsg);
+      persistLocalState();
+      renderMessages();
+
       setTimeout(() => {
         const botMsg = {
           id: `msg_buyer_${Date.now()}`,
           sender_username: "You",
           sender_phone: "+91 99999 00000",
-          is_analyst: true, // Right-aligned outgoing buyer persona
+          is_analyst: true,
+          text: smartBot.dispatched_message,
+          timestamp: getFormattedTime(),
+          has_media: false,
+          views: "1",
+          reactions: [],
+          is_honeypot: true
+        };
+        currentChat.messages.push(botMsg);
+        persistLocalState();
+        renderMessages();
+      }, (smartBot.delay_seconds || 5) * 1000);
+    } else if (botText) {
+      setTimeout(() => {
+        const botMsg = {
+          id: `msg_buyer_${Date.now()}`,
+          sender_username: "You",
+          sender_phone: "+91 99999 00000",
+          is_analyst: true,
           text: botText,
           timestamp: getFormattedTime(),
           has_media: false,
@@ -743,4 +822,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderChatList();
   renderMessages();
   renderEmojiGrid("smileys");
+
+  // Reset Simulation Action
+  document.getElementById("tgHeaderReset")?.addEventListener("click", async () => {
+    if (confirm("Reset Telegram chat history to a clean, fresh simulation?")) {
+      try { await fetch('/api/clear', { method: 'POST' }); } catch(e) {}
+      window.TelegramLocalStore.clear();
+      window.location.href = window.location.pathname;
+    }
+  });
 });

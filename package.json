@@ -7,7 +7,8 @@
     "start:whatsapp": "node simulations/whatsapp/server.js",
     "start:telegram": "node simulations/telegram/server.js",
     "start:instagram": "cd simulations/instagram && npm run dev",
-    "pipeline": "python main.py"
+    "pipeline": "python main.py",
+    "reset": "python scripts/reset_simulations.py"
   },
   "keywords": [
     "osint",

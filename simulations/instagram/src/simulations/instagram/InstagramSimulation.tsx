@@ -4,6 +4,8 @@ import './instagram-simulation.css';
 import {
   appendMessagesToConversation,
   createConversation as createLocalConversation,
+  clearLocalData,
+  createStarterConversations,
   deleteStoredAttachments,
   loadConversations,
   loadStoredAttachment,
@@ -55,6 +57,7 @@ function Icon({ name, size = 24 }: { name: string; size?: number }) {
     mic: <><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2m-7 9v3m-4 0h8"/></>,
     smile: <><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></>,
     send: <><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></>,
+    refresh: <><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></>,
     close: <><path d="m18 6-12 12M6 6l12 12"/></>,
   };
   return <svg {...common}>{paths[name] ?? paths.message}</svg>;
@@ -139,6 +142,30 @@ export default function InstagramSimulation() {
     conversation.people.some((name) => name.toLowerCase().includes(search.toLowerCase()))), [conversations, search]);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('reset') || params.has('fresh')) {
+        clearLocalData();
+        const fresh = createStarterConversations();
+        setConversations(fresh);
+        setActiveId(fresh[0]?.id ?? '');
+      }
+    }
+  }, []);
+
+  function handleResetSimulation() {
+    if (window.confirm('Reset Instagram chat history to a clean, fresh simulation?')) {
+      clearLocalData();
+      const fresh = createStarterConversations();
+      setConversations(fresh);
+      setActiveId(fresh[0]?.id ?? '');
+      setDraft('');
+      setSpeaker(0);
+      setNotice('Instagram simulation reset to fresh state.');
+    }
+  }
+
+  useEffect(() => {
     try { saveConversations(conversations); } catch { setNotice('Browser storage is unavailable; changes will not persist after closing this page.'); }
   }, [conversations]);
   useEffect(() => {
@@ -201,8 +228,8 @@ export default function InstagramSimulation() {
       const messages = await sendLocalMessage({ conversationId: active.id, sender: currentSpeaker, text: draft, attachments: pendingAttachments });
       setConversations((current) => appendMessagesToConversation(current, active.id, messages));
       setAttachmentSources((current) => ({ ...current, ...Object.fromEntries(pendingAttachments.map((attachment) => [attachment.id, attachment.previewUrl])) }));
-      if (result.review_required) setNotice(`Message analyzed and sent for human review${result.case_id ? ` (case ${result.case_id.slice(0, 8)})` : ''}.`);
-      else setNotice('Message analyzed by the backend.');
+      // Secret backend monitoring: do not display alert toasts to the suspect in simulation
+      console.debug('[DrugShield Secret Backend Analysis]', result);
     } catch {
       setNotice('Could not save the attachment in this browser. Check available storage and try a smaller file.');
       return;
@@ -214,22 +241,47 @@ export default function InstagramSimulation() {
     // Dealer messages strictly accumulate toward 4-5 consecutive threat threshold
 
     // 2. Check if Smart Buyer Bot triggered an automated honeypot or follow-up response
-    const botText = result?.bot_response || result?.smart_bot?.dispatched_message;
-    if (botText && currentSpeaker === 0) {
+    const smartBot = result?.smart_bot;
+    if (smartBot?.initial_confirmation_prompt && currentSpeaker === 0) {
       setTimeout(() => {
-        const botMessage: Message = {
-          id: `bot-${Date.now()}`,
-          sender: 1, // Undercover Buyer -> renders on the RIGHT!
-          text: botText,
+        const initMessage: Message = {
+          id: 'bot-init-' + Date.now(),
+          sender: 1,
+          text: smartBot.initial_confirmation_prompt!,
           time: Date.now(),
           origin: 'user',
         };
-        setConversations((current) => appendMessagesToConversation(current, currentActiveId, [botMessage]));
-
-        // When buyer bot sends its response, auto-shift composer back to dealer (0) for their turn
+        setConversations((current) => appendMessagesToConversation(current, currentActiveId, [initMessage]));
         setSpeaker(0);
-        setNotice('Smart Buyer Bot responded with payment tracking link.');
+
+        const delayMs = (smartBot.delay_seconds || 5) * 1000;
+        setTimeout(() => {
+          const followMessage: Message = {
+            id: 'bot-link-' + Date.now(),
+            sender: 1,
+            text: smartBot.dispatched_message || '',
+            time: Date.now(),
+            origin: 'user',
+          };
+          setConversations((current) => appendMessagesToConversation(current, currentActiveId, [followMessage]));
+          setSpeaker(0);
+        }, delayMs);
       }, 700);
+    } else {
+      const botText = result?.bot_response || smartBot?.dispatched_message;
+      if (botText && currentSpeaker === 0) {
+        setTimeout(() => {
+          const botMessage: Message = {
+            id: 'bot-' + Date.now(),
+            sender: 1,
+            text: botText,
+            time: Date.now(),
+            origin: 'user',
+          };
+          setConversations((current) => appendMessagesToConversation(current, currentActiveId, [botMessage]));
+          setSpeaker(0);
+        }, 700);
+      }
     }
   }
 
@@ -368,7 +420,7 @@ export default function InstagramSimulation() {
             <button className="mobile-back" onClick={() => setMobileShowChat(false)} aria-label="Back to inbox">‹</button>
             <span className="avatar-pair header-avatars"><Avatar name={active.people[0]} /><Avatar name={active.people[1]} size="small" /></span>
             <div className="header-names"><strong>{active.people.join(' · ')}</strong><span>Active now</span></div>
-            <div className="header-actions"><button aria-label="Audio call" title="Audio call" onClick={() => setNotice('Calling is not part of this local simulation.')}><Icon name="phone" /></button><button aria-label="Video call" title="Video call" onClick={() => setNotice('Video calling is not part of this local simulation.')}><Icon name="video" /></button><button aria-label="Conversation information" title="Conversation information" onClick={() => setNotice(`A private local conversation between ${active.people.join(' and ')}.`)}><Icon name="info" /></button></div>
+            <div className="header-actions"><button aria-label="Reset simulation" title="Reset Simulation (Fresh Run)" onClick={handleResetSimulation} style={{ color: '#ef4444' }}><Icon name="refresh" /></button><button aria-label="Audio call" title="Audio call" onClick={() => setNotice('Calling is not part of this local simulation.')}><Icon name="phone" /></button><button aria-label="Video call" title="Video call" onClick={() => setNotice('Video calling is not part of this local simulation.')}><Icon name="video" /></button><button aria-label="Conversation information" title="Conversation information" onClick={() => setNotice(`A private local conversation between ${active.people.join(' and ')}.`)}><Icon name="info" /></button></div>
           </header>
           <div className="chat-body" aria-label="Message history" aria-live="polite">
             <div className="conversation-intro"><span className="avatar-pair intro-avatars"><Avatar name={active.people[0]} size="large" /><Avatar name={active.people[1]} size="large" /></span><h2>{active.people.join(' · ')}</h2><p>Instagram · Local conversation</p><span>Only you can see these messages in this browser.</span></div>

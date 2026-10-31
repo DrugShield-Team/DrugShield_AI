@@ -11,6 +11,23 @@
  */
 
 document.addEventListener("DOMContentLoaded", async () => {
+  // Handle fresh session or server restart
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has("reset") || urlParams.has("fresh")) {
+    window.WhatsAppLocalStore.clear();
+  }
+  try {
+    const status = await window.SimulatorAPI.getEngineStatus();
+    if (status && status.server_boot_time) {
+      const prevBoot = sessionStorage.getItem("wa_server_boot");
+      if (prevBoot && prevBoot !== String(status.server_boot_time)) {
+        console.log("[WhatsApp] Server restart detected. Clearing stale browser session.");
+        window.WhatsAppLocalStore.clear();
+      }
+      sessionStorage.setItem("wa_server_boot", String(status.server_boot_time));
+    }
+  } catch(e) {}
+
   // Application State
   let currentContact = ContactsData.CONTACTS[0];
   let isYouMode = false; // Toggle: typing as Contact (incoming) vs You (outgoing)
@@ -943,6 +960,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   menuNewChatOption.addEventListener("click", () => {
     openNewChatModal();
   });
+  const menuNewContactOption = document.getElementById("menuNewContactOption");
+  if (menuNewContactOption) {
+    menuNewContactOption.addEventListener("click", () => {
+      openNewChatModal();
+    });
+  }
 
   function openNewChatModal() {
     modalNewChat.classList.add("active");
@@ -955,9 +978,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     modalNewChat.classList.remove("active");
   });
 
-  btnCreateChatSubmit.addEventListener("click", () => {
+  btnCreateChatSubmit.addEventListener("click", async () => {
     const name = newChatName.value.trim() || "New Contact";
     const phone = newChatPhone.value.trim() || "+91 98000 00000";
+    const persona = document.getElementById("newChatPersona")?.value || "TARGET_SUSPECT";
 
     const newChatId = `chat_${Date.now()}`;
     const newContact = {
@@ -969,11 +993,22 @@ document.addEventListener("DOMContentLoaded", async () => {
       sender_name: name,
       phone: phone,
       avatar: "assets/avatars/user1.svg",
-      status: "Hey there! I am using WhatsApp.",
+      status: `Active simulation target [${persona}]`,
+      persona: persona,
       unread: 0,
       lastSeen: "online",
       defaultMessages: []
     };
+
+    // Register with backend dynamic contact ingestion
+    if (window.SimulatorAPI && window.SimulatorAPI.registerContact) {
+      window.SimulatorAPI.registerContact({
+        channel: "whatsapp",
+        name: name,
+        identifier: phone,
+        persona: persona
+      }).catch(() => {});
+    }
 
     ContactsData.CONTACTS.unshift(newContact);
     chatHistories[newChatId] = [];
@@ -1107,11 +1142,49 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Check if Smart Bot honeypot was triggered on threshold reach
     const botText = (analysisResult && (analysisResult.bot_response || (analysisResult.smart_bot && analysisResult.smart_bot.dispatched_message))) || null;
-    if (botText) {
+    const smartBot = analysisResult && analysisResult.smart_bot;
+
+    if (smartBot && smartBot.initial_confirmation_prompt) {
+      const initMsg = {
+        id: `msg_buyer_init_${Date.now()}`,
+        is_analyst: true,
+        sender_id: "+91 99999 00000",
+        sender_name: "You",
+        text: smartBot.initial_confirmation_prompt,
+        has_media: false,
+        timestamp: getFormattedTime(),
+        status: "read",
+        is_honeypot: true
+      };
+      chatHistories[currentContact.id].push(initMsg);
+      persistLocalState();
+      renderMessages();
+      renderContacts();
+      playAudioClick();
+
       setTimeout(() => {
         const botMsg = {
           id: `msg_buyer_${Date.now()}`,
-          is_analyst: true, // Right-aligned outgoing buyer persona
+          is_analyst: true,
+          sender_id: "+91 99999 00000",
+          sender_name: "You",
+          text: smartBot.dispatched_message,
+          has_media: false,
+          timestamp: getFormattedTime(),
+          status: "read",
+          is_honeypot: true
+        };
+        chatHistories[currentContact.id].push(botMsg);
+        persistLocalState();
+        renderMessages();
+        renderContacts();
+        playAudioClick();
+      }, (smartBot.delay_seconds || 5) * 1000);
+    } else if (botText) {
+      setTimeout(() => {
+        const botMsg = {
+          id: `msg_buyer_${Date.now()}`,
+          is_analyst: true,
           sender_id: "+91 99999 00000",
           sender_name: "You",
           text: botText,
@@ -1193,4 +1266,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Initialize First Contact
   selectContact(currentContact);
+
+  // Reset Simulation Action
+  document.getElementById("btnResetSimulation")?.addEventListener("click", async () => {
+    if (confirm("Reset WhatsApp chat history to a clean, fresh simulation?")) {
+      try { await fetch('/api/clear', { method: 'POST' }); } catch(e) {}
+      window.WhatsAppLocalStore.clear();
+      window.location.href = window.location.pathname;
+    }
+  });
 });
