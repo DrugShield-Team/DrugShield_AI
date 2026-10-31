@@ -20,6 +20,10 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import base64
+import io
+import textwrap
+from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger("DrugShield.CaseDocketGenerator")
 
@@ -31,6 +35,149 @@ REPORTS_DIR = PROJECT_ROOT / "data" / "reports"
 
 def _canonical_json(data: Any) -> str:
     return json.dumps(data, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+
+def render_chat_screenshot_base64(
+    messages: List[Dict[str, Any]],
+    channel: str = "WhatsApp",
+    suspect_name: str = "Suspect Target",
+    suspect_phone: str = "+91 98765 43210",
+    case_hash: str = "EVID-RECORD"
+) -> str:
+    """
+    Renders a high-fidelity visual chat transcript evidence image using Pillow
+    and returns a base64-encoded PNG data URI.
+    """
+    width = 720
+    try:
+        font_header = ImageFont.truetype("arial.ttf", 16)
+        font_sub = ImageFont.truetype("arial.ttf", 11)
+        font_msg = ImageFont.truetype("arial.ttf", 13)
+        font_time = ImageFont.truetype("arial.ttf", 10)
+        font_badge = ImageFont.truetype("arialbd.ttf", 10)
+    except Exception:
+        font_header = ImageFont.load_default()
+        font_sub = ImageFont.load_default()
+        font_msg = ImageFont.load_default()
+        font_time = ImageFont.load_default()
+        font_badge = ImageFont.load_default()
+
+    header_height = 68
+    footer_height = 36
+    bubble_padding_v = 8
+    bubble_padding_h = 12
+    margin_v = 12
+
+    prepared_bubbles = []
+    total_content_height = 20
+
+    display_msgs = messages if messages else [
+        {
+            "role": "SUSPECT_VENDOR",
+            "message_text": "[No active chat messages logged yet for this target session]",
+            "timestamp": "N/A",
+            "is_flagged": False,
+        }
+    ]
+
+    for msg in display_msgs:
+        is_buyer = msg.get("role") == "UNDERCOVER_BUYER"
+        text = msg.get("message_text", "")
+        wrapped_lines = textwrap.wrap(text, width=42) or [""]
+        line_height = 18
+        text_height = len(wrapped_lines) * line_height
+        
+        has_flag = (not is_buyer) and (msg.get("is_flagged") or msg.get("narcotics_detected"))
+        badge_height = 18 if has_flag else 0
+
+        bubble_h = badge_height + text_height + 20 + (bubble_padding_v * 2)
+        total_content_height += bubble_h + margin_v
+
+        raw_ts = str(msg.get("timestamp", ""))
+        ts_display = raw_ts[-8:] if len(raw_ts) >= 8 else "12:00:00"
+
+        narcotics = msg.get("narcotics_detected", [])
+        if narcotics:
+            flag_str = f"NARCOTICS DETECTED: {', '.join(narcotics)}"
+        else:
+            flag_str = f"SUSPECT THREAT RISK: {msg.get('risk_score', 0.85):.2f}"
+
+        prepared_bubbles.append({
+            "is_buyer": is_buyer,
+            "lines": wrapped_lines,
+            "timestamp": ts_display,
+            "has_flag": has_flag,
+            "flag_text": flag_str,
+            "bubble_h": bubble_h,
+            "badge_height": badge_height,
+        })
+
+    img_height = max(header_height + total_content_height + footer_height, 350)
+    img = Image.new("RGB", (width, img_height), color=(15, 23, 42))
+    draw = ImageDraw.Draw(img)
+
+    # 1. Header Bar
+    draw.rectangle([(0, 0), (width, header_height)], fill=(23, 32, 42))
+    draw.line([(0, header_height), (width, header_height)], fill=(51, 65, 85), width=2)
+    
+    # Avatar Circle
+    draw.ellipse([(16, 14), (56, 54)], fill=(185, 28, 28))
+    initials = suspect_name[:2].upper() if suspect_name else "TG"
+    draw.text((26, 24), initials, fill=(255, 255, 255), font=font_header)
+
+    # Suspect Details
+    draw.text((70, 16), f"{suspect_name}  •  {suspect_phone}", fill=(241, 245, 249), font=font_header)
+    draw.text((70, 38), f"Channel: {channel.upper()} // Intercepted Live Feed // Forensic Target", fill=(148, 163, 184), font=font_sub)
+
+    # Status Pill
+    draw.rounded_rectangle([(width - 150, 18), (width - 16, 48)], radius=6, fill=(30, 41, 59), outline=(71, 85, 105))
+    draw.text((width - 140, 26), "MONITORED", fill=(239, 68, 68), font=font_badge)
+
+    # 2. Render Chat Bubbles
+    curr_y = header_height + 16
+    for b in prepared_bubbles:
+        b_h = b["bubble_h"]
+        max_line_len = max(len(l) for l in b["lines"])
+        b_w = max(min(max_line_len * 9 + 40, 480), 180)
+
+        if b["is_buyer"]:
+            x1 = width - b_w - 20
+            x2 = width - 20
+            fill_color = (2, 132, 199) # Blue buyer
+        else:
+            x1 = 20
+            x2 = 20 + b_w
+            fill_color = (30, 41, 59) # Dark slate dealer
+
+        draw.rounded_rectangle([(x1, curr_y), (x2, curr_y + b_h)], radius=10, fill=fill_color, outline=(51, 65, 85) if not b["is_buyer"] else (14, 165, 233))
+
+        inner_y = curr_y + bubble_padding_v
+        if b["has_flag"]:
+            # Flag banner
+            draw.rounded_rectangle([(x1 + 6, inner_y), (x2 - 6, inner_y + 16)], radius=4, fill=(185, 28, 28))
+            draw.text((x1 + 10, inner_y + 2), f"FLAG: {b['flag_text']}", fill=(255, 255, 255), font=font_badge)
+            inner_y += 20
+
+        for line in b["lines"]:
+            draw.text((x1 + bubble_padding_h, inner_y), line, fill=(255, 255, 255), font=font_msg)
+            inner_y += 18
+
+        # Timestamp
+        time_text = b["timestamp"] + ("  " if b["is_buyer"] else "")
+        draw.text((x2 - 65, curr_y + b_h - 16), time_text, fill=(203, 213, 225) if b["is_buyer"] else (148, 163, 184), font=font_time)
+
+        curr_y += b_h + margin_v
+
+    # 3. Footer / Tamper-evident Seal Bar
+    foot_y = img_height - footer_height
+    draw.rectangle([(0, foot_y), (width, img_height)], fill=(15, 23, 42))
+    draw.line([(0, foot_y), (width, foot_y)], fill=(185, 28, 28), width=2)
+    draw.text((20, foot_y + 10), f"DRUGSHIELD AI // FORENSIC ELECTRONIC EVIDENCE // SEAL: {case_hash[:16]}", fill=(148, 163, 184), font=font_sub)
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return base64.b64encode(buf.getvalue()).decode("utf-8")
 
 
 def compile_case_docket(token_or_id: Optional[str] = None) -> Dict[str, Any]:
@@ -50,21 +197,21 @@ def compile_case_docket(token_or_id: Optional[str] = None) -> Dict[str, Any]:
     hit_row = None
     if token_query:
         hit_row = raw_cur.execute(
-            "SELECT * FROM honeypot_tracking_logs WHERE tracking_token = ? OR id = ? ORDER BY created_at DESC LIMIT 1",
+            "SELECT * FROM honeypot_tracking_logs WHERE tracking_token = ? OR id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1",
             (token_query, token_query),
         ).fetchone()
 
     if not hit_row:
         # Fallback to the latest honeypot tracking hit
         hit_row = raw_cur.execute(
-            "SELECT * FROM honeypot_tracking_logs ORDER BY created_at DESC LIMIT 1"
+            "SELECT * FROM honeypot_tracking_logs ORDER BY created_at DESC, rowid DESC LIMIT 1"
         ).fetchone()
 
     tracking_token = hit_row["tracking_token"] if hit_row else (token_query or "inv_untracked")
 
     # 2. Resolve Police Dispatch Log
     dispatch_row = raw_cur.execute(
-        "SELECT * FROM police_dispatch_logs WHERE tracking_token = ? ORDER BY created_at DESC LIMIT 1",
+        "SELECT * FROM police_dispatch_logs WHERE tracking_token = ? ORDER BY created_at DESC, rowid DESC LIMIT 1",
         (tracking_token,),
     ).fetchone()
 
@@ -198,6 +345,12 @@ def compile_case_docket(token_or_id: Optional[str] = None) -> Dict[str, Any]:
             "total_messages_recorded": len(chat_events),
             "threat_escalation_threshold_met": len(chat_events) >= 4 or (entity_state_row and entity_state_row["flag_count"] >= 4),
             "transcript": chat_events,
+            "screenshot_base64": render_chat_screenshot_base64(
+                chat_events,
+                channel=channel,
+                suspect_name=target_name,
+                case_hash=docket_id,
+            ),
         },
         "osint_telemetry": {
             "captured": bool(hit_row is not None),
@@ -212,6 +365,8 @@ def compile_case_docket(token_or_id: Optional[str] = None) -> Dict[str, Any]:
             "device_fingerprint_sha256": hit_row["fingerprint_hash"] if hit_row else "PENDING_TELEMETRY_LINK_CLICK",
             "user_agent": hit_row["user_agent"] if hit_row else "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
             "heuristics": json.loads(hit_row["heuristics"]) if hit_row and hit_row["heuristics"] else {},
+            "triangulation_layer": hit_row["triangulation_layer"] if (hit_row and "triangulation_layer" in hit_row.keys() and hit_row["triangulation_layer"]) else "LAYER_1_PASSIVE_IP",
+            "accuracy_meters": float(hit_row["accuracy_meters"]) if (hit_row and "accuracy_meters" in hit_row.keys() and hit_row["accuracy_meters"] is not None) else 1500.0,
         },
         "geospatial_dispatch": {
             "dispatch_initiated": bool(dispatch_row is not None),
@@ -222,6 +377,8 @@ def compile_case_docket(token_or_id: Optional[str] = None) -> Dict[str, Any]:
             "estimated_arrival_minutes": int(dispatch_row["eta_minutes"]) if dispatch_row else 2,
             "dispatch_status": dispatch_row["dispatch_status"] if dispatch_row else "READY_FOR_DISPATCH",
             "emergency_priority": "CRITICAL_INTERCEPTION_ALPHA",
+            "triangulation_layer": dispatch_row["triangulation_layer"] if (dispatch_row and "triangulation_layer" in dispatch_row.keys() and dispatch_row["triangulation_layer"]) else "LAYER_1_PASSIVE_IP",
+            "accuracy_meters": float(dispatch_row["accuracy_meters"]) if (dispatch_row and "accuracy_meters" in dispatch_row.keys() and dispatch_row["accuracy_meters"] is not None) else 1500.0,
         },
     }
 
@@ -409,12 +566,22 @@ def render_docket_html(docket: Dict[str, Any]) -> str:
             </tbody>
         </table>
 
+        <!-- SECTION 2B: Visual Forensic Chat Screenshot Capture -->
+        <div class="section-title"><span class="num">2B</span> High-Fidelity Forensic Chat Screenshot Capture</div>
+        <div class="chat-screenshot-container" style="text-align: center; margin: 16px 0 24px; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #0f172a; padding: 16px;">
+            <img src="data:image/png;base64,{chat.get('screenshot_base64', '')}" alt="Forensic Chat Transcript Screenshot" style="max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);" />
+        </div>
+
         <!-- SECTION 3 & 4 Split Grid -->
         <div class="split-grid">
             <!-- SECTION 3: OSINT & Device Telemetry -->
             <div>
                 <div class="section-title"><span class="num">3</span> Passive OSINT & Device Telemetry</div>
                 <div class="panel-box">
+                    <div class="kv-row">
+                        <span class="kv-key">Triangulation Layer:</span>
+                        <span class="kv-val"><span class="pill {('pill-success' if osint.get('triangulation_layer') == 'LAYER_2_ACTIVE_GPS' else 'pill-warning')}">{osint.get('triangulation_layer', 'LAYER_1_PASSIVE_IP')} (±{int(osint.get('accuracy_meters', 1500))}m)</span></span>
+                    </div>
                     <div class="kv-row">
                         <span class="kv-key">Source Public IP:</span>
                         <span class="kv-val" style="font-family: monospace;">{osint['visitor_ip']}</span>
@@ -482,10 +649,10 @@ def render_docket_html(docket: Dict[str, Any]) -> str:
         <div class="action-bar">
             <div>
                 <button class="btn btn-print" onclick="window.print()">
-                    🖨️ Print / Save Legal PDF Docket
+                     Print / Save Legal PDF Docket
                 </button>
                 <a class="btn btn-json" href="?format=json" target="_blank" style="margin-left: 8px;">
-                    📄 Export Raw Evidence JSON
+                     Export Raw Evidence JSON
                 </a>
             </div>
             <div style="font-size: 11px; color: #94a3b8;">

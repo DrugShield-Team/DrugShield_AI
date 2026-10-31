@@ -50,6 +50,8 @@ export type AnalysisSubmissionResult = {
     invoice_url?: string;
     tracking_token?: string;
     turn_count?: number;
+    initial_confirmation_prompt?: string;
+    delay_seconds?: number;
   } | null;
 };
 
@@ -96,7 +98,7 @@ export async function submitMessageForAnalysis(input: {
   return response.json();
 }
 
-function createStarterConversations(): Conversation[] {
+export function createStarterConversations(): Conversation[] {
   const now = Date.now();
   const starterMessage = (id: string, sender: number, text: string, minutesAgo: number): Message => ({
     id,
@@ -144,6 +146,16 @@ function createStarterConversations(): Conversation[] {
       updatedAt: now - 88 * 60_000,
     },
   ];
+}
+
+
+export function clearLocalData(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STARTER_SEED_KEY);
+    localStorage.removeItem('drugshield-instagram-simulation-theme');
+    indexedDB.deleteDatabase(MEDIA_DB);
+  } catch {}
 }
 
 export function loadConversations(): Conversation[] {

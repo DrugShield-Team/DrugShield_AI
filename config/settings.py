@@ -17,7 +17,7 @@ DATABASE_PATH = Path(os.getenv("DRUGSHIELD_DATABASE_PATH", RUNTIME_DIR / "drugsh
 CORS_ORIGINS = tuple(
     origin.strip()
     for origin in os.getenv(
-        "DRUGSHIELD_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+        "DRUGSHIELD_CORS_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173"
     ).split(",")
     if origin.strip()
 )

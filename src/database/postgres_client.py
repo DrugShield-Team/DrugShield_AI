@@ -108,6 +108,9 @@ class PostgresClient:
                     user_agent TEXT,
                     accept_language TEXT,
                     heuristics TEXT,
+                    accuracy_meters REAL,
+                    triangulation_layer TEXT DEFAULT 'LAYER_1_PASSIVE_IP',
+                    suspect_id TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
                 """)
@@ -123,9 +126,23 @@ class PostgresClient:
                     eta_minutes INTEGER,
                     dispatch_status TEXT,
                     details TEXT,
+                    triangulation_layer TEXT DEFAULT 'LAYER_1_PASSIVE_IP',
+                    accuracy_meters REAL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
                 """)
+                # Migrations for existing columns
+                for col_sql in [
+                    "ALTER TABLE honeypot_tracking_logs ADD COLUMN accuracy_meters REAL",
+                    "ALTER TABLE honeypot_tracking_logs ADD COLUMN triangulation_layer TEXT DEFAULT 'LAYER_1_PASSIVE_IP'",
+                    "ALTER TABLE honeypot_tracking_logs ADD COLUMN suspect_id TEXT",
+                    "ALTER TABLE police_dispatch_logs ADD COLUMN triangulation_layer TEXT DEFAULT 'LAYER_1_PASSIVE_IP'",
+                    "ALTER TABLE police_dispatch_logs ADD COLUMN accuracy_meters REAL",
+                ]:
+                    try:
+                        conn.execute(col_sql)
+                    except Exception:
+                        pass
         except Exception as e:
             print(f"[-] SQLite initialization error: {e}")
 
@@ -252,14 +269,17 @@ class PostgresClient:
         ua = hit_data.get("user_agent", "")
         lang = hit_data.get("accept_language", "")
         heuristics_str = json.dumps(hit_data.get("heuristics") or {})
+        accuracy = hit_data.get("accuracy_meters")
+        layer = hit_data.get("triangulation_layer", "LAYER_1_PASSIVE_IP")
+        suspect_id = hit_data.get("suspect_id", "")
 
         try:
             with sqlite3.connect(SQLITE_DB_PATH) as conn:
                 conn.execute("""
                 INSERT OR REPLACE INTO honeypot_tracking_logs
-                (id, tracking_token, ip, is_simulated, country, region, city, latitude, longitude, isp, fingerprint_hash, user_agent, accept_language, heuristics)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (hit_id, token, ip, is_sim, country, region, city, lat, lon, isp, fp_hash, ua, lang, heuristics_str))
+                (id, tracking_token, ip, is_simulated, country, region, city, latitude, longitude, isp, fingerprint_hash, user_agent, accept_language, heuristics, accuracy_meters, triangulation_layer, suspect_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (hit_id, token, ip, is_sim, country, region, city, lat, lon, isp, fp_hash, ua, lang, heuristics_str, accuracy, layer, suspect_id))
         except Exception as e:
             print(f"[-] Failed to record honeypot hit in SQLite: {e}")
 
@@ -276,6 +296,37 @@ class PostgresClient:
 
         return hit_id
 
+    def update_honeypot_gps(
+        self,
+        token: str,
+        lat: float,
+        lon: float,
+        accuracy_meters: float = 12.0,
+        heuristics_update: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """Upgrade an existing tracking hit with high-precision GPS coordinates."""
+        try:
+            with sqlite3.connect(SQLITE_DB_PATH) as conn:
+                if heuristics_update:
+                    row = conn.execute("SELECT heuristics FROM honeypot_tracking_logs WHERE tracking_token = ?", (token,)).fetchone()
+                    existing_h = json.loads(row[0]) if row and row[0] else {}
+                    existing_h.update(heuristics_update)
+                    conn.execute("""
+                    UPDATE honeypot_tracking_logs
+                    SET latitude = ?, longitude = ?, accuracy_meters = ?, triangulation_layer = 'LAYER_2_ACTIVE_GPS', heuristics = ?
+                    WHERE tracking_token = ?
+                    """, (lat, lon, accuracy_meters, json.dumps(existing_h), token))
+                else:
+                    conn.execute("""
+                    UPDATE honeypot_tracking_logs
+                    SET latitude = ?, longitude = ?, accuracy_meters = ?, triangulation_layer = 'LAYER_2_ACTIVE_GPS'
+                    WHERE tracking_token = ?
+                    """, (lat, lon, accuracy_meters, token))
+            return True
+        except Exception as e:
+            print(f"[-] Failed to update honeypot GPS in SQLite: {e}")
+            return False
+
     def record_dispatch_alert(self, alert: Dict[str, Any]) -> str:
         """Securely commit an assigned police precinct dispatch alert."""
         alert_id = alert.get("id") or f"disp_{int(time.time()*1000)}"
@@ -290,14 +341,16 @@ class PostgresClient:
         eta = int(assigned.get("estimated_eta_minutes") or 0)
         status = alert.get("dispatch_status", "DISPATCH_RECOMMENDED")
         details = json.dumps(alert)
+        layer = alert.get("triangulation_layer", "LAYER_1_PASSIVE_IP")
+        accuracy = alert.get("accuracy_meters")
 
         try:
             with sqlite3.connect(SQLITE_DB_PATH) as conn:
                 conn.execute("""
                 INSERT OR REPLACE INTO police_dispatch_logs
-                (id, tracking_token, target_lat, target_lon, precinct_id, precinct_name, distance_km, eta_minutes, dispatch_status, details)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (alert_id, token, lat, lon, p_id, p_name, dist, eta, status, details))
+                (id, tracking_token, target_lat, target_lon, precinct_id, precinct_name, distance_km, eta_minutes, dispatch_status, details, triangulation_layer, accuracy_meters)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (alert_id, token, lat, lon, p_id, p_name, dist, eta, status, details, layer, accuracy))
         except Exception as e:
             print(f"[-] Failed to record dispatch alert in SQLite: {e}")
 
@@ -321,7 +374,7 @@ class PostgresClient:
             with sqlite3.connect(SQLITE_DB_PATH) as conn:
                 conn.row_factory = sqlite3.Row
                 rows = conn.execute(
-                    "SELECT * FROM police_dispatch_logs ORDER BY created_at DESC LIMIT ?", (limit,)
+                    "SELECT * FROM police_dispatch_logs ORDER BY created_at DESC, rowid DESC LIMIT ?", (limit,)
                 ).fetchall()
                 for r in rows:
                     item = dict(r)
@@ -341,7 +394,7 @@ class PostgresClient:
             with sqlite3.connect(SQLITE_DB_PATH) as conn:
                 conn.row_factory = sqlite3.Row
                 rows = conn.execute(
-                    "SELECT * FROM honeypot_tracking_logs ORDER BY created_at DESC LIMIT ?", (limit,)
+                    "SELECT * FROM honeypot_tracking_logs ORDER BY created_at DESC, rowid DESC LIMIT ?", (limit,)
                 ).fetchall()
                 for r in rows:
                     item = dict(r)

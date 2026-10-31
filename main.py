@@ -2,7 +2,7 @@
 DrugShield AI - Unified Subsystem Launcher
 ==========================================
 Runs the DrugShield AI FastAPI analysis backend and concurrently orchestrates
-the simulation subprocesses (WhatsApp on 8090, Telegram on 8001, Instagram on 5173).
+the simulation subprocesses (WhatsApp on 8090, Telegram on 8001, Instagram on 8080).
 """
 
 from __future__ import annotations
@@ -18,14 +18,14 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 
 
 def spawn_simulation_subprocesses() -> list[subprocess.Popen]:
-    """Start WhatsApp (8090), Telegram (8001), and Instagram (5173) in background."""
+    """Start WhatsApp (8090), Telegram (8001), and Instagram (8080) in background."""
     processes = []
     npm_bin = "npm.cmd" if sys.platform == "win32" else "npm"
 
     sims = [
         ("WhatsApp Simulation (Port 8090)", ["node", "server.js"], PROJECT_ROOT / "simulations" / "whatsapp"),
         ("Telegram Simulation (Port 8001)", ["node", "server.js"], PROJECT_ROOT / "simulations" / "telegram"),
-        ("Instagram Simulation (Port 5173)", [npm_bin, "run", "dev"], PROJECT_ROOT / "simulations" / "instagram"),
+        ("Instagram Simulation (Port 8080)", [npm_bin, "run", "dev"], PROJECT_ROOT / "simulations" / "instagram"),
     ]
 
     for name, cmd, cwd in sims:

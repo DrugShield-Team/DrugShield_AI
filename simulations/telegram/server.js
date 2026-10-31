@@ -20,6 +20,7 @@ const fs = require('fs');
 const os = require('os');
 
 const app = express();
+const SERVER_BOOT_TIME = Date.now();
 
 // ------------------------------------------------------------------------------
 // 1. Resolve Data Paths Robustly
@@ -467,7 +468,8 @@ app.get('/api/live-messages', (req, res) => {
 
 app.post('/api/clear', (req, res) => {
   sessionMessages = [];
-  return res.json({ success: true, message: "Telegram session memory cleared." });
+  dynamicChats = [];
+  return res.json({ success: true, server_boot_time: SERVER_BOOT_TIME, message: "Telegram session memory cleared." });
 });
 
 // ------------------------------------------------------------------------------

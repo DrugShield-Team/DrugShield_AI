@@ -40,6 +40,10 @@
       catch { return null; }
     },
     save(state) { localStorage.setItem(STORAGE_KEY, JSON.stringify(clean(state))); },
+    clear() {
+      try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+      try { indexedDB.deleteDatabase(DB_NAME); } catch(e) {}
+    },
     async saveAttachment(blob) {
       const id = crypto.randomUUID ? crypto.randomUUID() : `wa_${Date.now()}_${Math.random().toString(16).slice(2)}`;
       await mediaRequest("readwrite", store => store.put(blob, id));

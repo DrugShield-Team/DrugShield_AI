@@ -73,6 +73,56 @@ window.ContactsData = (function () {
       ]
     },
     {
+      id: "chat_rohit",
+      chat_id: "919811122334@c.us",
+      name: "Rohit (Supplier)",
+      isGroup: false,
+      sender_id: "+91 98111 22334",
+      sender_name: "Rohit (Supplier)",
+      phone: "+91 98111 22334",
+      avatar: "assets/avatars/user1.svg",
+      status: "Bulk supply orders only. Direct warehouse dispatch.",
+      persona: "SUPPLIER",
+      unread: 1,
+      lastSeen: "online",
+      defaultMessages: [
+        {
+          id: "m_roh_1",
+          is_analyst: false,
+          sender_id: "+91 98111 22334",
+          sender_name: "Rohit (Supplier)",
+          text: "Consignment of 500g MDMA crystals arrived at warehouse hub. Send token payment on supplier_rohit@icici to confirm bulk drop.",
+          timestamp: "11:30 AM",
+          status: "read"
+        }
+      ]
+    },
+    {
+      id: "chat_vicky",
+      chat_id: "919822233445@c.us",
+      name: "Vicky (Courier Dispatch)",
+      isGroup: false,
+      sender_id: "+91 98222 33445",
+      sender_name: "Vicky (Courier Dispatch)",
+      phone: "+91 98222 33445",
+      avatar: "assets/avatars/user1.svg",
+      status: "Active courier router. Dead drops NCR.",
+      persona: "COURIER_DISPATCH",
+      unread: 1,
+      lastSeen: "online",
+      defaultMessages: [
+        {
+          id: "m_vic_1",
+          is_analyst: false,
+          sender_id: "+91 98222 33445",
+          sender_name: "Vicky (Courier Dispatch)",
+          text: "Package dispatch ready for dead drop pickup at Gurgaon Sector 29 pin. Share drop confirmation receipt.",
+          timestamp: "11:45 AM",
+          status: "read"
+        }
+      ]
+    },
+    {
       id: "chat_priya",
       chat_id: "919123456789@c.us",
       name: "Priya Sharma",
@@ -166,7 +216,7 @@ window.ContactsData = (function () {
       sender_name: "Sneha Gupta",
       phone: "+91 90000 11223",
       avatar: "assets/avatars/user1.svg",
-      status: "At the gym 🏋️‍♀️",
+      status: "At the gym ",
       unread: 0,
       lastSeen: "last seen today at 09:10 AM",
       defaultMessages: [

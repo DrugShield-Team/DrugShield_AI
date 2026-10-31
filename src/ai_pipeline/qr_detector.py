@@ -1,4 +1,4 @@
-﻿"""Decode QR payloads from message attachments; this module does not score risk."""
+"""Decode QR payloads from message attachments; this module does not score risk."""
 
 from __future__ import annotations
 

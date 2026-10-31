@@ -20,6 +20,7 @@ const fs = require('fs');
 const os = require('os');
 
 const app = express();
+const SERVER_BOOT_TIME = Date.now();
 
 // ------------------------------------------------------------------------------
 // 1. Resolve Data Paths Robustly
@@ -445,6 +446,7 @@ app.get('/api/status', (req, res) => {
     return res.json({
       ok: true,
       service: "WhatsApp Simulation Service",
+      server_boot_time: SERVER_BOOT_TIME,
       port: PORT,
       host: HOST,
       stats: {
@@ -478,7 +480,7 @@ app.get('/api/history', (req, res) => {
 
 app.post('/api/clear', (req, res) => {
   sessionMessages = [];
-  return res.json({ success: true, message: "WhatsApp session history reset." });
+  return res.json({ success: true, server_boot_time: SERVER_BOOT_TIME, message: "WhatsApp session history reset." });
 });
 
 // Flush batch endpoint for backwards compatibility

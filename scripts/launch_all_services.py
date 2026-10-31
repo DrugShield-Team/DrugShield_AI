@@ -5,7 +5,7 @@ Automatically initializes and monitors all DrugShield AI subsystem microservices
 1. Backend REST & WebSocket Engine (Port 8000 via Uvicorn)
 2. WhatsApp Chat Simulation Server (Port 8090 via Node.js)
 3. Telegram Web Simulation Server (Port 8001 via Node.js)
-4. Instagram Direct Simulation Frontend (Port 5173 via Vite/NPM)
+4. Instagram Direct Simulation Frontend (Port 8080 via Vite/NPM)
 
 Ensures graceful lifecycle shutdown across all child processes upon SIGINT/SIGTERM.
 """
@@ -19,7 +19,7 @@ import sys
 import time
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 SERVICES = [
     {
@@ -41,7 +41,7 @@ SERVICES = [
         "env": os.environ.copy(),
     },
     {
-        "name": "Instagram Simulation (Port 5173)",
+        "name": "Instagram Simulation (Port 8080)",
         "cmd": ["npm.cmd" if sys.platform == "win32" else "npm", "run", "dev"],
         "cwd": PROJECT_ROOT / "simulations" / "instagram",
         "env": os.environ.copy(),
@@ -53,7 +53,7 @@ def launch_all() -> None:
     processes: list[tuple[str, subprocess.Popen]] = []
 
     print("\n" + "=" * 70)
-    print("🛡️  DRUGSHIELD AI - MULTI-PLATFORM UNIFIED ORCHESTRATOR")
+    print("[SHIELD]  DRUGSHIELD AI - MULTI-PLATFORM UNIFIED ORCHESTRATOR")
     print("=" * 70)
 
     for svc in SERVICES:
@@ -72,16 +72,16 @@ def launch_all() -> None:
                 stderr=subprocess.DEVNULL,
             )
             processes.append((name, proc))
-            print(f"    ✓ {name} online (PID: {proc.pid})")
+            print(f"    [OK] {name} online (PID: {proc.pid})")
         except Exception as e:
-            print(f"    ✗ Failed to start {name}: {e}")
+            print(f"    [ERROR] Failed to start {name}: {e}")
 
     print("\n" + "-" * 70)
     print("ALL PLATFORMS LAUNCHED SUCCESSFULLY:")
-    print("  • Command Center Dashboard: http://127.0.0.1:8000/command_center.html")
-    print("  • WhatsApp Simulation:      http://127.0.0.1:8090")
-    print("  • Telegram Simulation:      http://127.0.0.1:8001")
-    print("  • Instagram Simulation:     http://127.0.0.1:5173")
+    print("  - Command Center Dashboard: http://127.0.0.1:8000/command_center.html")
+    print("  - WhatsApp Simulation:      http://127.0.0.1:8090")
+    print("  - Telegram Simulation:      http://127.0.0.1:8001")
+    print("  - Instagram Simulation:     http://127.0.0.1:8080")
     print("-" * 70)
     print("Press CTRL+C anytime to terminate all services.\n")
 
@@ -93,7 +93,7 @@ def launch_all() -> None:
                 p.kill()
             except Exception:
                 pass
-        print("[✓] All services stopped cleanly.")
+        print("[OK] All services stopped cleanly.")
         sys.exit(0)
 
     signal.signal(signal.SIGINT, handle_sig)
