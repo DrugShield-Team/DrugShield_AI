@@ -12,6 +12,7 @@ if PostgreSQL server is offline.
 import os
 import json
 import sqlite3
+import time
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -91,6 +92,57 @@ class PostgresClient:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
                 """)
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS honeypot_tracking_logs (
+                    id TEXT PRIMARY KEY,
+                    tracking_token TEXT,
+                    ip TEXT,
+                    is_simulated INTEGER,
+                    country TEXT,
+                    region TEXT,
+                    city TEXT,
+                    latitude REAL,
+                    longitude REAL,
+                    isp TEXT,
+                    fingerprint_hash TEXT,
+                    user_agent TEXT,
+                    accept_language TEXT,
+                    heuristics TEXT,
+                    accuracy_meters REAL,
+                    triangulation_layer TEXT DEFAULT 'LAYER_1_PASSIVE_IP',
+                    suspect_id TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """)
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS police_dispatch_logs (
+                    id TEXT PRIMARY KEY,
+                    tracking_token TEXT,
+                    target_lat REAL,
+                    target_lon REAL,
+                    precinct_id TEXT,
+                    precinct_name TEXT,
+                    distance_km REAL,
+                    eta_minutes INTEGER,
+                    dispatch_status TEXT,
+                    details TEXT,
+                    triangulation_layer TEXT DEFAULT 'LAYER_1_PASSIVE_IP',
+                    accuracy_meters REAL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """)
+                # Migrations for existing columns
+                for col_sql in [
+                    "ALTER TABLE honeypot_tracking_logs ADD COLUMN accuracy_meters REAL",
+                    "ALTER TABLE honeypot_tracking_logs ADD COLUMN triangulation_layer TEXT DEFAULT 'LAYER_1_PASSIVE_IP'",
+                    "ALTER TABLE honeypot_tracking_logs ADD COLUMN suspect_id TEXT",
+                    "ALTER TABLE police_dispatch_logs ADD COLUMN triangulation_layer TEXT DEFAULT 'LAYER_1_PASSIVE_IP'",
+                    "ALTER TABLE police_dispatch_logs ADD COLUMN accuracy_meters REAL",
+                ]:
+                    try:
+                        conn.execute(col_sql)
+                    except Exception:
+                        pass
         except Exception as e:
             print(f"[-] SQLite initialization error: {e}")
 
@@ -112,13 +164,43 @@ class PostgresClient:
             media_path TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS honeypot_tracking_logs (
+            id VARCHAR(128) PRIMARY KEY,
+            tracking_token VARCHAR(128),
+            ip VARCHAR(64),
+            is_simulated BOOLEAN,
+            country VARCHAR(64),
+            region VARCHAR(64),
+            city VARCHAR(64),
+            latitude NUMERIC(10, 6),
+            longitude NUMERIC(10, 6),
+            isp VARCHAR(128),
+            fingerprint_hash VARCHAR(128),
+            user_agent TEXT,
+            accept_language VARCHAR(128),
+            heuristics TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS police_dispatch_logs (
+            id VARCHAR(128) PRIMARY KEY,
+            tracking_token VARCHAR(128),
+            target_lat NUMERIC(10, 6),
+            target_lon NUMERIC(10, 6),
+            precinct_id VARCHAR(64),
+            precinct_name VARCHAR(128),
+            distance_km NUMERIC(8, 2),
+            eta_minutes INTEGER,
+            dispatch_status VARCHAR(64),
+            details TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
         """
         with self._pg_conn.cursor() as cur:
             cur.execute(query)
 
     def push_threat_record(self, record: Dict[str, Any]) -> bool:
         """Inserts a threat intelligence record into PostgreSQL or fallback store."""
-        msg_id = record.get("id") or f"evt_{Date_now()}"
+        msg_id = record.get("id") or f"evt_{int(datetime.utcnow().timestamp()*1000)}"
         platform = record.get("platform", "unknown")
         timestamp = record.get("timestamp", "")
         sender = record.get("sender_id") or record.get("sender_username") or "unknown"
@@ -162,14 +244,168 @@ class PostgresClient:
                       threat_score = EXCLUDED.threat_score,
                       flagged_status = EXCLUDED.flagged_status
                     """, (msg_id, platform, timestamp, sender, content, score, bool(flagged), upis_str, banks_str, drugs_str, media_path))
-                print(f"[PostgreSQL Client] 🟢 Threat event persisted to PostgreSQL: {msg_id}")
+                print(f"[PostgreSQL Client] [PostgreSQL] Threat event persisted: {msg_id}")
                 return True
             except Exception as e:
                 print(f"[-] PostgreSQL insert error: {e}")
                 return False
 
-        print(f"[PostgreSQL Client] 📁 Threat event stored in SQLite: data/raw/{SQLITE_DB_PATH.name}")
+        print(f"[PostgreSQL Client] [SQLite] Threat event stored: data/raw/{SQLITE_DB_PATH.name}")
         return True
+
+    def record_honeypot_hit(self, hit_data: Dict[str, Any]) -> str:
+        """Securely commit a captured honeypot visitor event to audit logs."""
+        hit_id = hit_data.get("id") or f"hit_{int(time.time()*1000)}"
+        token = hit_data.get("tracking_token", "")
+        ip = hit_data.get("ip", "127.0.0.1")
+        is_sim = 1 if hit_data.get("is_simulated", True) else 0
+        country = hit_data.get("country", "")
+        region = hit_data.get("region", "")
+        city = hit_data.get("city", "")
+        lat = float(hit_data.get("latitude") or 0.0)
+        lon = float(hit_data.get("longitude") or 0.0)
+        isp = hit_data.get("isp", "")
+        fp_hash = hit_data.get("fingerprint_hash", "")
+        ua = hit_data.get("user_agent", "")
+        lang = hit_data.get("accept_language", "")
+        heuristics_str = json.dumps(hit_data.get("heuristics") or {})
+        accuracy = hit_data.get("accuracy_meters")
+        layer = hit_data.get("triangulation_layer", "LAYER_1_PASSIVE_IP")
+        suspect_id = hit_data.get("suspect_id", "")
+
+        try:
+            with sqlite3.connect(SQLITE_DB_PATH) as conn:
+                conn.execute("""
+                INSERT OR REPLACE INTO honeypot_tracking_logs
+                (id, tracking_token, ip, is_simulated, country, region, city, latitude, longitude, isp, fingerprint_hash, user_agent, accept_language, heuristics, accuracy_meters, triangulation_layer, suspect_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (hit_id, token, ip, is_sim, country, region, city, lat, lon, isp, fp_hash, ua, lang, heuristics_str, accuracy, layer, suspect_id))
+        except Exception as e:
+            print(f"[-] Failed to record honeypot hit in SQLite: {e}")
+
+        if self._connected and self._pg_conn:
+            try:
+                with self._pg_conn.cursor() as cur:
+                    cur.execute("""
+                    INSERT INTO honeypot_tracking_logs
+                    (id, tracking_token, ip, is_simulated, country, region, city, latitude, longitude, isp, fingerprint_hash, user_agent, accept_language, heuristics)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (hit_id, token, ip, bool(is_sim), country, region, city, lat, lon, isp, fp_hash, ua, lang, heuristics_str))
+            except Exception as e:
+                print(f"[-] Failed to record honeypot hit in PostgreSQL: {e}")
+
+        return hit_id
+
+    def update_honeypot_gps(
+        self,
+        token: str,
+        lat: float,
+        lon: float,
+        accuracy_meters: float = 12.0,
+        heuristics_update: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """Upgrade an existing tracking hit with high-precision GPS coordinates."""
+        try:
+            with sqlite3.connect(SQLITE_DB_PATH) as conn:
+                if heuristics_update:
+                    row = conn.execute("SELECT heuristics FROM honeypot_tracking_logs WHERE tracking_token = ?", (token,)).fetchone()
+                    existing_h = json.loads(row[0]) if row and row[0] else {}
+                    existing_h.update(heuristics_update)
+                    conn.execute("""
+                    UPDATE honeypot_tracking_logs
+                    SET latitude = ?, longitude = ?, accuracy_meters = ?, triangulation_layer = 'LAYER_2_ACTIVE_GPS', heuristics = ?
+                    WHERE tracking_token = ?
+                    """, (lat, lon, accuracy_meters, json.dumps(existing_h), token))
+                else:
+                    conn.execute("""
+                    UPDATE honeypot_tracking_logs
+                    SET latitude = ?, longitude = ?, accuracy_meters = ?, triangulation_layer = 'LAYER_2_ACTIVE_GPS'
+                    WHERE tracking_token = ?
+                    """, (lat, lon, accuracy_meters, token))
+            return True
+        except Exception as e:
+            print(f"[-] Failed to update honeypot GPS in SQLite: {e}")
+            return False
+
+    def record_dispatch_alert(self, alert: Dict[str, Any]) -> str:
+        """Securely commit an assigned police precinct dispatch alert."""
+        alert_id = alert.get("id") or f"disp_{int(time.time()*1000)}"
+        token = alert.get("tracking_token", "")
+        coords = alert.get("target_coordinates") or {}
+        lat = float(coords.get("latitude") or 0.0)
+        lon = float(coords.get("longitude") or 0.0)
+        assigned = alert.get("assigned_precinct") or {}
+        p_id = assigned.get("precinct_id", "")
+        p_name = assigned.get("name", "")
+        dist = float(assigned.get("distance_km") or 0.0)
+        eta = int(assigned.get("estimated_eta_minutes") or 0)
+        status = alert.get("dispatch_status", "DISPATCH_RECOMMENDED")
+        details = json.dumps(alert)
+        layer = alert.get("triangulation_layer", "LAYER_1_PASSIVE_IP")
+        accuracy = alert.get("accuracy_meters")
+
+        try:
+            with sqlite3.connect(SQLITE_DB_PATH) as conn:
+                conn.execute("""
+                INSERT OR REPLACE INTO police_dispatch_logs
+                (id, tracking_token, target_lat, target_lon, precinct_id, precinct_name, distance_km, eta_minutes, dispatch_status, details, triangulation_layer, accuracy_meters)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (alert_id, token, lat, lon, p_id, p_name, dist, eta, status, details, layer, accuracy))
+        except Exception as e:
+            print(f"[-] Failed to record dispatch alert in SQLite: {e}")
+
+        if self._connected and self._pg_conn:
+            try:
+                with self._pg_conn.cursor() as cur:
+                    cur.execute("""
+                    INSERT INTO police_dispatch_logs
+                    (id, tracking_token, target_lat, target_lon, precinct_id, precinct_name, distance_km, eta_minutes, dispatch_status, details)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (alert_id, token, lat, lon, p_id, p_name, dist, eta, status, details))
+            except Exception as e:
+                print(f"[-] Failed to record dispatch alert in PostgreSQL: {e}")
+
+        return alert_id
+
+    def get_recent_dispatch_alerts(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Retrieve recent police dispatch events."""
+        results = []
+        try:
+            with sqlite3.connect(SQLITE_DB_PATH) as conn:
+                conn.row_factory = sqlite3.Row
+                rows = conn.execute(
+                    "SELECT * FROM police_dispatch_logs ORDER BY created_at DESC, rowid DESC LIMIT ?", (limit,)
+                ).fetchall()
+                for r in rows:
+                    item = dict(r)
+                    try:
+                        item["details"] = json.loads(item.get("details") or "{}")
+                    except Exception:
+                        pass
+                    results.append(item)
+        except Exception as e:
+            print(f"[-] Error querying dispatch alerts: {e}")
+        return results
+
+    def get_recent_honeypot_hits(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Retrieve recent captured honeypot hits."""
+        results = []
+        try:
+            with sqlite3.connect(SQLITE_DB_PATH) as conn:
+                conn.row_factory = sqlite3.Row
+                rows = conn.execute(
+                    "SELECT * FROM honeypot_tracking_logs ORDER BY created_at DESC, rowid DESC LIMIT ?", (limit,)
+                ).fetchall()
+                for r in rows:
+                    item = dict(r)
+                    try:
+                        item["heuristics"] = json.loads(item.get("heuristics") or "{}")
+                    except Exception:
+                        pass
+                    results.append(item)
+        except Exception as e:
+            print(f"[-] Error querying honeypot hits: {e}")
+        return results
 
 
 postgres_client = PostgresClient()

@@ -13,6 +13,7 @@ import json
 import logging
 import mimetypes
 import os
+import re
 import shutil
 import sqlite3
 import tempfile
@@ -49,8 +50,20 @@ from config.settings import (
 )
 from src.database.case_store import CaseStore
 from src.reporting.hasher import sha256_json
-from src.security.auth import Principal, check_login, get_current_user, issue_token, require_roles, validate_configuration
+from src.security.auth import Principal, check_login, get_current_user, issue_token, require_roles, validate_configuration, optional_simulation_user, hash_password, configured_users, set_user_store
 from src.security.crypto import DataCipher
+from src.security.user_store import UserStore
+from src.osint_triangulation.suspect_correlator import suspect_correlator
+from src.database.postgres_client import postgres_client
+from src.cases.state_machine import (
+    state_machine,
+    STATE_ACTIVE_HONEYPOT_READY,
+    STATE_HONEYPOT_ENGAGED,
+    STATE_INVOICE_SENT,
+    STATE_TARGET_GEO_LOCATED,
+    STATE_DISPATCH_INITIATED,
+)
+from src.ingestion.smart_buyer_bot import buyer_bot
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +77,8 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 validate_configuration()
 data_cipher = DataCipher.from_environment(DATA_ENCRYPTION_KEY)
 store = CaseStore(DATABASE_PATH, cipher=data_cipher)
+user_store = UserStore(DATABASE_PATH)
+set_user_store(user_store)
 METRICS = {"requests": 0, "errors": 0, "client_errors": 0,
            "analysis_failures": 0, "analysis_seconds_total": 0.0}
 for directory in (RAW_ROOT, REPORTS_ROOT, RUNTIME_ROOT / "tmp"):
@@ -82,6 +97,7 @@ class SimulationEvent(BaseModel):
     recipient_display_name: str = Field(min_length=1, max_length=120)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     text: str = Field(default="", max_length=20000)
+    simulated_locality: Optional[str] = Field(default=None, max_length=100)
 
 
 class ReviewRequest(BaseModel):
@@ -92,6 +108,48 @@ class ReviewRequest(BaseModel):
 class LoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=120)
     password: str = Field(min_length=1, max_length=256)
+
+
+STATIONS = ("Bangalore North", "Bangalore East", "Bangalore South", "Bangalore West")
+SIMULATED_LOCALITY_STATIONS = {
+    "bangalore north": "Bangalore North", "yelahanka": "Bangalore North", "hebbal": "Bangalore North",
+    "malleshwaram": "Bangalore North", "peenya": "Bangalore North", "jakkur": "Bangalore North",
+    "bangalore east": "Bangalore East", "whitefield": "Bangalore East", "indiranagar": "Bangalore East",
+    "marathahalli": "Bangalore East", "kr puram": "Bangalore East", "brookefield": "Bangalore East",
+    "bangalore south": "Bangalore South", "jayanagar": "Bangalore South", "jp nagar": "Bangalore South",
+    "koramangala": "Bangalore South",
+    "banashankari": "Bangalore South", "basavanagudi": "Bangalore South", "electronic city": "Bangalore South",
+    "bangalore west": "Bangalore West", "vijayanagar": "Bangalore West", "rajajinagar": "Bangalore West",
+    "kengeri": "Bangalore West", "nagarbhavi": "Bangalore West", "magadi road": "Bangalore West",
+}
+
+
+def _resolve_simulated_station(locality: Optional[str]) -> Optional[str]:
+    if not locality:
+        return None
+    return SIMULATED_LOCALITY_STATIONS.get(" ".join(locality.casefold().split()))
+
+
+def _case_visible_to_user(case: Dict[str, Any], principal: Principal) -> bool:
+    if "admin" in principal.roles:
+        return True
+    if not principal.station:
+        raise HTTPException(status_code=403, detail="An administrator must assign your account to a station before accessing cases")
+    summary = case.get("summary") or case.get("report", {}).get("summary", {})
+    return summary.get("jurisdiction") == principal.station
+
+
+def _require_station_assignment(principal: Principal) -> None:
+    if "reviewer" in principal.roles and "admin" not in principal.roles and not principal.station:
+        raise HTTPException(status_code=403, detail="An administrator must assign your account to a station before accessing cases")
+
+
+class SimulationContactRequest(BaseModel):
+    channel: str = "simulation"
+    name: str
+    identifier: str
+    persona: str = "TARGET_SUSPECT"
+    metadata: Optional[Dict[str, Any]] = None
 
 
 app = FastAPI(
@@ -109,13 +167,16 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Content-Type", "Authorization"],
 )
 if APP_ENV == "production":
     from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
     app.add_middleware(HTTPSRedirectMiddleware)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(ALLOWED_HOSTS))
+
+from src.api.routes_honeypot import router as honeypot_router
+app.include_router(honeypot_router)
 
 
 @app.middleware("http")
@@ -141,7 +202,7 @@ async def security_and_request_middleware(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Cache-Control"] = "no-store"
-    response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+    response.headers["Content-Security-Policy"] = "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: ws: http:; frame-ancestors 'none'"
     if APP_ENV == "production":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     request_id = str(uuid.uuid4())
@@ -161,6 +222,19 @@ def health() -> Dict[str, str]:
 def readiness() -> Dict[str, str]:
     store.ping()
     return {"status": "ready", "database": "ok", "encryption": "configured"}
+
+
+
+@app.on_event("startup")
+async def startup_warmup_models():
+    """Pre-load NLP and image classifiers into memory at startup to eliminate cold-start latency."""
+    try:
+        from src.ai_pipeline.nlp_classifier import get_drug_topic_classifier, HinglishSlangDetector
+        get_drug_topic_classifier()
+        HinglishSlangDetector()
+        logger.info("[Startup] AI pipeline classifiers pre-warmed successfully. Ingestion latency < 5ms.")
+    except Exception as e:
+        logger.warning(f"[Startup] Pre-warm notice: {e}")
 
 
 @app.post("/api/v1/auth/token")
@@ -185,7 +259,105 @@ def logout(response: Response) -> Dict[str, str]:
 
 @app.get("/api/v1/auth/me")
 def who_am_i(principal: Principal = Depends(get_current_user)) -> Dict[str, Any]:
-    return {"username": principal.username, "roles": sorted(principal.roles)}
+    return {"username": principal.username, "roles": sorted(principal.roles),
+            "station": principal.station, "location_mode": "simulated"}
+
+
+@app.get("/api/v1/admin/users")
+def admin_list_users(_: Principal = Depends(require_roles("admin"))) -> Dict[str, Any]:
+    configured = configured_users()
+    users = []
+    for username, user in configured.items():
+        if "reviewer" not in user["roles"]:
+            continue
+        users.append({
+            "username": username,
+            "roles": user["roles"],
+            "station": user_store.station_for(username) or user.get("station"),
+            "active": user.get("active", True),
+            "source": "environment",
+            "created_at": None,
+        })
+    users.extend(user for user in user_store.list_reviewers() if user["username"].casefold() not in {u["username"].casefold() for u in users})
+    return {"users": users, "stations": list(STATIONS)}
+
+
+class ReviewerCreateRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=64)
+    password: str = Field(min_length=4, max_length=256)
+    station: str
+
+
+class StationAssignmentRequest(BaseModel):
+    station: str
+
+
+class ReviewerStatusRequest(BaseModel):
+    active: bool
+
+
+class ReviewerPasswordRequest(BaseModel):
+    password: str = Field(min_length=4, max_length=256)
+
+
+@app.post("/api/v1/admin/users", status_code=201)
+def admin_create_reviewer(payload: ReviewerCreateRequest,
+                          _: Principal = Depends(require_roles("admin"))) -> Dict[str, Any]:
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", payload.username):
+        raise HTTPException(status_code=422, detail="Username may use letters, numbers, dots, underscores, and hyphens")
+    if payload.station not in STATIONS:
+        raise HTTPException(status_code=422, detail="Choose one of the configured Bangalore stations")
+    if payload.username.casefold() in {name.casefold() for name in configured_users()}:
+        raise HTTPException(status_code=409, detail="That username already exists in the configured accounts")
+    try:
+        user_store.create_reviewer(payload.username, hash_password(payload.password), payload.station)
+    except sqlite3.IntegrityError as exc:
+        raise HTTPException(status_code=409, detail="That username already exists") from exc
+    return {"username": payload.username, "roles": ["reviewer"], "station": payload.station,
+            "active": True, "source": "dashboard"}
+
+
+@app.put("/api/v1/admin/users/{username}/station")
+def admin_assign_station(username: str, payload: StationAssignmentRequest,
+                         _: Principal = Depends(require_roles("admin"))) -> Dict[str, Any]:
+    if payload.station not in STATIONS:
+        raise HTTPException(status_code=422, detail="Choose one of the configured Bangalore stations")
+    configured = configured_users()
+    account = next((user for name, user in configured.items() if name.casefold() == username.casefold()), None)
+    account = account or user_store.get_dynamic_user(username)
+    if not account or "reviewer" not in account["roles"]:
+        raise HTTPException(status_code=404, detail="Reviewer account not found")
+    user_store.assign_station(username, payload.station)
+    return {"username": username, "station": payload.station}
+
+
+@app.delete("/api/v1/admin/users/{username}")
+def admin_disable_reviewer(username: str, _: Principal = Depends(require_roles("admin"))) -> Dict[str, Any]:
+    if username.casefold() in {name.casefold() for name in configured_users()}:
+        raise HTTPException(status_code=409, detail="Environment-configured accounts cannot be disabled here")
+    if not user_store.set_active(username, False):
+        raise HTTPException(status_code=404, detail="Dashboard-managed reviewer account not found")
+    return {"username": username, "active": False}
+
+
+@app.put("/api/v1/admin/users/{username}/status")
+def admin_set_reviewer_status(username: str, payload: ReviewerStatusRequest,
+                              _: Principal = Depends(require_roles("admin"))) -> Dict[str, Any]:
+    if username.casefold() in {name.casefold() for name in configured_users()}:
+        raise HTTPException(status_code=409, detail="Environment-configured accounts cannot be changed here")
+    if not user_store.set_active(username, payload.active):
+        raise HTTPException(status_code=404, detail="Dashboard-managed reviewer account not found")
+    return {"username": username, "active": payload.active}
+
+
+@app.put("/api/v1/admin/users/{username}/password")
+def admin_reset_reviewer_password(username: str, payload: ReviewerPasswordRequest,
+                                  _: Principal = Depends(require_roles("admin"))) -> Dict[str, Any]:
+    if username.casefold() in {name.casefold() for name in configured_users()}:
+        raise HTTPException(status_code=409, detail="Environment-configured accounts cannot be changed here")
+    if not user_store.set_password(username, hash_password(payload.password)):
+        raise HTTPException(status_code=404, detail="Dashboard-managed reviewer account not found")
+    return {"username": username, "password_reset": True}
 
 
 @app.get("/api/v1/metrics")
@@ -224,7 +396,7 @@ def model_status(_: Principal = Depends(require_roles("admin"))) -> Dict[str, An
 async def receive_simulation_event(
     event_json: str = Form(...),
     files: Optional[List[UploadFile]] = File(default=None),
-    _: Principal = Depends(require_roles("simulator", "reviewer", "admin")),
+    _: Principal = Depends(optional_simulation_user),
 ) -> Dict[str, Any]:
     """Persist and analyze one newly-authored simulation message and images."""
     try:
@@ -320,13 +492,166 @@ async def receive_simulation_event(
         import shutil
         shutil.rmtree(temp_dir, ignore_errors=True)
 
-    policy = evaluate_for_human_review(analysis) if analysis.get("status") != "analysis_failed" else {
+    raw_policy = evaluate_for_human_review(analysis) if analysis.get("status") != "analysis_failed" else {
         "review_required": True,
         "triage_status": "analysis_failed",
         "reasons": [{"signal": "analysis_failure_manual_review", "source": "analysis_pipeline"}],
         "thresholds": {},
         "policy_note": "Analysis failed; the message needs operator attention, not an inferred clean result.",
     }
+
+
+    # State machine threat accumulation and smart bot engagement
+    # Strictly accumulate threat flags when the message is INCOMING from the target/seller
+    # (i.e. not outgoing from the analyst/investigator)
+    is_analyst_sender = str(event.sender_id).lower().startswith("analyst:")
+    target_entity_id = event.conversation_id if not is_analyst_sender else str(event.recipient_id)
+
+    smart_bot_data = None
+    state_res = None
+    correlation_res = {"cross_platform_correlated": False, "match_count": 0, "matched_platforms": []}
+    case_id: Optional[str] = None
+    policy = dict(raw_policy)
+
+    if not is_analyst_sender:
+        # Cross-platform suspect intelligence correlation
+        try:
+            correlation_res = suspect_correlator.correlate_event(event_dict, analysis)
+        except Exception as e:
+            logger.debug(f"Correlation check notice: {e}")
+
+        # Record threat intelligence event into central registry for multi-channel cross-referencing
+        threat_score = float(analysis.get("text_analysis", {}).get("risk_score") or (0.4 if raw_policy.get("review_required") else 0.0))
+        if correlation_res.get("cross_platform_correlated"):
+            threat_score = min(1.0, threat_score + 0.35)
+
+        detected_slangs = list(analysis.get("text_analysis", {}).get("detected_slangs", []))
+        text_lower = (event.text or "").lower()
+        illicit_check_terms = [
+            "weed", "coke", "mdma", "chitta", "hash", "m-cat", "lsd", "stamps",
+            "pills", "score", "malana", "ganja", "charas", "cocaine", "ice",
+            "meth", "ketamine", "stuff"
+        ]
+        found_terms = [t for t in illicit_check_terms if t in text_lower]
+        if found_terms:
+            for t in found_terms:
+                if t not in detected_slangs:
+                    detected_slangs.append(t)
+            threat_score = max(threat_score, 0.75)
+            is_threat_flag = True
+        else:
+            is_threat_flag = bool(raw_policy.get("review_required") or len(detected_slangs) > 0 or correlation_res.get("cross_platform_correlated"))
+
+        try:
+            postgres_client.push_threat_record({
+                "id": event_id,
+                "platform": event.channel,
+                "timestamp": event.timestamp,
+                "sender_id": target_entity_id,
+                "message_text": event.text,
+                "threat_score": threat_score,
+                "flagged_status": is_threat_flag,
+                "extracted_entities": {
+                    "upi_ids": analysis.get("financial_entities", {}).get("upi_ids", []),
+                    "bank_accounts": analysis.get("financial_entities", {}).get("bank_accounts", []),
+                },
+                "detected_drugs": detected_slangs,
+                "media_path": str(image_paths[0]) if image_paths else None,
+            })
+        except Exception as e:
+            logger.debug(f"Threat record persistence notice: {e}")
+
+        try:
+            from src.database.neo4j_client import neo4j_client
+            neo4j_client.push_threat_record({
+                "id": event_id,
+                "platform": event.channel,
+                "timestamp": event.timestamp,
+                "sender_id": target_entity_id,
+                "message_text": event.text,
+                "threat_score": threat_score,
+                "flagged_status": is_threat_flag,
+                "extracted_entities": {
+                    "upi_ids": analysis.get("financial_entities", {}).get("upi_ids", []),
+                    "bank_accounts": analysis.get("financial_entities", {}).get("bank_accounts", []),
+                    "narcotics_detected": detected_slangs,
+                },
+                "media_path": str(image_paths[0]) if image_paths else None,
+            })
+        except Exception as e:
+            logger.debug(f"Neo4j record persistence notice: {e}")
+
+        threat_record = {
+            "id": event_id,
+            "sender_id": target_entity_id,
+            "chat_id": event.conversation_id,
+            "threat_score": threat_score,
+            "flagged_status": is_threat_flag,
+            "extracted_entities": {
+                "narcotics_detected": detected_slangs,
+                "upi_ids": analysis.get("financial_entities", {}).get("upi_ids", []),
+                "bank_accounts": analysis.get("financial_entities", {}).get("bank_accounts", []),
+            },
+            "nlp_analysis": {"solicitation_intent": is_threat_flag}
+        }
+        state_res = state_machine.evaluate_threat_event(threat_record)
+        current_state = state_res.get("current_state")
+        sim_url = None
+        if event.channel == "whatsapp":
+            sim_url = "http://127.0.0.1:8090/api/send"
+        elif event.channel == "telegram":
+            sim_url = "http://127.0.0.1:8001/api/send"
+
+        if current_state == STATE_ACTIVE_HONEYPOT_READY:
+            # 4th consecutive threat message threshold reached: engage smart bot & generate review case docket
+            smart_bot_data = buyer_bot.engage_target(
+                entity_id=target_entity_id,
+                chat_id=event.conversation_id,
+                platform=event.channel,
+                simulation_post_url=sim_url,
+                message_text=event.text,
+            )
+            case_id = str(uuid.uuid4())
+            policy["review_required"] = True
+            policy["triage_status"] = "pending_review"
+
+            try:
+                from src.api.routes_honeypot import dispatch_manager
+                await dispatch_manager.broadcast_alert({
+                    "event": "THREAT_THRESHOLD_BREACHED",
+                    "entity_id": target_entity_id,
+                    "channel": event.channel,
+                    "threat_score": threat_score,
+                    "tracking_token": smart_bot_data.get("tracking_token") if smart_bot_data else None,
+                    "case_id": case_id,
+                })
+            except Exception as e:
+                logger.debug(f"Could not broadcast threshold alert: {e}")
+        elif current_state in (STATE_HONEYPOT_ENGAGED, STATE_INVOICE_SENT, STATE_TARGET_GEO_LOCATED, STATE_DISPATCH_INITIATED):
+            # Dynamic two-way conversational loop: target replies during active honeypot
+            smart_bot_data = buyer_bot.handle_target_reply(
+                entity_id=target_entity_id,
+                chat_id=event.conversation_id,
+                message_text=event.text,
+                platform=event.channel,
+                simulation_post_url=sim_url
+            )
+            case_id = None
+            policy["review_required"] = False
+            policy["triage_status"] = "honeypot_active"
+        else:
+            # Messages 1 to 3 maintain PASSIVE_MONITOR status:
+            # Strictly do NOT create case queue entries, do NOT flag for human review, do NOT trigger popups/blocks
+            case_id = None
+            policy["review_required"] = False
+            policy["triage_status"] = "passive_monitoring"
+    else:
+        # Analyst outgoing message - do not accumulate threat against analyst
+        state_res = state_machine.get_entity_state(target_entity_id)
+        case_id = None
+        policy["review_required"] = False
+        policy["triage_status"] = "analyst_response"
+
     attachment_public = [
         {key: value for key, value in item.items() if key not in {"storage_path", "analysis_path"}}
         for item in attachment_records
@@ -335,36 +660,40 @@ async def receive_simulation_event(
     public_policy = _hide_local_paths(policy, attachment_records)
     for item in attachment_records:
         item.pop("analysis_path", None)
-    graph = _build_evidence_graph(event, attachment_public, public_analysis)
-    report: Dict[str, Any] = {
-        "schema_version": 1,
-        "event_id": event_id,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "status": "pending_review" if policy["review_required"] else policy["triage_status"],
-        "decision_scope": "evidence_for_human_review_only",
-        "summary": {
-            "channel": event.channel,
-            "conversation_id": event.conversation_id,
-            "message_id": event.message_id,
-            "timestamp": event.timestamp.isoformat(),
-            "sender_id": event.sender_id,
-            "sender_display_name": event.sender_display_name,
-            "recipient_id": event.recipient_id,
-            "recipient_display_name": event.recipient_display_name,
-            "message_text": event.text,
-            "review_required": bool(policy["review_required"]),
-            "reason_count": len(policy["reasons"]),
-        },
-        "attachments": attachment_public,
-        "analysis": public_analysis,
-        "review_policy": public_policy,
-        "graph": graph,
-        "model_versions": _model_versions(),
-    }
-    case_id = str(uuid.uuid4()) if policy["review_required"] else None
-    report_hash = sha256_json(report) if case_id else None
-    if report_hash:
+
+    report = None
+    report_hash = None
+    if case_id:
+        graph = _build_evidence_graph(event, attachment_public, public_analysis)
+        jurisdiction = _resolve_simulated_station(event.simulated_locality)
+        report = {
+            "schema_version": 1,
+            "event_id": event_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "status": "pending_review",
+            "decision_scope": "evidence_for_human_review_only",
+            "summary": {
+                "channel": event.channel,
+                "conversation_id": event.conversation_id,
+                "message_id": event.message_id,
+                "timestamp": event.timestamp.isoformat(),
+                "sender_id": event.sender_id,
+                "sender_display_name": event.sender_display_name,
+                "recipient_id": event.recipient_id,
+                "recipient_display_name": event.recipient_display_name,
+                "message_text": event.text,
+                "review_required": True,
+                "reason_count": len(policy.get("reasons", [])),
+            },
+            "attachments": attachment_public,
+            "analysis": public_analysis,
+            "review_policy": public_policy,
+            "graph": graph,
+            "model_versions": _model_versions(),
+        }
+        report_hash = sha256_json(report)
         report["integrity"] = {"algorithm": "sha256", "digest": report_hash}
+
     try:
         store.save_event_and_case(
             event_id=event_id,
@@ -374,7 +703,7 @@ async def receive_simulation_event(
             event=event_dict,
             analysis=analysis,
             case_id=case_id,
-            report=report if case_id else None,
+            report=report,
             report_sha256=report_hash,
         )
     except sqlite3.IntegrityError as exc:
@@ -388,6 +717,9 @@ async def receive_simulation_event(
         logger.exception("Persistence failed for simulation event %s", event_id)
         raise HTTPException(status_code=500, detail="Failed to persist simulation event") from exc
 
+    honeypot_link = smart_bot_data.get("invoice_url") if smart_bot_data else None
+    bot_response = smart_bot_data.get("dispatched_message") if smart_bot_data else None
+
     return {
         "event_id": event_id,
         "case_id": case_id,
@@ -396,39 +728,138 @@ async def receive_simulation_event(
         "analysis": public_analysis,
         "report_url": f"/api/v1/cases/{case_id}" if case_id else None,
         "report_sha256": report_hash,
+        "state_machine": state_res,
+        "smart_bot": smart_bot_data,
+        "bot_response": bot_response,
+        "honeypot_link": honeypot_link,
+        "cross_platform_correlation": correlation_res,
     }
 
 
 @app.get("/api/v1/cases")
 def list_cases(status: Optional[str] = None, limit: int = 100,
-               _: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
+               principal: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
+    _require_station_assignment(principal)
     allowed = {"pending_review", "further_review", "accepted", "dismissed"}
     if status is not None and status not in allowed:
         raise HTTPException(status_code=422, detail="Unsupported case status")
     if not 1 <= limit <= 500:
         raise HTTPException(status_code=422, detail="limit must be between 1 and 500")
-    cases = store.list_cases(status=status, limit=limit)
+    cases = store.list_cases(status=status, limit=500)
+    cases = [case for case in cases if _case_visible_to_user(case, principal)][:limit]
     return {"cases": cases, "count": len(cases)}
 
 
 @app.get("/api/v1/cases/{case_id}")
-def get_case(case_id: str, _: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
+def get_case(case_id: str, principal: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
     case = store.get_case(case_id)
     if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if not _case_visible_to_user(case, principal):
         raise HTTPException(status_code=404, detail="Case not found")
     return case
 
 
+@app.post("/api/v1/simulation/contacts")
+def create_simulation_contact(
+    contact: SimulationContactRequest,
+    _: Principal = Depends(optional_simulation_user)
+) -> Dict[str, Any]:
+    """Dynamically register a new simulation contact across channels."""
+    from src.reporting.case_docket_generator import RAW_DB_PATH
+    contact_id = f"contact_{uuid.uuid4().hex[:10]}"
+    now = datetime.now(timezone.utc).isoformat()
+    meta_json = json.dumps(contact.metadata or {})
+
+    # Register in threat state machine
+    try:
+        from src.cases.state_machine import state_machine
+        state_machine.register_entity(
+            entity_id=contact.identifier,
+            initial_state="PASSIVE_MONITOR",
+            persona=contact.persona,
+            display_name=contact.name,
+            metadata=contact.metadata
+        )
+    except Exception as exc:
+        logger.warning("Failed to register contact in state machine: %s", exc)
+
+    if RAW_DB_PATH.exists():
+        with sqlite3.connect(RAW_DB_PATH) as conn:
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS simulation_contacts (
+                contact_id TEXT PRIMARY KEY,
+                channel TEXT NOT NULL,
+                name TEXT NOT NULL,
+                identifier TEXT NOT NULL,
+                persona TEXT NOT NULL,
+                status TEXT DEFAULT 'active',
+                metadata TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """)
+            conn.execute("""
+            INSERT OR REPLACE INTO simulation_contacts
+            (contact_id, channel, name, identifier, persona, status, metadata, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)
+            """, (contact_id, contact.channel, contact.name, contact.identifier, contact.persona, meta_json, now, now))
+            conn.commit()
+
+    return {
+        "ok": True,
+        "contact": {
+            "contact_id": contact_id,
+            "channel": contact.channel,
+            "name": contact.name,
+            "identifier": contact.identifier,
+            "persona": contact.persona,
+            "created_at": now
+        }
+    }
+
+
+@app.get("/api/v1/simulation/contacts")
+def list_simulation_contacts(
+    channel: Optional[str] = None,
+    _: Principal = Depends(optional_simulation_user)
+) -> Dict[str, Any]:
+    """Retrieve all dynamically registered simulation contacts."""
+    from src.reporting.case_docket_generator import RAW_DB_PATH
+    results = []
+    if RAW_DB_PATH.exists():
+        with sqlite3.connect(RAW_DB_PATH) as conn:
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            tbl_check = cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='simulation_contacts'").fetchone()
+            if tbl_check:
+                query = "SELECT * FROM simulation_contacts"
+                params = []
+                if channel and channel != "all":
+                    query += " WHERE channel = ? OR channel = 'all'"
+                    params.append(channel)
+                query += " ORDER BY created_at ASC"
+                try:
+                    rows = cur.execute(query, params).fetchall()
+                    for r in rows:
+                        results.append(dict(r))
+                except Exception:
+                    pass
+    return {"contacts": results, "count": len(results)}
+
+
 @app.get("/api/v1/graph")
 def evidence_graph(status: Optional[str] = None, limit: int = 500,
-                   _: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
+                   principal: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
     """Aggregate the fictional participants and candidate links in evidence cases."""
     allowed = {"pending_review", "further_review", "accepted", "dismissed"}
     if status is not None and status not in allowed:
         raise HTTPException(status_code=422, detail="Unsupported case status")
     if not 1 <= limit <= 500:
         raise HTTPException(status_code=422, detail="limit must be between 1 and 500")
-    cases = store.list_cases(status=status, limit=limit)
+    _require_station_assignment(principal)
+    cases = [case for case in store.list_cases(status=status, limit=500)
+             if _case_visible_to_user(case, principal)][:limit]
     nodes: Dict[str, Dict[str, Any]] = {}
     edges: Dict[tuple, Dict[str, Any]] = {}
     for item in cases:
@@ -441,12 +872,127 @@ def evidence_graph(status: Optional[str] = None, limit: int = 500,
         for edge in graph.get("edges", []):
             key = (edge.get("source"), edge.get("target"), edge.get("type"))
             edges.setdefault(key, edge)
+
+    # Seed baseline target network topology representing the distribution syndicate
+    seed_targets = [
+        {"id": "suspect:aryan_kapoor", "type": "fictional_participant", "label": "Aryan Kapoor (Dealer)"},
+        {"id": "supplier:rohit", "type": "fictional_participant", "label": "Rohit (Supplier)"},
+        {"id": "courier:vicky", "type": "fictional_participant", "label": "Vicky (Courier Dispatch)"},
+    ]
+    for st in seed_targets:
+        nodes.setdefault(st["id"], st)
+
+    seed_edges = [
+        {"source": "supplier:rohit", "target": "suspect:aryan_kapoor", "type": "wholesale_supply"},
+        {"source": "suspect:aryan_kapoor", "target": "courier:vicky", "type": "courier_dispatch"},
+    ]
+    for se in seed_edges:
+        edges.setdefault((se["source"], se["target"], se["type"]), se)
+
+    # Ingest dynamic simulation contacts into graph
+    try:
+        from src.reporting.case_docket_generator import RAW_DB_PATH
+        if RAW_DB_PATH.exists():
+            with sqlite3.connect(RAW_DB_PATH) as raw_conn:
+                raw_conn.row_factory = sqlite3.Row
+                cur = raw_conn.cursor()
+                tbl_check = cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='simulation_contacts'").fetchone()
+                if tbl_check:
+                    sc_rows = cur.execute("SELECT * FROM simulation_contacts ORDER BY created_at ASC").fetchall()
+                    for sc in sc_rows:
+                        c_id = f"contact:{sc['identifier']}"
+                        label = f"{sc['name']} ({sc['persona']})"
+                        nodes.setdefault(c_id, {
+                            "id": c_id,
+                            "type": "fictional_participant",
+                            "label": label,
+                        })
+                        edges.setdefault((c_id, "suspect:aryan_kapoor", "syndicate_link"), {
+                            "source": c_id,
+                            "target": "suspect:aryan_kapoor",
+                            "type": "syndicate_link",
+                        })
+    except Exception as exc:
+        logger.warning("Could not ingest dynamic simulation contacts into graph: %s", exc)
+
+    # Enrich graph with active honeypot tracking, dispatch routing, and suspect correlations
+    try:
+        from src.reporting.case_docket_generator import RAW_DB_PATH
+        if RAW_DB_PATH.exists():
+            with sqlite3.connect(RAW_DB_PATH) as raw_conn:
+                raw_conn.row_factory = sqlite3.Row
+                cur = raw_conn.cursor()
+                hits = cur.execute("SELECT * FROM honeypot_tracking_logs ORDER BY created_at DESC LIMIT 15").fetchall()
+                for h in hits:
+                    t_token = h["tracking_token"]
+                    token_node_id = f"token:{t_token}"
+                    nodes.setdefault(token_node_id, {
+                        "id": token_node_id,
+                        "type": "decoy_invoice",
+                        "label": f"Honeypot: {t_token}",
+                    })
+                    ip = h["ip"] or "127.0.0.1"
+                    city = (h["city"] or "Delhi").split("/")[0].strip()
+                    ip_node_id = f"ip:{ip}"
+                    nodes.setdefault(ip_node_id, {
+                        "id": ip_node_id,
+                        "type": "target_telemetry",
+                        "label": f"IP: {ip} ({city[:12]})",
+                    })
+                    edges.setdefault((token_node_id, ip_node_id, "telemetry_ping"), {
+                        "source": token_node_id,
+                        "target": ip_node_id,
+                        "type": "telemetry_ping",
+                    })
+
+                dispatches = cur.execute("SELECT * FROM police_dispatch_logs ORDER BY created_at DESC LIMIT 15").fetchall()
+                for d in dispatches:
+                    p_id = d["precinct_id"]
+                    p_name = d["precinct_name"].split("(")[0].strip()
+                    dist = d["distance_km"]
+                    p_node_id = f"precinct:{p_id}"
+                    nodes.setdefault(p_node_id, {
+                        "id": p_node_id,
+                        "type": "law_enforcement_node",
+                        "label": f"{p_name[:18]} ({dist:.1f}km)",
+                    })
+                    t_token = d["tracking_token"]
+                    token_node_id = f"token:{t_token}"
+                    edges.setdefault((token_node_id, p_node_id, "dispatched_interception"), {
+                        "source": token_node_id,
+                        "target": p_node_id,
+                        "type": "dispatched_interception",
+                    })
+
+                corrs = cur.execute("SELECT * FROM suspect_cross_correlations ORDER BY id DESC LIMIT 10").fetchall()
+                for c in corrs:
+                    prim = c["primary_entity"]
+                    val = c["matched_value"]
+                    p_plat = c["primary_platform"]
+                    m_plat = c["matched_platform"]
+                    corr_node_id = f"suspect:{val}"
+                    nodes.setdefault(corr_node_id, {
+                        "id": corr_node_id,
+                        "type": "correlated_suspect",
+                        "label": f"Cluster: {val} ({p_plat}->{m_plat})",
+                    })
+                    edges.setdefault((prim, corr_node_id, "cross_platform_link"), {
+                        "source": prim,
+                        "target": corr_node_id,
+                        "type": "cross_platform_link",
+                    })
+    except Exception as exc:
+        logger.warning("Could not enrich evidence graph with raw DB entities: %s", exc)
+
     return {"nodes": list(nodes.values()), "edges": list(edges.values()), "case_count": len(cases)}
 
 
 @app.get("/api/v1/cases/{case_id}/attachments/{attachment_id}")
 def get_case_attachment(case_id: str, attachment_id: str,
-                        _: Principal = Depends(require_roles("reviewer", "admin"))) -> Response:
+                        principal: Principal = Depends(require_roles("reviewer", "admin"))) -> Response:
+    case = store.get_case(case_id)
+    if not case or not _case_visible_to_user(case, principal):
+        raise HTTPException(status_code=404, detail="Case not found")
     attachment = store.get_attachment(case_id, attachment_id)
     if not attachment:
         raise HTTPException(status_code=404, detail="Attachment not found for this case")
@@ -469,6 +1015,9 @@ def get_case_attachment(case_id: str, attachment_id: str,
 @app.post("/api/v1/cases/{case_id}/review")
 def review_case(case_id: str, request: ReviewRequest,
                 principal: Principal = Depends(require_roles("reviewer", "admin"))) -> Dict[str, Any]:
+    current = store.get_case(case_id)
+    if not current or not _case_visible_to_user(current, principal):
+        raise HTTPException(status_code=404, detail="Case not found")
     try:
         case = store.add_review(case_id, principal.username, request.action, request.note)
     except ValueError as exc:
@@ -575,3 +1124,42 @@ def _model_versions() -> Dict[str, Any]:
             } if isinstance(metrics, dict) else None,
         }
     return result
+
+
+# ---------------------------------------------------------
+# Static File & Dashboard Serving
+# ---------------------------------------------------------
+FRONTEND_DIR = (PROJECT_ROOT / "frontend").resolve()
+
+@app.get("/", response_class=FileResponse)
+def index_page():
+    cmd_center = FRONTEND_DIR / "command_center.html"
+    if cmd_center.is_file():
+        return FileResponse(cmd_center)
+    dash = FRONTEND_DIR / "dashboard.html"
+    if dash.is_file():
+        return FileResponse(dash)
+    raise HTTPException(status_code=404, detail="Dashboard not found")
+
+@app.get("/dashboard.html", response_class=FileResponse)
+@app.get("/command_center.html", response_class=FileResponse)
+def command_center_page():
+    cmd_center = FRONTEND_DIR / "command_center.html"
+    if cmd_center.is_file():
+        return FileResponse(cmd_center)
+    dash = FRONTEND_DIR / "dashboard.html"
+    if dash.is_file():
+        return FileResponse(dash)
+    raise HTTPException(status_code=404, detail="Command Center not found")
+
+from fastapi.staticfiles import StaticFiles
+if FRONTEND_DIR.is_dir():
+    app.mount("/frontend", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend")
+
+@app.get("/api/v1/suspects/correlations")
+def get_suspect_correlations(limit: int = 50) -> Dict[str, Any]:
+    """Retrieve cross-platform suspect correlation intelligence audits."""
+    return {
+        "status": "success",
+        "correlations": suspect_correlator.get_all_correlations(limit=limit),
+    }

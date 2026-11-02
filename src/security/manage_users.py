@@ -8,7 +8,7 @@ from .auth import hash_password
 def main() -> None:
     if len(sys.argv) != 3 or sys.argv[2] not in {"simulator", "reviewer", "admin"}:
         raise SystemExit("Usage: python -m src.security.manage_users USERNAME simulator|reviewer|admin")
-    first = getpass.getpass("Password (12+ characters): ")
+    first = getpass.getpass("Password (4+ characters): ")
     second = getpass.getpass("Repeat password: ")
     if first != second:
         raise SystemExit("Passwords did not match")

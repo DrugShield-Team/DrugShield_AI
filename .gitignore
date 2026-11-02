@@ -34,3 +34,7 @@ data/forensic_cache/test_fixtures/test_synthetic_drug_qr.png
 Drug detection.v1i.multiclass (1)/
 Pills Pills.v3i.multiclass/
 *.zip
+
+dist/
+**/dist/
+

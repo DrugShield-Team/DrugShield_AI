@@ -33,13 +33,21 @@ from src.ai_pipeline.nlp_classifier import NLPNarcoticsClassifier, HinglishSlang
 from src.ai_pipeline.ocr_parser import extract_text_from_image
 from src.ai_pipeline.qr_detector import scan_qr_payload
 from src.osint_triangulation.upi_parser import extract_financial_entities
+from src.ai_pipeline.exif_extractor import extract_exif_metadata
 from src.database.neo4j_client import push_threat_to_neo4j
 from src.database.postgres_client import push_threat_to_postgres
-from src.notifications.popup_alert import trigger_threat_popup
+try:
+    from src.notifications.popup_alert import trigger_threat_popup
+except ImportError:
+    def trigger_threat_popup(record: Dict[str, Any]):
+        pass
 
 # Initialize Global Classifiers
 nlp_classifier = NLPNarcoticsClassifier()
-hinglish_detector = HinglishSlangDetector()
+try:
+    hinglish_detector = HinglishSlangDetector()
+except FileNotFoundError:
+    hinglish_detector = HinglishSlangDetector(custom_lexicon={})
 
 
 def append_to_training_dataset(record: Dict[str, Any]):
@@ -110,9 +118,10 @@ def evaluate_live_message_threat(record: Dict[str, Any]) -> Dict[str, Any]:
     # 2. Module 3: Financial & UPI Entity Extraction on primary text
     fin_res = extract_financial_entities(msg_text)
 
-    # 3. Media Forensics (OCR & QR)
+    # 3. Media Forensics (OCR, QR & EXIF)
     ocr_res = {"success": False, "raw_text": "", "detected_drugs": []}
     qr_res = {"qr_detected": False, "confidence_score": 0.0}
+    exif_res = {"has_exif": False, "has_gps": False}
 
     resolved_media_path = None
     if media_path:
@@ -146,6 +155,16 @@ def evaluate_live_message_threat(record: Dict[str, Any]) -> Dict[str, Any]:
                     fin_res["bank_accounts"] = list(set(fin_res["bank_accounts"] + qr_fin["bank_accounts"]))
             except Exception as e:
                 print(f"[-] QR inspection warning on {resolved_media_path.name}: {e}")
+
+            # Run EXIF metadata extraction
+            try:
+                exif_res = extract_exif_metadata(resolved_media_path)
+                if exif_res.get("has_gps"):
+                    gps_coord = f"{exif_res['latitude']:.6f}, {exif_res['longitude']:.6f}"
+                    if gps_coord not in fin_res["gps_coordinates"]:
+                        fin_res["gps_coordinates"].append(gps_coord)
+            except Exception as e:
+                print(f"[-] EXIF inspection warning on {resolved_media_path.name}: {e}")
 
     # 4. Consolidate Detected Substances & Entities
     detected_drugs = list(set(
@@ -207,12 +226,13 @@ def evaluate_live_message_threat(record: Dict[str, Any]) -> Dict[str, Any]:
             "performed": bool(resolved_media_path),
             "text_extracted": bool(ocr_res.get("raw_text"))
         },
+        "exif_forensics": exif_res,
         "qr_scan": qr_res
     }
 
     # 7. Action On Flagged Threat (Score >= 0.60)
     if is_flagged:
-        print(f"\n[Threat Pipeline] 🚨 THREAT FLAGGED (Score: {final_threat_score:.2f} >= 0.60)")
+        print(f"\n[Threat Pipeline] [ALERT] THREAT FLAGGED (Score: {final_threat_score:.2f} >= 0.60)")
         print(f"    Platform   : {platform}")
         print(f"    Author     : {sender_id}")
         print(f"    Substances : {', '.join(detected_drugs) or 'Illicit Solicitation'}")
